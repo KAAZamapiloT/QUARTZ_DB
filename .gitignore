@@ -1,0 +1,11 @@
+*.exe
+*.db
+*.obj
+*.yaml
+*.json
+*.xml
+*.tcl
+bin
+*.cmake
+*.bin
+build

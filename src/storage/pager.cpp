@@ -1,5 +1,5 @@
-#pragma once
-#include"page.hpp"
+
+#include"pager.hpp"
 
 #include<filesystem>
 #include<fstream>
@@ -9,7 +9,7 @@
 
 
 
-explicit qdb::pager::pager(const std::filesystem::path& path){
+ qdb::pager::pager(const std::filesystem::path& path){
 
 
     if(!std::filesystem::exists(path)){
