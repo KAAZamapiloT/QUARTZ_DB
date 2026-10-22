@@ -9,3 +9,7 @@ bin
 *.cmake
 *.bin
 build
+*.vsidx
+*.ipch
+.vs
+.gitignore

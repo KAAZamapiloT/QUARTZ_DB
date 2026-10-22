@@ -37,6 +37,7 @@ endif()
 add_library(quartz_core STATIC
     src/storage/pager.cpp
     src/storage/table.cpp
+    src/storage/record.cpp
     src/sql/lexer.cpp
     src/sql/parser.cpp
     src/execution/executor.cpp

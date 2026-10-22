@@ -1,9 +1,9 @@
 
-#include"pager.hpp"
+#include"storage/pager.hpp"
 
 #include<filesystem>
 #include<fstream>
-
+#include<algorithm>
 
 
 
@@ -73,4 +73,61 @@ bool qdb::pager::write_page(std::size_t page_number, const Page& page){
 
     file_.flush();
     return static_cast<bool>(file_);
+}
+
+
+bool qdb::pager::allocate_page(qdb::PageID& out_id){
+file_.clear();
+
+const bool reuse = !free_pages.empty();
+    const PageID id = reuse
+        ? free_pages.back()
+        : static_cast<PageID>(num_pages);
+
+    if (id >= static_cast<PageID>(
+                  std::numeric_limits<std::streamoff>::max()
+              ) / PAGE_SIZE) {
+        return false;
+    }
+
+    Page page{};
+
+    if (!write_page(static_cast<std::size_t>(id), page)) {
+        return false;
+    }
+
+    if (reuse) {
+        free_pages.pop_back();
+    } else {
+        ++num_pages;
+    }
+
+    out_id = id;
+    return true;
+
+}
+
+
+std::size_t qdb::pager::page_count()const{
+    return num_pages;
+}
+
+
+bool qdb::pager::deallocate_page(PageID id) {
+    // Page 0 is reserved for database metadata.
+    if (id == 0) {
+        return false;
+    }
+
+    if (id >= num_pages) {
+        return false;
+    }
+
+    if (std::find(free_pages.begin(), free_pages.end(), id)
+        != free_pages.end()) {
+        return false;
+    }
+
+    free_pages.push_back(id);
+    return true;
 }

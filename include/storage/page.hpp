@@ -3,7 +3,7 @@
 #include<array>
 #include<cstddef>
 #include<stdint.h>
-
+#include<limits>
 
 // a simple page
 namespace qdb{
