@@ -1,8 +1,5 @@
-#include<iostream>
-
+void run_persistence_allocation_tests();
 
 int main() {
-	std::cout << "TEST MAIN\n";
-	return 0;
-
+    run_persistence_allocation_tests();
 }

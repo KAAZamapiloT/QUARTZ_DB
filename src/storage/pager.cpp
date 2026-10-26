@@ -5,9 +5,8 @@
 #include<fstream>
 #include<algorithm>
 
-
-
-
+#include <limits>
+#include <system_error>
 
  qdb::pager::pager(const std::filesystem::path& path){
 
@@ -25,6 +24,31 @@
     if(!file_.is_open()){
         throw std::runtime_error("Cannot open database file");
     }
+    std::error_code ec;
+    const auto bytes = std::filesystem::file_size(path, ec);
+
+    if (ec) {
+        throw std::runtime_error(
+            "Failed to determine database file size"
+        );
+    }
+
+    if (bytes % PAGE_SIZE != 0) {
+        throw std::runtime_error(
+            "Database file size is not a multiple of PAGE_SIZE"
+        );
+    }
+
+    const auto disk_pages = bytes / PAGE_SIZE;
+
+    if (disk_pages > std::numeric_limits<std::size_t>::max()) {
+        throw std::runtime_error("Database file is too large");
+    }
+
+    // Page 0 is reserved. Page 1 is the first data page.
+    num_pages = disk_pages == 0
+        ? 1
+        : static_cast<std::size_t>(disk_pages);
 }
 
 

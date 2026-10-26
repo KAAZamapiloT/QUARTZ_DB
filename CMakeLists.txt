@@ -71,6 +71,7 @@ if(QUARTZ_BUILD_TESTS)
         tests/table_tests.cpp
         tests/sql_tests.cpp
         tests/index_tests.cpp
+        tests/persistence_allocation_tests.cpp
         tests/integration_tests.cpp
     )
 
