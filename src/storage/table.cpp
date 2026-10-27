@@ -1,6 +1,6 @@
 
 #include "storage/table.hpp"
-
+#include"storage/schema.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -153,41 +153,151 @@ namespace  qdb {
 				throw std::runtime_error("Failed to write table page");
 			}
 		}
+
+		void validate_schema(const Schema& schema) {
+			if (schema.columns.empty()) {
+				throw std::invalid_argument(
+					"Table schema must contain at least one column"
+				);
+			}
+
+			std::unordered_set<std::string> column_names;
+			std::size_t primary_key_count = 0;
+
+			for (const Column& column : schema.columns) {
+				if (column.name.empty()) {
+					throw std::invalid_argument(
+						"Column name cannot be empty"
+					);
+				}
+
+				if (!column_names.insert(column.name).second) {
+					throw std::invalid_argument(
+						"Duplicate column name: " + column.name
+					);
+				}
+
+				switch (column.type) {
+				case  DATA_TYPE::INTEGER:
+				case  DATA_TYPE::TEXT:
+					break;
+
+				default:
+					throw std::invalid_argument(
+						"Unsupported column data type"
+					);
+				}
+
+				if (column.primary_key) {
+					++primary_key_count;
+
+					if (column.nullable) {
+						throw std::invalid_argument(
+							"Primary key column cannot be nullable"
+						);
+					}
+				}
+			}
+
+			// This initial implementation supports a single-column primary key.
+			if (primary_key_count > 1) {
+				throw std::invalid_argument(
+					"Composite primary keys are not supported yet"
+				);
+			}
+		}
+
+		void validate_record(const Schema& schema, const Record& record) {
+			if (record.values.size() != schema.columns.size()) {
+				throw std::invalid_argument(
+					"Record field count does not match table schema"
+				);
+			}
+
+			for (std::size_t i = 0; i < schema.columns.size(); ++i) {
+				const Column& column = schema.columns[i];
+				const Value& value = record.values[i];
+
+				if (std::holds_alternative<std::monostate>(value)) {
+					if (!column.nullable) {
+						throw std::invalid_argument(
+							"NULL is not allowed for column: " + column.name
+						);
+					}
+
+					continue;
+				}
+
+				switch (column.type) {
+					case DATA_TYPE::INTEGER:
+					if (!std::holds_alternative<std::int64_t>(value)) {
+						throw std::invalid_argument(
+							"Expected INTEGER for column: " + column.name
+						);
+					}
+					break;
+
+				case DATA_TYPE::TEXT:
+					if (!std::holds_alternative<std::string>(value)) {
+						throw std::invalid_argument(
+							"Expected TEXT for column: " + column.name
+						);
+					}
+					break;
+
+				default:
+					throw std::invalid_argument(
+						"Unsupported column data type"
+					);
+				}
+			}
+		}
 	}
 
-	Table::Table(pager& pager):pager_(pager)
-	{
 
-		Page page{};
 
-		
-		if (pager_.read_page(
-			static_cast<std::size_t>(FIRST_DATA_PAGE), page)) {
-			(void)load_header(page);
-			return;
-		}
 
-		
-		if (pager_.page_count() >
-			static_cast<std::size_t>(FIRST_DATA_PAGE)) {
-			throw std::runtime_error(
-				"Failed to read the existing table's first page"
-			);
-		}
 
+
+	Table Table::create(pager& storage,Schema schema) {
 		PageID id{};
 
-		if (!pager_.allocate_page(id) || id != FIRST_DATA_PAGE) {
-			throw std::runtime_error(
-				"Failed to allocate the first table page"
-			);
+		validate_schema(schema);
+
+		if (!storage.allocate_page(id)) {
+			throw std::runtime_error("Failed to allocate table's first page");
 		}
 
+		if (id == 0 ||
+			id == std::numeric_limits<PageID>::max()) {
+			throw std::runtime_error("Allocator returned an invalid page ID");
+		}
+
+		Page page{};
 		initialize_page(page);
-		write_page_or_throw(pager_, id, page);
+		write_page_or_throw(storage, id, page);
+
+		return Table(storage, id,schema);
 	}
+
+	Table::Table(pager& storage, PageID first_page,Schema schema)
+		: pager_(storage), first_page_(first_page),schema_(std::move(schema)) {
+
+
+		validate_schema(schema_);
+		if (first_page_ == 0 ||
+			first_page_ == std::numeric_limits<PageID>::max()) {
+			throw std::invalid_argument("Invalid table first page ID");
+		}
+
+		Page page = read_page_or_throw(pager_, first_page_);
+		(void)load_header(page);
+	}
+
 	void Table::insert(const Record& record)
 	{
+
+		validate_record(schema_, record);
 		const std::vector<std::byte> bytes = RecordCodec::serialize(record);
 		
 		if (bytes.size() > PAGE_SIZE - HEADER_SIZE - SLOT_SIZE) {
@@ -196,7 +306,7 @@ namespace  qdb {
 			);
 		}
 
-		PageID current_id = FIRST_DATA_PAGE;
+		PageID current_id = first_page_;
 
 		std::unordered_set<PageID> visited;
 
@@ -288,7 +398,7 @@ namespace  qdb {
 
 		std::vector<Record> records;
 
-		PageID current_id = FIRST_DATA_PAGE;
+		PageID current_id = first_page_;
 
 		std::unordered_set<PageID> visited;
 
@@ -321,7 +431,7 @@ namespace  qdb {
 						"Failed to decode record from table page"
 					);
 				}
-
+				validate_record(schema_, *decoded);
 				records.push_back(*decoded);
 			}
 			current_id = header.next_page;

@@ -2,11 +2,21 @@
 #include <storage/record.hpp>
 #include <storage/table.hpp>
 
-#include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <stdexcept>
 #include <string>
+
+namespace {
+
+    void check(bool condition, const char* message) {
+        if (!condition) {
+            throw std::runtime_error(message);
+        }
+    }
+
+} // namespace
 
 int main() {
     const std::filesystem::path path = "table_test.db";
@@ -14,7 +24,12 @@ int main() {
 
     {
         qdb::pager pager(path);
-        qdb::Table table(pager);
+
+        // Create and initialize a new table.
+        qdb::Table table = qdb::Table::create(pager);
+
+        check(table.scan().empty(),
+            "New table should initially be empty");
 
         table.insert(qdb::Record{
             .values = {
@@ -39,11 +54,20 @@ int main() {
 
         const auto records = table.scan();
 
-        assert(records.size() == 3);
-        assert(records[0].values[0] == qdb::Value{ std::int64_t{ 1 } });
-        assert(records[1].values[1] == qdb::Value{ std::string{ "Uday" } });
-        assert(records[2].values[1] == qdb::Value{ std::string{ "Ravi" } });
+        check(records.size() == 3,
+            "Expected three records");
+
+        check(records[0].values[0] == qdb::Value{ std::int64_t{ 1 } },
+            "First record ID mismatch");
+
+        check(records[1].values[1] == qdb::Value{ std::string{ "Uday" } },
+            "Second record name mismatch");
+
+        check(records[2].values[1] == qdb::Value{ std::string{ "Ravi" } },
+            "Third record name mismatch");
     }
+
+    std::filesystem::remove(path);
 
     std::cout << "Table insert and scan tests passed!\n";
 }

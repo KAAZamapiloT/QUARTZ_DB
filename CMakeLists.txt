@@ -1,4 +1,3 @@
-
 cmake_minimum_required(VERSION 3.25)
 
 project(QuartzDB
@@ -7,21 +6,21 @@ project(QuartzDB
     LANGUAGES CXX
 )
 
-include(CTest)
-
 option(QUARTZ_BUILD_TESTS "Build QuartzDB tests" ON)
 
 # Shared project settings
 add_library(quartz_options INTERFACE)
 
 target_compile_features(quartz_options
-    INTERFACE cxx_std_23
+    INTERFACE
+        cxx_std_23
 )
 
 if(MSVC)
     target_compile_options(quartz_options INTERFACE
         /W4
         /permissive-
+        /utf-8
     )
 else()
     target_compile_options(quartz_options INTERFACE
@@ -41,13 +40,14 @@ add_library(quartz_core STATIC
     src/sql/lexer.cpp
     src/sql/parser.cpp
     src/execution/executor.cpp
+    src/quartz/database.cpp
 )
 
 target_include_directories(quartz_core
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 target_link_libraries(quartz_core
@@ -65,22 +65,37 @@ target_link_libraries(quartz
 
 # Tests
 if(QUARTZ_BUILD_TESTS)
+    enable_testing()
+
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.15.2
+        GIT_SHALLOW TRUE
+    )
+
+    # Avoid MSVC runtime-library mismatch on Windows.
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+    FetchContent_MakeAvailable(googletest)
+
     add_executable(quartz_tests
         tests/main.cpp
-        tests/pager_tests.cpp
         tests/table_tests.cpp
-        tests/sql_tests.cpp
-        tests/index_tests.cpp
         tests/persistence_allocation_tests.cpp
-        tests/integration_tests.cpp
+        tests/database_tests.cpp
+        tests/schema_tests.cpp
     )
 
     target_link_libraries(quartz_tests
-        PRIVATE quartz_core
+        PRIVATE
+            quartz_core
+            GTest::gtest
     )
 
-    add_test(
-        NAME quartz_tests
-        COMMAND quartz_tests
+    include(GoogleTest)
+    gtest_discover_tests(quartz_tests
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 endif()
