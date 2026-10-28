@@ -22,7 +22,7 @@ namespace qdb {
         Database& operator=(Database&&) = delete;
 
         [[nodiscard]]
-        Table& create_table(const std::string& name,Schema schema);
+        Table& create_table(const std::string& name, Schema schema = default_schema());
 
         [[nodiscard]]
         Table* find_table(const std::string& name);

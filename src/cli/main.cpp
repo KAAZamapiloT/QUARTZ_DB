@@ -1,5 +1,6 @@
 #include <storage/pager.hpp>
 #include <storage/record.hpp>
+#include <storage/schema.hpp>
 #include <storage/table.hpp>
 
 #include <cstdint>
@@ -25,8 +26,25 @@ int main() {
     {
         qdb::pager pager(path);
 
+        const qdb::Schema schema{
+            .columns = {
+                qdb::Column{
+                    .name = "id",
+                    .type = qdb::DataType::Integer,
+                    .nullable = false,
+                    .primary_key = true
+                },
+                qdb::Column{
+                    .name = "name",
+                    .type = qdb::DataType::Text,
+                    .nullable = false,
+                    .primary_key = false
+                }
+            }
+        };
+
         // Create and initialize a new table.
-        qdb::Table table = qdb::Table::create(pager);
+        qdb::Table table = qdb::Table::create(pager, schema);
 
         check(table.scan().empty(),
             "New table should initially be empty");

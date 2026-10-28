@@ -2,38 +2,52 @@
 
 #include <storage/pager.hpp>
 #include <storage/record.hpp>
-#include<storage/schema.hpp>
+#include <storage/schema.hpp>
 
 #include <vector>
+
 namespace qdb {
 
+    inline Schema default_schema() {
+        return Schema{
+            .columns = {
+                Column{
+                    .name = "val",
+                    .type = DataType::Text,
+                    .nullable = false,
+                    .primary_key = false
+                }
+            }
+        };
+    }
 
-	class Table {
-	public:
+    class Table {
+    public:
+        static Table create(pager& storage, Schema schema = default_schema());
 
+        Table(pager& pager, PageID first_page, Schema schema = default_schema());
 
-		static Table create(pager& storage,Schema schema);
+        void insert(const Record& record);
 
-	    Table(pager& pager,PageID first_page,Schema schema);
+        [[nodiscard]]
+        std::vector<Record> scan();
 
-		void insert(const Record& record);
+        [[nodiscard]]
+        PageID first_page() const noexcept {
+            return first_page_;
+        }
 
-		[[nodiscard]]
-		std::vector<Record> scan();
+        [[nodiscard]]
+        Schema get_schema() const noexcept {
+            return schema_;
+        }
 
-		[[nodiscard]]
-		PageID first_page() const noexcept {
-			return first_page_;
-		}
-		[[nodiscard]]
-		Schema get_schema() const noexcept{
-			return schema_;
-		}
-	private:
-		static constexpr PageID FIRST_DATA_PAGE = 1;
+    private:
+        static constexpr PageID FIRST_DATA_PAGE = 1;
 
-		pager& pager_;
-		PageID first_page_;
-		Schema schema_;
-	};
-}
+        pager& pager_;
+        PageID first_page_;
+        Schema schema_;
+    };
+
+} // namespace qdb

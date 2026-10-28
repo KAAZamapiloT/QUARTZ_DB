@@ -1,5 +1,6 @@
 #include <storage/pager.hpp>
 #include <storage/record.hpp>
+#include <storage/schema.hpp>
 #include <storage/table.hpp>
 
 #include <cstdint>
@@ -20,6 +21,31 @@ namespace {
         }
     }
 
+    qdb::Schema make_test_schema() {
+        return qdb::Schema{
+            .columns = {
+                qdb::Column{
+                    .name = "id",
+                    .type = qdb::DATA_TYPE::INTEGER,
+                    .nullable = false,
+                    .primary_key = true
+                },
+                qdb::Column{
+                    .name = "text",
+                    .type = qdb::DATA_TYPE::TEXT,
+                    .nullable = false,
+                    .primary_key = false
+                },
+                qdb::Column{
+                    .name = "val",
+                    .type = qdb::DATA_TYPE::INTEGER,
+                    .nullable = true,
+                    .primary_key = false
+                }
+            }
+        };
+    }
+
     qdb::Record make_record(std::size_t i) {
         qdb::Record record;
 
@@ -37,9 +63,7 @@ namespace {
             record.values.emplace_back(std::monostate{});
         }
         else {
-            record.values.emplace_back(
-                static_cast<std::int64_t>(i * 10)
-            );
+            record.values.emplace_back(static_cast<std::int64_t>(i * 10));
         }
 
         return record;
@@ -76,13 +100,15 @@ void run_table_tests() {
     std::vector<qdb::Record> expected;
     expected.reserve(RECORD_COUNT);
 
+    const auto schema = make_test_schema();
+
     // Retain the starting page ID across pager lifetimes.
     qdb::PageID first_page{};
 
     // Test 1: Create a new table, insert records, and force page growth.
     {
         qdb::pager storage(path);
-        qdb::Table table = qdb::Table::create(storage);
+        qdb::Table table = qdb::Table::create(storage, schema);
 
         first_page = table.first_page();
 
@@ -112,7 +138,7 @@ void run_table_tests() {
     // Test 2: Reopen the pager and attach to the existing table.
     {
         qdb::pager storage(path);
-        qdb::Table table(storage, first_page);
+        qdb::Table table(storage, first_page, schema);
 
         check_records(table.scan(), expected);
 

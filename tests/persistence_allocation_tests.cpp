@@ -1,5 +1,6 @@
 #include <storage/pager.hpp>
 #include <storage/record.hpp>
+#include <storage/schema.hpp>
 #include <storage/table.hpp>
 
 #include <cstdint>
@@ -18,6 +19,31 @@ namespace {
         if (!condition) {
             throw std::runtime_error(message);
         }
+    }
+
+    qdb::Schema make_test_schema() {
+        return qdb::Schema{
+            .columns = {
+                qdb::Column{
+                    .name = "id",
+                    .type = qdb::DATA_TYPE::INTEGER,
+                    .nullable = false,
+                    .primary_key = true
+                },
+                qdb::Column{
+                    .name = "text",
+                    .type = qdb::DATA_TYPE::TEXT,
+                    .nullable = false,
+                    .primary_key = false
+                },
+                qdb::Column{
+                    .name = "val",
+                    .type = qdb::DATA_TYPE::INTEGER,
+                    .nullable = true,
+                    .primary_key = false
+                }
+            }
+        };
     }
 
     qdb::Record make_record(std::size_t i) {
@@ -77,6 +103,8 @@ void run_persistence_allocation_tests() {
     std::vector<qdb::Record> expected;
     expected.reserve(TOTAL_RECORDS);
 
+    const auto schema = make_test_schema();
+
     // Retain the table's starting page ID across pager lifetimes.
     qdb::PageID first_page{};
 
@@ -84,7 +112,7 @@ void run_persistence_allocation_tests() {
     {
         qdb::pager storage(path);
 
-        qdb::Table table = qdb::Table::create(storage);
+        qdb::Table table = qdb::Table::create(storage, schema);
         first_page = table.first_page();
 
         check(first_page != 0,
@@ -108,7 +136,7 @@ void run_persistence_allocation_tests() {
     // Session 2: reopen, verify old data, and insert more records.
     {
         qdb::pager storage(path);
-        qdb::Table table(storage, first_page);
+        qdb::Table table(storage, first_page, schema);
 
         check_records(table.scan(), expected);
 
@@ -130,7 +158,7 @@ void run_persistence_allocation_tests() {
     // Session 3: reopen again and verify all records.
     {
         qdb::pager storage(path);
-        qdb::Table table(storage, first_page);
+        qdb::Table table(storage, first_page, schema);
 
         check_records(table.scan(), expected);
 

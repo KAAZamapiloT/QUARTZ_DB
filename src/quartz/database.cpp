@@ -146,10 +146,6 @@ namespace qdb {
             throw std::runtime_error("Database page-size mismatch");
         }
 
-        if (count > (PAGE_SIZE - CATALOG_HEADER_SIZE) / ENTRY_FIXED_SIZE) {
-            throw std::runtime_error("Invalid table count in catalog");
-        }
-
         std::size_t offset = CATALOG_HEADER_SIZE;
         std::unordered_set<PageID> used_first_pages;
 
@@ -186,7 +182,48 @@ namespace qdb {
                 throw std::runtime_error("Multiple tables reference the same first page");
             }
 
-            auto table = std::make_unique<Table>(pager_, first_page);
+            // Read schema if available
+            Schema schema;
+            if (offset + 2 <= PAGE_SIZE) {
+                const std::uint16_t col_count = read_u16(page, offset);
+                offset += 2;
+
+                std::vector<Column> columns;
+                columns.reserve(col_count);
+
+                for (std::uint16_t c = 0; c < col_count; ++c) {
+                    if (offset + 2 > PAGE_SIZE) {
+                        throw std::runtime_error("Truncated column definition");
+                    }
+                    const std::uint16_t col_name_len = read_u16(page, offset);
+                    offset += 2;
+
+                    if (offset + col_name_len + 3 > PAGE_SIZE) {
+                        throw std::runtime_error("Truncated column details");
+                    }
+
+                    std::string col_name = read_name(page, offset, col_name_len);
+                    offset += col_name_len;
+
+                    const auto col_type = static_cast<DataType>(std::to_integer<std::uint8_t>(page.data[offset++]));
+                    const bool nullable = std::to_integer<std::uint8_t>(page.data[offset++]) != 0;
+                    const bool primary_key = std::to_integer<std::uint8_t>(page.data[offset++]) != 0;
+
+                    columns.push_back(Column{
+                        .name = std::move(col_name),
+                        .type = col_type,
+                        .nullable = nullable,
+                        .primary_key = primary_key
+                    });
+                }
+                schema.columns = std::move(columns);
+            }
+
+            if (schema.columns.empty()) {
+                schema = default_schema();
+            }
+
+            auto table = std::make_unique<Table>(pager_, first_page, std::move(schema));
             tables_.emplace(name, std::move(table));
         }
 
@@ -211,6 +248,9 @@ namespace qdb {
 
         for (const auto& [name, table] : tables_) {
             const auto name_len = name.size();
+            const auto& schema = table->get_schema();
+            const auto col_count = schema.columns.size();
+
             if (name_len > MAX_TABLE_NAME_BYTES ||
                 offset + ENTRY_FIXED_SIZE + name_len > PAGE_SIZE) {
                 throw std::runtime_error("Catalog exceeds page capacity");
@@ -224,6 +264,26 @@ namespace qdb {
 
             append_name(page, offset, name);
             offset += name_len;
+
+            write_u16(page, offset, static_cast<std::uint16_t>(col_count));
+            offset += 2;
+
+            for (const auto& col : schema.columns) {
+                const auto col_name_len = col.name.size();
+                if (offset + 2 + col_name_len + 3 > PAGE_SIZE) {
+                    throw std::runtime_error("Catalog exceeds page capacity");
+                }
+
+                write_u16(page, offset, static_cast<std::uint16_t>(col_name_len));
+                offset += 2;
+
+                append_name(page, offset, col.name);
+                offset += col_name_len;
+
+                page.data[offset++] = static_cast<std::byte>(col.type);
+                page.data[offset++] = static_cast<std::byte>(col.nullable ? 1 : 0);
+                page.data[offset++] = static_cast<std::byte>(col.primary_key ? 1 : 0);
+            }
         }
 
         if (!pager_.write_page(0, page)) {
@@ -231,7 +291,7 @@ namespace qdb {
         }
     }
 
-    Table& Database::create_table(const std::string& name,Schema schema) {
+    Table& Database::create_table(const std::string& name, Schema schema) {
         if (name.empty() || name.size() > MAX_TABLE_NAME_BYTES) {
             throw std::invalid_argument("Invalid table name: " + name);
         }
@@ -240,23 +300,21 @@ namespace qdb {
             throw std::invalid_argument("Table already exists: " + name);
         }
 
-        Table table = Table::create(pager_,std::move(schema));
+        Table table = Table::create(pager_, std::move(schema));
         auto ptr = std::make_unique<Table>(std::move(table));
-        Table& ref = *ptr;
-       auto[it,inserted] = tables_.emplace(name, std::move(ptr));
+        auto [it, inserted] = tables_.emplace(name, std::move(ptr));
 
-       if (!inserted) {
-           throw std::runtime_error("Failed to register table");
-       }
+        if (!inserted) {
+            throw std::runtime_error("Failed to register table");
+        }
 
-       try {
-           persist_catalog();
-       }
-       catch (...) {
-           tables_.erase(it);
-           throw;
-       }
-        
+        try {
+            persist_catalog();
+        }
+        catch (...) {
+            tables_.erase(it);
+            throw;
+        }
 
         return *it->second;
     }
