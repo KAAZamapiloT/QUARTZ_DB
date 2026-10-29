@@ -41,6 +41,7 @@ add_library(quartz_core STATIC
     src/sql/parser.cpp
     src/execution/executor.cpp
     src/quartz/database.cpp
+    src/index/bplus_tree.cpp
 )
 
 target_include_directories(quartz_core
