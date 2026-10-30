@@ -177,13 +177,171 @@ namespace qdb {
         (void)read_node(root_page_);
 	}
 
-	std::optional<RecordID> BplusTree::find(std::uint64_t id)
+	std::optional<RecordID> BplusTree::find(std::int64_t id)
 	{
-		return std::optional<RecordID>();
+        PageID current_page = root_page_;
+
+        while (true) {
+            BplusTree_Node node = read_node(current_page);
+
+            if (node.is_leaf) {
+                const auto it = std::lower_bound(node.keys.begin(), node.keys.end(), id);
+
+                if (it == node.keys.end()||*it!=id) {
+                    return std::nullopt;
+                }
+
+                const std::size_t index = static_cast<std::size_t>(it - node.keys.begin());
+                return node.values[index];
+            }
+
+            const auto it = std::upper_bound(node.keys.begin(), node.keys.end(), id);
+
+            const std::size_t child_index = static_cast<std::size_t>(it - node.keys.begin());
+
+            current_page = node.children[child_index];
+
+
+        }
 	}
 
-	void BplusTree::insert(std::uint64_t key, RecordID value)
+
+
+    InsertResult BplusTree::insert_recursive(PageID page_id, std::int64_t key, RecordID value)
+    {
+
+        BplusTree_Node node = read_node(page_id);
+
+        // -------------------------------------------------------------------------
+       // Case 1: Leaf Node
+      // -------------------------------------------------------------------------
+        if (node.is_leaf) {
+            const auto it = std::lower_bound(node.keys.begin(), node.keys.end(), key);
+
+            const std::size_t position = static_cast<std::size_t>(it - node.keys.begin());
+
+            if (it != node.keys.end() && *it == key) {
+                return{ false,std::nullopt};
+            }
+
+            node.keys.insert(it, key);
+            node.values.insert(node.values.begin() + static_cast<std::ptrdiff_t>(position), value);
+
+            if (node.keys.size() <= MAX_KEYS) {
+                write_node(page_id, node);
+                return { true,std::nullopt };
+            }
+
+            const std::size_t middle = node.keys.size() / 2;
+
+            BplusTree_Node right;
+
+            right.is_leaf = true;
+            right.next_leaf = node.next_leaf;
+
+            const auto mid_keys = node.keys.begin() + static_cast<std::ptrdiff_t>(middle);
+            
+            const auto mid_vals = node.values.begin() + static_cast<std::ptrdiff_t>(middle);
+            
+            right.keys.assign(mid_keys, node.keys.end());
+            
+            right.values.assign(mid_vals, node.values.end());
+            
+            node.keys.erase(mid_keys, node.keys.end());
+            
+            node.values.erase(mid_vals, node.values.end());
+            const PageID right_page = allocate_node(right);
+
+            node.next_leaf = right_page;
+            write_node(page_id, node);
+
+            // In a leaf split, the separator pushed up is copied from the first key of the right leaf
+            
+            return { true, Split{ right.keys.front(), right_page } };
+
+        
+        }
+
+        // -------------------------------------------------------------------------
+       // Case 2: Internal Node
+      // -------------------------------------------------------------------------
+        const auto child_it = std::upper_bound(node.keys.begin(), node.keys.end(), key);
+        const std::size_t child_index = static_cast<std::size_t>(child_it - node.keys.begin());
+
+        InsertResult child_result = insert_recursive(node.children[child_index], key, value);
+        if (!child_result.inserted || !child_result.split) {
+            return child_result;
+        }
+
+        const Split child_split = *child_result.split;
+
+        node.keys.insert(node.keys.begin() + static_cast<std::ptrdiff_t>(child_index),
+            child_split.seprator_key);
+
+        node.children.insert(node.children.begin() + static_cast<std::ptrdiff_t>(child_index + 1),
+            child_split.rightPage);
+
+        if (node.keys.size() <= MAX_KEYS) {
+            write_node(page_id, node);
+            return { true ,std::nullopt };
+        }
+
+        const std::size_t middle = node.keys.size() / 2;
+        const std::int64_t promoted_key = node.keys[middle];
+
+        BplusTree_Node right;
+        right.is_leaf = false;
+        right.keys.assign(
+            node.keys.begin() + static_cast<std::ptrdiff_t>(middle + 1),
+            node.keys.end()
+        );
+        right.children.assign(
+            node.children.begin() + static_cast<std::ptrdiff_t>(middle + 1),
+            node.children.end()
+        );
+
+        node.keys.erase(
+            node.keys.begin() + static_cast<std::ptrdiff_t>(middle),
+            node.keys.end()
+        );
+        node.children.erase(
+            node.children.begin() + static_cast<std::ptrdiff_t>(middle + 1),
+            node.children.end()
+        );
+
+        const PageID right_page = allocate_node(right);
+        write_node(page_id, node);
+
+        return { true, Split{ promoted_key, right_page } };
+
+    }
+
+	bool BplusTree::insert(std::int64_t key, RecordID value)
 	{
+
+        check_page_id(pager_, value.page_id,
+            "Cannot index a record with an invalid page ID");
+
+        InsertResult result = insert_recursive(root_page_, key, value);
+
+        if (!result.inserted) {
+            return false;
+        }
+
+
+        if (result.split) {
+            BplusTree_Node new_root;
+
+            new_root.is_leaf = false;
+            new_root.keys.push_back(result.split->seprator_key);
+
+            new_root.children = { root_page_, result.split->rightPage };
+            const PageID new_root_page = allocate_node(new_root);
+            root_page_ = new_root_page;
+            persist_root();
+
+        }
+        return true;
 	}
 
 	BplusTree_Node BplusTree::read_node(PageID page_id)
@@ -363,10 +521,6 @@ namespace qdb {
         return id;
     }
 
-	InsertResult BplusTree::insert_recursive(PageID page_id, std::int64_t key, RecordID value)
-	{
-		return InsertResult();
-	}
 
 	void BplusTree::persist_root()
 	{

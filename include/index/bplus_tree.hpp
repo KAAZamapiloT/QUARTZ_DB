@@ -5,7 +5,7 @@
 namespace qdb {
 
 	struct BplusTree_Node {
-		std::vector<std::uint64_t> keys;
+		std::vector<std::int64_t> keys;
 		std::vector<RecordID> values;
 		std::vector<PageID> children;
 		bool is_leaf = false;
@@ -13,24 +13,25 @@ namespace qdb {
 	};
 
 	struct Split {
-		std::uint64_t seprator_key;
+		std::int64_t seprator_key;
 		PageID rightPage;
 	};
 
 	struct InsertResult {
 		bool inserted = false;
-		std::vector<Split> split;
+		std::optional<Split> split;
 	};
 	class BplusTree {
 	public:
 
 		[[nodiscard]] static PageID Create(pager& storage);
+		[[nodiscard]] static PageID create(pager& storage) { return Create(storage); }
 		explicit BplusTree(pager& storage, PageID metadata_Page);
 
 		[[nodiscard]]
-		std::optional<RecordID> find(std::uint64_t id);
+		std::optional<RecordID> find(std::int64_t id);
 
-		void insert(std::uint64_t key, RecordID value);
+		bool insert(std::int64_t key, RecordID value);
 
 		[[nodiscard]]
 		PageID MetaDataPage() const {
@@ -67,4 +68,5 @@ namespace qdb {
 		
 		void persist_root();
 	};
+	using BPlusTree = BplusTree;
 }

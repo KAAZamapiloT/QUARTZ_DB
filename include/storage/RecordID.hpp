@@ -11,4 +11,5 @@ namespace qdb {
 
 		bool operator==(const RecordID&) const = default;
 	};
+	using RecordId = RecordID; 
 }

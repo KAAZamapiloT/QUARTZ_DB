@@ -87,6 +87,7 @@ if(QUARTZ_BUILD_TESTS)
         tests/persistence_allocation_tests.cpp
         tests/database_tests.cpp
         tests/schema_tests.cpp
+        tests/bplus_tree_tests.cpp
     )
 
     target_link_libraries(quartz_tests
@@ -98,5 +99,6 @@ if(QUARTZ_BUILD_TESTS)
     include(GoogleTest)
     gtest_discover_tests(quartz_tests
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        DISCOVERY_TIMEOUT 30
     )
 endif()
