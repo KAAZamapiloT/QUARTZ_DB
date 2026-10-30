@@ -9,6 +9,6 @@ namespace qdb {
 		PageID page_id;
 		std::uint16_t slot_index;
 
-		bool operator==(const RecordId&) const = default;
+		bool operator==(const RecordID&) const = default;
 	};
 }

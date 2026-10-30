@@ -133,13 +133,48 @@ namespace qdb {
 	}
 
 
-    PageID BplusTree::Create() {
+    PageID BplusTree::Create(pager&storage) {
+        PageID MetaDataPage{};
+        if (!storage.allocate_page(MetaDataPage)){
+            throw std::runtime_error("Failed to allocate B+ tree metadata page");
+        }
 
+        if (MetaDataPage == 0 || MetaDataPage == NO_PAGE) {
+            throw std::runtime_error("Allocator returned invalid metadata page ID");
+        }
+
+        PageID RootPage{};
+        if (!storage.allocate_page(RootPage)) {
+            throw std::runtime_error("Failed to allocate B+ tree root page");
+        }
+        if (RootPage == 0 || RootPage == NO_PAGE || RootPage == MetaDataPage) {
+            throw std::runtime_error("Allocator returned invalid root page ID");
+        }
+
+        Page root{};
+       
+        write_u32(root, 0, NODE_MAGIC);
+
+        write_u16(root, 4, FORMAT_VERSION);
+
+        root.data[6] = static_cast<std::byte>(LEAF_NODE);
+
+        write_u16(root, 8, 0);
+        write_u64(root, 16, NO_PAGE);
+
+        if (!storage.write_page(page_index(RootPage), root)) {
+            throw std::runtime_error("Failed to initialize B+ tree root page");
+        }
+
+        write_metadata_page(storage, MetaDataPage, RootPage);
+
+        return MetaDataPage;
     }
 
-	BplusTree::BplusTree(pager& storage, PageID metadata_Page) :pager_(storage), metadata_page_(metadata_Page)
+	BplusTree::BplusTree(pager& storage, PageID metadata_Page) :pager_(storage), metadata_page_(metadata_Page),
+        root_page_(read_metadata_page(storage,metadata_Page))
 	{
-
+        (void)read_node(root_page_);
 	}
 
 	std::optional<RecordID> BplusTree::find(std::uint64_t id)
@@ -153,12 +188,180 @@ namespace qdb {
 
 	BplusTree_Node BplusTree::read_node(PageID page_id)
 	{
-		return BplusTree_Node();
+        check_page_id(pager_, page_id, "B+ tree node page ID is invalid");
+
+        Page page{};
+
+        if (!pager_.read_page(page_index(page_id), page)) {
+            throw std::runtime_error("Failed to read B+ tree node page");
+        }
+
+        if (read_u32(page, 0) != NODE_MAGIC) {
+            throw std::runtime_error("Invalid B+ tree node magic");
+        }
+
+        if (read_u16(page, 4) != FORMAT_VERSION) {
+            throw std::runtime_error("Unsupported B+ tree node version");
+        }
+
+        const auto type = std::to_integer<std::uint8_t>(page.data[6]);
+        const std::size_t key_count = read_u16(page, 8);
+        if (key_count > MAX_KEYS) {
+            throw std::runtime_error("B+ tree node exceeds maximum key count");
+        }
+
+        BplusTree_Node node;
+
+        node.is_leaf = (type == LEAF_NODE);
+        if (!node.is_leaf && type != INTERNAL_NODE) {
+            throw std::runtime_error("Invalid B+ tree node type");
+        }
+
+        node.next_leaf = read_u64(page, 16);
+        node.keys.reserve(key_count);
+
+        std::size_t offset = NODE_HEADER_SIZE;
+
+        if (node.is_leaf) {
+            node.values.reserve(key_count);
+
+            for (std::size_t i = 0;i < key_count;++i) {
+                const auto raw_key = read_u64(page, offset);
+                offset += 8;
+
+                node.keys.push_back(std::bit_cast<std::int64_t>(raw_key));
+
+                RecordID value{};
+                value.page_id = read_u64(page, offset);
+                offset += 8;
+
+                value.slot_index = read_u16(page, offset);
+                offset += 2;
+                check_page_id(pager_, value.page_id,
+                    "B+ tree leaf contains invalid record page ID");
+                node.values.push_back(value);
+            }
+
+            if (node.next_leaf != NO_PAGE) {
+                check_page_id(pager_, node.next_leaf,
+                    "B+ tree leaf has invalid next-leaf page ID");
+            }
+        }
+        else {
+
+            node.children.reserve(key_count + 1);
+            node.children.push_back(read_u64(page, offset));
+            offset += 8;
+
+            check_page_id(pager_, node.children.front(),
+                "B+ tree internal node has invalid child page ID");
+
+            for (std::size_t i = 0;i < key_count;++i) {
+                const auto raw_key = read_u64(page, offset);
+                offset += 8;
+
+                node.keys.push_back(std::bit_cast<std::int64_t>(raw_key));
+
+                const PageID children = read_u64(page, offset);
+                offset += 8;
+                check_page_id(pager_, children,
+                    "B+ tree internal node has invalid child page ID");
+                node.children.push_back(children);
+            }
+
+        }
+
+
+        if (!std::is_sorted(node.keys.begin(), node.keys.end()) ||
+            std::adjacent_find(node.keys.begin(), node.keys.end()) != node.keys.end()) {
+            throw std::runtime_error("B+ tree node keys are not strictly ordered");
+        }
+
+        if (node.is_leaf && node.values.size() != node.keys.size()) {
+            throw std::runtime_error("B+ tree leaf key/value count mismatch");
+        }
+        if (!node.is_leaf && node.children.size() != node.keys.size() + 1) {
+            throw std::runtime_error("B+ tree internal key/child count mismatch");
+        }
+
+        return node;
 	}
 
 	void BplusTree::write_node(PageID page_id, const BplusTree_Node& node)
 	{
+        if (node.keys.size() > MAX_KEYS) {
+            throw std::length_error("B+ tree node has too many keys to serialize");
+        }
+        if (!std::is_sorted(node.keys.begin(), node.keys.end()) ||
+            std::adjacent_find(node.keys.begin(), node.keys.end()) != node.keys.end()) {
+            throw std::logic_error("Attempted to write unordered B+ tree keys");
+        }
+        if (node.is_leaf && node.values.size() != node.keys.size()) {
+            throw std::logic_error("B+ tree leaf key/value count mismatch");
+        }
+        if (!node.is_leaf && node.children.size() != node.keys.size() + 1) {
+            throw std::logic_error("B+ tree internal key/child count mismatch");
+        }
+
+        Page page{};
+        write_u32(page, 0, NODE_MAGIC);
+        write_u32(page, 4, FORMAT_VERSION);
+
+        page.data[6] = static_cast<std::byte>(node.is_leaf ? LEAF_NODE : INTERNAL_NODE);
+
+        write_u16(page, 8, static_cast<std::uint16_t>(node.keys.size()));
+        write_u64(page, 16, node.is_leaf ? node.next_leaf : NO_PAGE);
+
+        std::size_t offset = NODE_HEADER_SIZE;
+
+        if (node.is_leaf) {
+
+            for (std::size_t i = 0;i < node.keys.size();++i) {
+                write_u64(page, offset, std::bit_cast<std::int64_t>(node.keys[i]));
+
+                offset += 8;
+
+                write_u64(page, offset, node.values[i].page_id);
+
+                offset += 8;
+
+                write_u16(page, offset, node.values[i].slot_index);
+
+                offset += 2;
+            }
+        }
+        else {
+            write_u64(page, offset, node.children.front());
+            offset += 8;
+            for (std::size_t i = 0;i < node.keys.size();++i) {
+                write_u64(page, offset,
+                    std::bit_cast<std::uint64_t>(node.keys[i]));
+                offset += 8;
+                write_u64(page, offset, node.children[i + 1]);
+                offset += 8;
+            }
+        }
+        if (offset > PAGE_SIZE) {
+            throw std::length_error("Serialized B+ tree node exceeds page size");
+        }
+        if (!pager_.write_page(page_index(page_id), page)) {
+            throw std::runtime_error("Failed to write B+ tree node page");
+        }
 	}
+
+    PageID BplusTree::allocate_node(const BplusTree_Node& node)
+    {
+        PageID id{};
+
+        if (!pager_.allocate_page(id)) {
+            throw std::runtime_error("Failed to allocate B+ tree node page");
+        }
+        if (id == 0 || id == NO_PAGE || id == metadata_page_) {
+            throw std::runtime_error("Allocator returned invalid B+ tree node page ID");
+        }
+        write_node(id, node);
+        return id;
+    }
 
 	InsertResult BplusTree::insert_recursive(PageID page_id, std::int64_t key, RecordID value)
 	{
@@ -167,6 +370,7 @@ namespace qdb {
 
 	void BplusTree::persist_root()
 	{
+        write_metadata_page(pager_, metadata_page_, root_page_);
 	}
 
 	

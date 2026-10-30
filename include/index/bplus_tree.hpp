@@ -9,7 +9,7 @@ namespace qdb {
 		std::vector<RecordID> values;
 		std::vector<PageID> children;
 		bool is_leaf = false;
-		PageID nextLeaf = std::numeric_limits<PageID>::max();
+		PageID next_leaf = std::numeric_limits<PageID>::max();
 	};
 
 	struct Split {
@@ -24,8 +24,8 @@ namespace qdb {
 	class BplusTree {
 	public:
 
-		[[nodiscard]] static PageID Create();
-		explicit BplusTree(pager& storage, PageID metadata_Page) :pager_(storage), metadata_page_(metadata_Page);
+		[[nodiscard]] static PageID Create(pager& storage);
+		explicit BplusTree(pager& storage, PageID metadata_Page);
 
 		[[nodiscard]]
 		std::optional<RecordID> find(std::uint64_t id);
@@ -42,6 +42,12 @@ namespace qdb {
 			return root_page_;
 		}
 	private:
+		static constexpr std::size_t MAX_KEYS = 128;
+
+		
+
+
+
 		pager& pager_;
 		PageID metadata_page_;
 		PageID root_page_;
@@ -55,6 +61,10 @@ namespace qdb {
 			std::int64_t key,
 			RecordID value
 		);
+
+
+
+		
 		void persist_root();
 	};
 }
