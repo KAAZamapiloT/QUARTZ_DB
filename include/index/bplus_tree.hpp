@@ -2,6 +2,7 @@
 
 #include<storage/pager.hpp>
 #include<storage/RecordID.hpp>
+
 namespace qdb {
 
 	struct BplusTree_Node {
@@ -45,9 +46,6 @@ namespace qdb {
 	private:
 		static constexpr std::size_t MAX_KEYS = 128;
 
-		
-
-
 
 		pager& pager_;
 		PageID metadata_page_;
@@ -69,4 +67,5 @@ namespace qdb {
 		void persist_root();
 	};
 	using BPlusTree = BplusTree;
+
 }

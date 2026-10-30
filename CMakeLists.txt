@@ -42,6 +42,7 @@ add_library(quartz_core STATIC
     src/execution/executor.cpp
     src/quartz/database.cpp
     src/index/bplus_tree.cpp
+    src/index/primary_index.cpp
 )
 
 target_include_directories(quartz_core
@@ -88,6 +89,7 @@ if(QUARTZ_BUILD_TESTS)
         tests/database_tests.cpp
         tests/schema_tests.cpp
         tests/bplus_tree_tests.cpp
+        tests/primary_index_tests.cpp
     )
 
     target_link_libraries(quartz_tests

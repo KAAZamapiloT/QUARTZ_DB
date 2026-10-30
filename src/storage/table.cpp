@@ -1,6 +1,9 @@
 
 #include "storage/table.hpp"
 #include"storage/schema.hpp"
+
+#include"index/primary_index.hpp"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>

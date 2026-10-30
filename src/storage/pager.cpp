@@ -81,7 +81,7 @@ bool qdb::pager::write_page(std::size_t page_number, const Page& page){
 
     file_.clear();
 
-    file_.seekg(offset,std::ios::beg);
+    file_.seekp(offset, std::ios::beg);
 
     if(!file_){
         return false;

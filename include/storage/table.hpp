@@ -3,8 +3,11 @@
 #include <storage/pager.hpp>
 #include <storage/record.hpp>
 #include <storage/schema.hpp>
-
+#include<storage/RecordID.hpp>
+#include<quartz/status.hpp>
 #include <vector>
+
+class PrimaryIndex;
 
 namespace qdb {
 
@@ -48,6 +51,17 @@ namespace qdb {
         pager& pager_;
         PageID first_page_;
         Schema schema_;
+
+
+        std::unique_ptr<PrimaryIndex> primary_index_;
+
+        std::optional<std::size_t> primary_key_column_;
+
+        [[nodiscard]]
+        Result<RecordID> insert_record_data(const Record& record);
+
+        [[nodiscard]]
+        Result<Record> fetch_record_data(RecordID id);
     };
 
 } // namespace qdb
