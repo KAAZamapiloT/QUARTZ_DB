@@ -21,7 +21,8 @@ namespace qdb {
         StorageError,
         Corruption,
         IndexError,
-        CatalogError
+        CatalogError,
+        RecordTooLarge
     };
 
     class Status {

@@ -30,7 +30,18 @@ namespace qdb {
 
         Table(pager& pager, PageID first_page, Schema schema = default_schema());
 
-        void insert(const Record& record);
+
+        Table(
+            pager& storage,
+            PageID first_page,
+            Schema schema = default_schema(),
+            std::optional<PageID> primary_index_metadata_page = std::nullopt
+        );
+        [[nodiscard]]
+        Result<RecordID> insert(const Record& record);
+
+        [[nodiscard]]
+        Result<std::optional<Record>> find_by_primary_key(std::int64_t key);
 
         [[nodiscard]]
         std::vector<Record> scan();
@@ -46,7 +57,16 @@ namespace qdb {
         }
 
     private:
-        static constexpr PageID FIRST_DATA_PAGE = 1;
+        struct AdoptIndexTag {};
+
+        Table(
+            pager& storage,
+            PageID first_page,
+            Schema schema,
+            std::unique_ptr<PrimaryIndex>&& primary_index,
+            std::optional<std::size_t> primary_key_column,
+            AdoptIndexTag
+        ) noexcept;
 
         pager& pager_;
         PageID first_page_;
