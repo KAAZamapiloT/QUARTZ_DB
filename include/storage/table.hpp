@@ -3,11 +3,12 @@
 #include <storage/pager.hpp>
 #include <storage/record.hpp>
 #include <storage/schema.hpp>
-#include<storage/RecordID.hpp>
-#include<quartz/status.hpp>
+#include <storage/RecordID.hpp>
+#include <quartz/status.hpp>
+#include <index/primary_index.hpp>
 #include <vector>
-
-class PrimaryIndex;
+#include <optional>
+#include <memory>
 
 namespace qdb {
 
@@ -28,15 +29,13 @@ namespace qdb {
     public:
         static Table create(pager& storage, Schema schema = default_schema());
 
-        Table(pager& pager, PageID first_page, Schema schema = default_schema());
-
-
         Table(
             pager& storage,
             PageID first_page,
             Schema schema = default_schema(),
             std::optional<PageID> primary_index_metadata_page = std::nullopt
         );
+
         [[nodiscard]]
         Result<RecordID> insert(const Record& record);
 
@@ -56,6 +55,19 @@ namespace qdb {
             return schema_;
         }
 
+        [[nodiscard]]
+        bool has_primary_index() const noexcept {
+            return primary_index_ != nullptr;
+        }
+
+        [[nodiscard]]
+        std::optional<PageID> primary_index_metadata_page() const noexcept {
+            if (!primary_index_) {
+                return std::nullopt;
+            }
+            return primary_index_->metadata_page();
+        }
+
     private:
         struct AdoptIndexTag {};
 
@@ -71,7 +83,6 @@ namespace qdb {
         pager& pager_;
         PageID first_page_;
         Schema schema_;
-
 
         std::unique_ptr<PrimaryIndex> primary_index_;
 

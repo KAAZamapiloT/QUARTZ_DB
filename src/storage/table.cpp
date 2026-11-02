@@ -1,12 +1,6 @@
-#include "table.hpp"
-#include "table.hpp"
-#include "table.hpp"
-#include "table.hpp"
-
-#include "storage/table.hpp"
-#include"storage/schema.hpp"
-
-#include"index/primary_index.hpp"
+#include <storage/table.hpp>
+#include <storage/schema.hpp>
+#include <index/primary_index.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -310,15 +304,19 @@ namespace  qdb {
 		schema_(std::move(schema)),
 		primary_index_(std::move(primary_index)),
 		primary_key_column_(primary_key_column) {
-	} {
 
-	}
 
+
+	} 
 
 	Table Table::create(pager& storage,Schema schema) {
 		PageID id{};
 
-		validate_schema(schema);
+		auto schema_result = validate_schema(schema);
+
+		if (!schema_result) {
+			throw std::invalid_argument(std::string(schema_result.error().message()));
+		}
 
 		if (!storage.allocate_page(id)) {
 			throw std::runtime_error("Failed to allocate table's first page");
@@ -333,26 +331,23 @@ namespace  qdb {
 		initialize_page(page);
 		write_page_or_throw(storage, id, page);
 
-		return Table(storage, id,schema);
-	}
-
-	Table::Table(pager& storage, PageID first_page,Schema schema)
-		: pager_(storage), first_page_(first_page),schema_(std::move(schema)) {
-
-
-		validate_schema(schema_);
-		if (first_page_ == 0 ||
-			first_page_ == std::numeric_limits<PageID>::max()) {
-			throw std::invalid_argument("Invalid table first page ID");
+		std::unique_ptr<PrimaryIndex> primary_index;
+		if (schema_result->has_value()) {
+			auto index_result = PrimaryIndex::create(storage);
+			if (!index_result) {
+				throw std::runtime_error(
+					"Failed to create table primary index: " +
+					std::string(index_result.error().message())
+				);
+			}
+			primary_index = std::move(*index_result);
 		}
-
-		Page page = read_page_or_throw(pager_, first_page_);
-		(void)load_header(page);
+		return Table(storage, id,std::move(schema),std::move(primary_index),*schema_result,AdoptIndexTag{});
 	}
 
 	Table::Table(pager& storage, PageID first_page, Schema schema, std::optional<PageID> primary_index_metadata_page)
-		:pager_(storage),first_page_(first_page),schema_(schema_)
-	   {
+		: pager_(storage), first_page_(first_page), schema_(std::move(schema))
+	{
 		auto schema_result = validate_schema(schema_);
 
 		if (!schema_result) {
@@ -368,14 +363,7 @@ namespace  qdb {
 		const Page page = read_page_or_throw(pager_, first_page_);
 		(void)load_header(page);
 
-		if (primary_key_column_) {
-
-			if (!primary_index_metadata_page) {
-				throw std::invalid_argument(
-					"Catalog is missing primary-index metadata for this table"
-				);
-			}
-
+		if (primary_key_column_ && primary_index_metadata_page) {
 			auto index_result = PrimaryIndex::open(pager_, *primary_index_metadata_page);
 
 			if (!index_result) {
@@ -386,13 +374,12 @@ namespace  qdb {
 			}
 			primary_index_ = std::move(*index_result);
 		}
-		else if (primary_index_metadata_page) {
+		else if (!primary_key_column_ && primary_index_metadata_page) {
 			throw std::invalid_argument(
 				"Catalog contains primary-index metadata for a table without a primary key"
 			);
 		}
-
-	 }
+	}
 
 	Result<RecordID> Table::insert(const Record& record)
 	{
@@ -403,11 +390,11 @@ namespace  qdb {
 			return std::unexpected(validation.error());
 		}
 
-		std::optional<std::uint64_t> primary_key;
+		std::optional<std::int64_t> primary_key;
 
 		if (primary_key_column_) {
 
-			const auto* key = std::get_if<std::uint64_t>(&record.values[*primary_key_column_]);
+			const auto* key = std::get_if<std::int64_t>(&record.values[*primary_key_column_]);
 
 			if (key == nullptr) {
 				return std::unexpected(Status{
@@ -418,7 +405,8 @@ namespace  qdb {
 
 			primary_key = *key;
 
-			auto existing = primary_index_->find(*primary_key);
+			if (primary_index_) {
+				auto existing = primary_index_->find(*primary_key);
 
 			if (!existing) {
 				return std::unexpected(existing.error());
@@ -428,6 +416,7 @@ namespace  qdb {
 				return std::unexpected(Status{ StatusCode::DuplicatePrimaryKey,
 				"Primary key already exists" });
 			}
+			}
 
 		}
 		auto record_id_result = insert_record_data(record);
@@ -435,8 +424,8 @@ namespace  qdb {
 		if (!record_id_result) {
 			return std::unexpected(record_id_result.error());
 		}
-		if (primary_key) {
-			auto index_insert_result = primary_index_->insert(*primary_key,*record_id_result);
+		if (primary_key && primary_index_) {
+			auto index_insert_result = primary_index_->insert(*primary_key, *record_id_result);
 
 			if (!index_insert_result) {
 				return std::unexpected(index_insert_result.error());
@@ -470,7 +459,7 @@ namespace  qdb {
 			return std::unexpected(record_result.error());
 		}
 
-		const auto* stored_key = std::get_if<std::uint64_t>(&record_result->values[*primary_key_column_]);
+		const auto* stored_key = std::get_if<std::int64_t>(&record_result->values[*primary_key_column_]);
 
 		if (stored_key == nullptr || *stored_key != key) {
 			return std::unexpected(Status{
@@ -580,11 +569,11 @@ namespace  qdb {
 
 					write_u16(page, slot_offset + 2, static_cast<std::uint16_t>(bytes.size()));
 
-					write_u16(page, slot_offset + 4, static_cast<std::uint16_t>(header.slot_count + 1));
+					write_u16(page, 4, static_cast<std::uint16_t>(header.slot_count + 1));
 
-					write_u16(page, slot_offset + 6, static_cast<std::uint16_t>(slot_offset + SLOT_SIZE));
+					write_u16(page, 6, static_cast<std::uint16_t>(slot_offset + SLOT_SIZE));
 
-					write_u16(page, slot_offset + 8, static_cast<std::uint16_t>(record_offset));
+					write_u16(page, 8, static_cast<std::uint16_t>(record_offset));
 
 					write_page_or_throw(pager_, current_page, page);
 
@@ -648,7 +637,7 @@ namespace  qdb {
 				throw CorruptionFailure("RecordID references an invalid slot");
 			}
 
-			const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(id.slot_index) + SLOT_SIZE;
+			const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(id.slot_index) * SLOT_SIZE;
 
 			const std::size_t record_offset = read_u16(page, slot_offset);
 			const std::size_t record_length = read_u16(page, slot_offset + 2);
@@ -658,7 +647,7 @@ namespace  qdb {
 				throw CorruptionFailure("Corrupt record slot");
 			}
 
-			auto decoded = RecordCodec::deserialize(page.data.data(), record_length);
+			auto decoded = RecordCodec::deserialize(page.data.data() + record_offset, record_length);
 
 			if (!decoded) {
 				throw CorruptionFailure("Failed to decode record from table page");
