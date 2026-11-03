@@ -10,49 +10,22 @@ The system is structured as a layered storage and execution pipeline:
 
 ```mermaid
 flowchart TD
-    subgraph DiskStorage["1. Disk & Paging Layer"]
-        Disk[("Database File (*.db)")]
-        Pager["Pager<br/>• File I/O & Page Allocation<br/>• Free-Page Tracking"]
-        Pages["4KB Pages (PageID)<br/>• Slotted-Page Layout<br/>• Fixed Headers & Offsets"]
-        Disk <--> Pager
-        Pager <--> Pages
-    end
+    SQL["SQL Query"] --> Lexer["Lexer"]
+    Lexer --> Parser["Parser (AST)"]
+    Parser --> Executor["Executor"]
+    Executor --> Database["Database & Catalog"]
 
-    subgraph DataStorage["2. Record & Table Layer"]
-        Record["Record & RecordCodec<br/>• Variant Values (int64, string, null)<br/>• Binary Serialization / Deserialization"]
-        Table["Table<br/>• Linked Page Chain<br/>• Slotted-Page Insertion<br/>• Sequential Scan & Schema Validation"]
-        RecordID["RecordID<br/>(PageID + Slot Index)"]
-        Pages <--> Table
-        Record <--> Table
-        Table --> RecordID
-    end
+    Database --> Table["Table"]
+    Database --> PrimaryIndex["Primary Index"]
 
-    subgraph Indexing["3. Index Layer"]
-        BPlusTree["B+ Tree Engine<br/>• Disk-Backed B+ Tree<br/>• Leaf & Internal Node Splits<br/>• 64-bit Integer Keys"]
-        PrimaryIndex["Primary Index<br/>• Maps Primary Key (int64) to RecordID<br/>• Enforces Uniqueness on Insert<br/>• Fast O(log N) Point Lookups"]
-        Pages <--> BPlusTree
-        BPlusTree <--> PrimaryIndex
-        Table <--> PrimaryIndex
-    end
+    Table <--> PrimaryIndex
+    PrimaryIndex <--> BPlusTree["B+ Tree"]
 
-    subgraph CatalogManagement["4. Database Management Layer"]
-        Catalog["System Catalog (Page 0)<br/>• Table Metadata & Schemas<br/>• Survives DB Close & Reopen"]
-        Database["Database Engine<br/>• Multi-Table Management<br/>• Schema Registry & Creation<br/>• Table Lifecycle"]
-        Catalog <--> Database
-        Database --> Table
-        Database --> PrimaryIndex
-    end
+    Table <--> Record["Record (Slotted Pages)"]
+    BPlusTree <--> Pager["Pager"]
+    Record <--> Pager
 
-    subgraph SQLExecution["5. SQL & Execution Layer (In Progress)"]
-        SQLQuery["SQL Query String"]
-        Lexer["Lexer & Tokenizer<br/>• Keyword & Literal Lexing<br/>• Token Stream"]
-        Parser["Parser & AST<br/>• Statement Parsing (SELECT, CREATE, etc.)<br/>• Abstract Syntax Tree"]
-        Executor["Execution Engine<br/>• Plan Generation<br/>• Direct Table & Index Operations"]
-        SQLQuery --> Lexer
-        Lexer --> Parser
-        Parser --> Executor
-        Executor --> Database
-    end
+    Pager <--> Disk[("Disk File (*.db)")]
 ```
 
 ---
