@@ -68,6 +68,18 @@ namespace qdb {
             return primary_index_->metadata_page();
         }
 
+        // update
+
+        Result<RecordID> update_by_primary_key(std::int64_t key, const Record&updated_record);
+
+		Result<RecordID> update_record(RecordID id, const Record& updated_record);
+        // deletion
+         
+        Result<bool> delete_by_primary_key(std::int64_t key);
+
+        
+        Result<bool> delete_record(RecordID ID);
+
     private:
         struct AdoptIndexTag {};
 

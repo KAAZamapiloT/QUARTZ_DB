@@ -1,3 +1,7 @@
+#include "table.hpp"
+#include "table.hpp"
+#include "table.hpp"
+#include "table.hpp"
 #include <storage/table.hpp>
 #include <storage/schema.hpp>
 #include <index/primary_index.hpp>
@@ -109,11 +113,11 @@ namespace  qdb {
 
 		PageHeader load_header(const Page& page) {
 			if (read_u32(page, 0) != PAGE_MAGIC) {
-				throw std::runtime_error("Invalid table page magic");
+				throw CorruptionFailure("Invalid table page magic");
 			}
 
 			if (read_u16(page, 10) != PAGE_VERSION) {
-				throw std::runtime_error("Unsupported table page version");
+				throw CorruptionFailure("Unsupported table page version");
 			}
 
 			const auto slot_count = read_u16(page, 4);
@@ -126,7 +130,7 @@ namespace  qdb {
 			if (free_start != expected_free_start ||
 				free_start > free_end ||
 				free_end > PAGE_SIZE) {
-				throw std::runtime_error("Corrupt table page header");
+				throw CorruptionFailure("Corrupt table page header");
 			}
 
 			return {
@@ -140,13 +144,13 @@ namespace  qdb {
 		Page read_page_or_throw(pager& p, PageID id) {
 			if (id > static_cast<PageID>(
 				std::numeric_limits<std::size_t>::max())) {
-				throw std::runtime_error("Page ID exceeds platform limits");
+				throw StorageFailure("Page ID exceeds platform limits");
 			}
 
 			Page page{};
 
 			if (!p.read_page(static_cast<std::size_t>(id), page)) {
-				throw std::runtime_error("Failed to read table page");
+				throw StorageFailure("Failed to read table page");
 			}
 
 			return page;
@@ -159,11 +163,11 @@ namespace  qdb {
 		) {
 			if (id > static_cast<PageID>(
 				std::numeric_limits<std::size_t>::max())) {
-				throw std::runtime_error("Page ID exceeds platform limits");
+				throw StorageFailure("Page ID exceeds platform limits");
 			}
 
 			if (!p.write_page(static_cast<std::size_t>(id), page)) {
-				throw std::runtime_error("Failed to write table page");
+				throw StorageFailure("Failed to write table page");
 			}
 		}
 
@@ -291,6 +295,217 @@ namespace  qdb {
 
 
 
+	Result<RecordID> Table::update_by_primary_key(std::int64_t key, const Record& updated_record)
+	{
+		auto find_result = primary_index_->find(key);
+
+		if (!find_result) {
+			return std::unexpected(find_result.error());
+		}
+		if (!find_result->has_value())
+			return std::unexpected(Status{
+				StatusCode::RecordNotFound,
+				"Record not found"
+				});
+
+		RecordID ID = **find_result;
+
+		auto validation = validate_record(schema_, updated_record);
+
+		if (!validation) {
+			return std::unexpected(validation.error());
+		}
+
+		auto update_result = update_record(ID, updated_record);
+
+		if (!update_result){
+			return std::unexpected(update_result.error());
+     	}
+	   
+		return ID;
+
+	}
+
+	Result<RecordID> Table::update_record(
+		RecordID id,
+		const Record& updated_record)
+	{
+		auto result = validate_record(schema_, updated_record);
+
+		if (!result) {
+			return std::unexpected(result.error());
+		}
+
+		std::vector<std::byte> updated_bytes;
+		try {
+			updated_bytes = RecordCodec::serialize(updated_record);
+		}
+		catch (const std::length_error& error) {
+			return std::unexpected(Status{
+				StatusCode::RecordTooLarge,
+				error.what()
+				});
+		}
+
+		if (id.page_id == 0 || id.page_id >= pager_.page_count()) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				"RecordID references an invalid page"
+				});
+		}
+
+		Page page{};
+	      
+		if (!pager_.read_page(static_cast<std::size_t>(id.page_id), page)) {
+			return std::unexpected(Status{
+				StatusCode::StorageError,
+				"Failed to read table page"
+				});
+		}
+
+		PageHeader header;
+
+		try {
+			header = load_header(page);
+		}
+		catch (const std::invalid_argument& error) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				error.what()
+				});
+		}
+
+		if (id.slot_index >= header.slot_count) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				"RecordID references an invalid slot"
+				});
+		}
+
+		std::vector< std::vector<std::byte>> existing_bytes;
+		existing_bytes.reserve(header.slot_count);
+
+		for (std::size_t i = 0;i < header.slot_count;++i) {
+			const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(i) * SLOT_SIZE;
+
+			const std::size_t record_offset = read_u16(page, slot_offset);
+
+			const std::size_t record_length = read_u16(page, slot_offset + 2);
+
+			if (record_length == 0 || record_offset<header.free_end || record_offset > PAGE_SIZE || 
+				record_length > PAGE_SIZE - record_offset) {
+				return std::unexpected(Status{
+					StatusCode::Corruption,
+					"Corrupt record slot"
+					});
+			}
+			
+			if (i == id.slot_index && primary_key_column_) {
+
+				auto existing = RecordCodec::deserialize(
+					page.data.data() + record_offset,
+					record_length
+				);
+
+				if (!existing) {
+					return std::unexpected(Status{
+						StatusCode::Corruption,
+						"Failed to decode existing record"
+						});
+				}
+
+				const auto* old_key =
+					std::get_if<std::int64_t>(
+						&existing->values[*primary_key_column_]
+					);
+
+				const auto* new_key =
+					std::get_if<std::int64_t>(
+						&updated_record.values[*primary_key_column_]
+					);
+
+				if (!old_key || !new_key || *old_key != *new_key) {
+					return std::unexpected(Status{
+						StatusCode::InvalidRecord,
+						"Changing primary keys through update is not supported"
+						});
+				}
+			}
+			if(i==id.slot_index) {
+				existing_bytes.push_back(updated_bytes);
+			}
+			else {
+				existing_bytes.emplace_back(page.data.data() + record_offset, page.data.data() + record_offset + record_length);
+			}
+		}
+
+		std::size_t new_free_start = HEADER_SIZE + header.slot_count * SLOT_SIZE;
+
+		std::size_t total_record_bytes = 0;
+
+		for (const auto& bytes : existing_bytes) {
+			total_record_bytes += bytes.size();
+		}
+
+		if (total_record_bytes > PAGE_SIZE - new_free_start) {
+			return std::unexpected(Status{
+				StatusCode::RecordTooLarge,
+				"Updated record data exceeds page capacity"
+				});
+		}
+
+		Page rebuilt_page{};
+
+		initialize_page(rebuilt_page);
+
+		write_u16(rebuilt_page, 4, static_cast<std::uint16_t>(header.slot_count));
+
+		write_u16(rebuilt_page, 6, static_cast<std::uint16_t>(new_free_start));
+
+		write_u64(rebuilt_page, 12, header.next_page);
+
+		std::size_t free_end = PAGE_SIZE;
+
+		for (std::size_t i = 0; i < existing_bytes.size(); ++i) {
+			const auto& bytes = existing_bytes[i];
+			
+			free_end -= bytes.size();
+			
+			std::copy(existing_bytes.begin(), existing_bytes.end(), rebuilt_page.data.begin() + static_cast<std::ptrdiff_t>(free_end));
+
+			const std::size_t slot_offset = HEADER_SIZE + i * SLOT_SIZE;
+
+			write_u16(rebuilt_page, slot_offset, static_cast<std::uint16_t>(free_end));
+
+			write_u16(rebuilt_page, slot_offset + 2, static_cast<std::uint16_t>(bytes.size()));
+
+			write_u16(rebuilt_page, 6, static_cast<std::uint16_t>(new_free_start));
+
+			if (!pager_.write_page(static_cast<std::size_t>(id.page_id),rebuilt_page)) {
+				return std::unexpected(Status{
+		  StatusCode::StorageError,
+		  "Failed to persist updated record"
+					});
+			}
+		}
+
+
+		return id;
+	}
+
+	
+
+	Result<bool> Table::delete_by_primary_key(std::int64_t key)
+	{
+		return Result<bool>();
+	}
+
+	Result<bool> Table::delete_record(RecordID id)
+	{
+		return Result<bool>();
+	}
+
+	
 	Table::Table(
 		pager& storage,
 		PageID first_page,
@@ -319,12 +534,12 @@ namespace  qdb {
 		}
 
 		if (!storage.allocate_page(id)) {
-			throw std::runtime_error("Failed to allocate table's first page");
+			throw StorageFailure("Failed to allocate table's first page");
 		}
 
 		if (id == 0 ||
 			id == std::numeric_limits<PageID>::max()) {
-			throw std::runtime_error("Allocator returned an invalid page ID");
+			throw CorruptionFailure("Allocator returned an invalid page ID");
 		}
 
 		Page page{};
@@ -335,7 +550,7 @@ namespace  qdb {
 		if (schema_result->has_value()) {
 			auto index_result = PrimaryIndex::create(storage);
 			if (!index_result) {
-				throw std::runtime_error(
+				throw StorageFailure(
 					"Failed to create table primary index: " +
 					std::string(index_result.error().message())
 				);
@@ -484,7 +699,7 @@ namespace  qdb {
 		while (current_id!=NO_PAGE)
 		{
 			if (!visited.insert(current_id).second) {
-				throw std::runtime_error("Cycle in table page chain");
+				throw CorruptionFailure("Cycle in table page chain");
 			}
 			const Page page = read_page_or_throw(pager_, current_id);
 			const PageHeader header = load_header(page);
@@ -500,17 +715,22 @@ namespace  qdb {
 					record_offset < header.free_end ||
 					record_offset > PAGE_SIZE ||
 					record_length > PAGE_SIZE - record_offset) {
-					throw std::runtime_error("Corrupt record slot");
+					throw CorruptionFailure("Corrupt record slot");
 				}
 
 				const auto decoded = RecordCodec::deserialize(page.data.data()+record_offset, record_length);
 
 				if (!decoded) {
-					throw std::runtime_error(
+					throw CorruptionFailure(
 						"Failed to decode record from table page"
 					);
 				}
-				validate_record(schema_, *decoded);
+				auto record_validation = validate_record_storage(schema_, *decoded);
+				if (!record_validation) {
+					throw CorruptionFailure(
+						std::string(record_validation.error().message())
+					);
+				}
 				records.push_back(*decoded);
 			}
 			current_id = header.next_page;

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <quartz/database.hpp>
+#include <quartz/status.hpp>
 #include <storage/record.hpp>
 #include <storage/schema.hpp>
 #include <storage/table.hpp>
@@ -74,8 +75,11 @@ TEST_F(SchemaTest, AcceptsRecordMatchingSchema) {
     qdb::Database db(path_);
     qdb::Table& users = db.create_table("users", make_users_schema());
 
-    ASSERT_NO_THROW(users.insert(make_user(1, "Uday", std::string{"ud"})));
-    ASSERT_NO_THROW(users.insert(make_user(2, "Alice")));
+    auto result1 = users.insert(make_user(1, "Uday", std::string{"ud"}));
+    ASSERT_TRUE(result1.has_value()) << result1.error().message();
+
+    auto result2 = users.insert(make_user(2, "Alice"));
+    ASSERT_TRUE(result2.has_value()) << result2.error().message();
 
     const auto records = users.scan();
     ASSERT_EQ(records.size(), 2u);
@@ -88,7 +92,9 @@ TEST_F(SchemaTest, AcceptsRecordMatchingSchema) {
 TEST_F(SchemaTest, RejectsWrongFieldCountWithoutWritingRecord) {
     qdb::Database db(path_);
     qdb::Table& users = db.create_table("users", make_users_schema());
-    users.insert(make_user(1, "Uday"));
+
+    auto first = users.insert(make_user(1, "Uday"));
+    ASSERT_TRUE(first.has_value()) << first.error().message();
 
     const qdb::Record invalid{
         .values = {
@@ -97,14 +103,18 @@ TEST_F(SchemaTest, RejectsWrongFieldCountWithoutWritingRecord) {
         }
     };
 
-    EXPECT_THROW(users.insert(invalid), std::invalid_argument);
+    auto result = users.insert(invalid);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error().code(), qdb::StatusCode::InvalidRecord);
     EXPECT_EQ(users.scan().size(), 1u);
 }
 
 TEST_F(SchemaTest, RejectsTypeMismatchWithoutWritingRecord) {
     qdb::Database db(path_);
     qdb::Table& users = db.create_table("users", make_users_schema());
-    users.insert(make_user(1, "Uday"));
+
+    auto first = users.insert(make_user(1, "Uday"));
+    ASSERT_TRUE(first.has_value()) << first.error().message();
 
     const qdb::Record invalid{
         .values = {
@@ -114,7 +124,9 @@ TEST_F(SchemaTest, RejectsTypeMismatchWithoutWritingRecord) {
         }
     };
 
-    EXPECT_THROW(users.insert(invalid), std::invalid_argument);
+    auto result = users.insert(invalid);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error().code(), qdb::StatusCode::TypeMismatch);
     EXPECT_EQ(users.scan().size(), 1u);
 }
 
@@ -130,7 +142,9 @@ TEST_F(SchemaTest, RejectsNullInNonNullableColumn) {
         }
     };
 
-    EXPECT_THROW(users.insert(invalid), std::invalid_argument);
+    auto result = users.insert(invalid);
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(result.error().code(), qdb::StatusCode::NullConstraintViolation);
     EXPECT_TRUE(users.scan().empty());
 }
 
@@ -138,7 +152,9 @@ TEST_F(SchemaTest, AcceptsNullInNullableColumn) {
     qdb::Database db(path_);
     qdb::Table& users = db.create_table("users", make_users_schema());
 
-    EXPECT_NO_THROW(users.insert(make_user(1, "Uday", std::monostate{})));
+    auto result = users.insert(make_user(1, "Uday", std::monostate{}));
+    ASSERT_TRUE(result.has_value()) << result.error().message();
+
     const auto records = users.scan();
     ASSERT_EQ(records.size(), 1u);
     EXPECT_EQ(records[0].values[2], qdb::Value{std::monostate{}});
@@ -148,7 +164,9 @@ TEST_F(SchemaTest, RejectsEmptySchema) {
     qdb::Database db(path_);
     const qdb::Schema invalid{};
 
-    EXPECT_THROW(db.create_table("empty", invalid), std::invalid_argument);
+    EXPECT_THROW({
+        [[maybe_unused]] auto& table = db.create_table("empty", invalid);
+    }, std::invalid_argument);
     EXPECT_EQ(db.table_count(), 0u);
 }
 
@@ -161,7 +179,9 @@ TEST_F(SchemaTest, RejectsDuplicateColumnNames) {
         }
     };
 
-    EXPECT_THROW(db.create_table("bad_columns", invalid), std::invalid_argument);
+    EXPECT_THROW({
+        [[maybe_unused]] auto& table = db.create_table("bad_columns", invalid);
+    }, std::invalid_argument);
     EXPECT_EQ(db.table_count(), 0u);
 }
 
@@ -173,7 +193,9 @@ TEST_F(SchemaTest, RejectsNullablePrimaryKey) {
         }
     };
 
-    EXPECT_THROW(db.create_table("bad_primary_key", invalid), std::invalid_argument);
+    EXPECT_THROW({
+        [[maybe_unused]] auto& table = db.create_table("bad_primary_key", invalid);
+    }, std::invalid_argument);
     EXPECT_EQ(db.table_count(), 0u);
 }
 
@@ -181,7 +203,8 @@ TEST_F(SchemaTest, SchemaAndValidationSurviveDatabaseReopen) {
     {
         qdb::Database db(path_);
         qdb::Table& users = db.create_table("users", make_users_schema());
-        users.insert(make_user(1, "Uday"));
+        auto result = users.insert(make_user(1, "Uday"));
+        ASSERT_TRUE(result.has_value()) << result.error().message();
     }
 
     {
@@ -201,7 +224,9 @@ TEST_F(SchemaTest, SchemaAndValidationSurviveDatabaseReopen) {
             }
         };
 
-        EXPECT_THROW(users->insert(invalid), std::invalid_argument);
+        auto result = users->insert(invalid);
+        ASSERT_FALSE(result.has_value());
+        EXPECT_EQ(result.error().code(), qdb::StatusCode::TypeMismatch);
         EXPECT_EQ(users->scan().size(), 1u);
     }
 }

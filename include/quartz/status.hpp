@@ -22,7 +22,8 @@ namespace qdb {
         Corruption,
         IndexError,
         CatalogError,
-        RecordTooLarge
+        RecordTooLarge,
+        RecordNotFound
     };
 
     class Status {
