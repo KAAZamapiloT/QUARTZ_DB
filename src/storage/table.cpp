@@ -1,7 +1,4 @@
-#include "table.hpp"
-#include "table.hpp"
-#include "table.hpp"
-#include "table.hpp"
+
 #include <storage/table.hpp>
 #include <storage/schema.hpp>
 #include <index/primary_index.hpp>
@@ -44,6 +41,7 @@ namespace  qdb {
 			std::size_t free_start;
 			std::size_t free_end;
 			PageID next_page;
+			std::uint16_t fragmented_bytes;
 		};
 
 		void write_u16(Page& page, std::size_t offset,
@@ -109,6 +107,7 @@ namespace  qdb {
 			write_u16(page, 8, static_cast<std::uint16_t>(PAGE_SIZE));
 			write_u16(page, 10, PAGE_VERSION);
 			write_u64(page, 12, NO_PAGE);
+			write_u16(page, 20, 0);
 		}
 
 		PageHeader load_header(const Page& page) {
@@ -126,7 +125,7 @@ namespace  qdb {
 
 			const std::size_t expected_free_start =
 				HEADER_SIZE + static_cast<std::size_t>(slot_count) * SLOT_SIZE;
-
+			const std::uint16_t fragmented_bytes = read_u16(page, 20);
 			if (free_start != expected_free_start ||
 				free_start > free_end ||
 				free_end > PAGE_SIZE) {
@@ -137,8 +136,53 @@ namespace  qdb {
 				slot_count,
 				free_start,
 				free_end,
-				read_u64(page, 12)
+				read_u64(page, 12),
+				fragmented_bytes
 			};
+		}
+
+		void compact_page(Page& page,PageHeader& header) {
+
+			Page rebuilt{};
+
+			initialize_page(rebuilt);
+
+			write_u16(rebuilt, 4, header.slot_count);
+			write_u16(rebuilt, 6, static_cast<std::uint16_t>(header.free_start));
+			write_u64(rebuilt, 12, header.next_page);
+
+			std::size_t new_free_end = PAGE_SIZE;
+
+			for (std::size_t i = 0;i < header.slot_count;++i) {
+				const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(i) * SLOT_SIZE;
+				const std::uint16_t record_offset = read_u16(page, slot_offset);
+
+				const std::size_t record_length = read_u16(page, slot_offset + 2);
+
+				if (record_length == 0) {
+					write_u16(rebuilt, slot_offset, 0);
+					write_u16(rebuilt, slot_offset + 2, 0);
+					continue;
+				}
+				if (record_offset < header.free_end ||
+					static_cast<std::size_t>(record_offset) + record_length > PAGE_SIZE) {
+					throw CorruptionFailure("Corrupt record slot during compaction");
+				}
+
+				new_free_end -= record_length;
+
+				std::copy_n(page.data.data() + record_offset, record_length, rebuilt.data.data() + new_free_end);
+				write_u16(rebuilt, slot_offset, static_cast<std::uint16_t>(new_free_end));
+				write_u16(rebuilt, slot_offset + 2, record_length);
+			}
+
+			write_u16(rebuilt, 8, static_cast<std::uint16_t>(new_free_end));
+			write_u16(rebuilt, 20, 0); 
+
+			page = rebuilt;
+			header.free_end = new_free_end;
+			header.fragmented_bytes = 0;
+		}
 		}
 
 		Page read_page_or_throw(pager& p, PageID id) {
@@ -471,7 +515,7 @@ namespace  qdb {
 			
 			free_end -= bytes.size();
 			
-			std::copy(existing_bytes.begin(), existing_bytes.end(), rebuilt_page.data.begin() + static_cast<std::ptrdiff_t>(free_end));
+			std::copy(bytes.begin(), bytes.end(), rebuilt_page.data.begin() + static_cast<std::ptrdiff_t>(free_end));
 
 			const std::size_t slot_offset = HEADER_SIZE + i * SLOT_SIZE;
 
@@ -497,12 +541,103 @@ namespace  qdb {
 
 	Result<bool> Table::delete_by_primary_key(std::int64_t key)
 	{
-		return Result<bool>();
+
+		if (!primary_index_ || !primary_key_column_) {
+			return std::unexpected(Status{
+			StatusCode::NoPrimaryKey,
+			"Table does not have a primary-key index"
+				});
+		}
+		auto result = primary_index_->find(key);
+
+		if (!result) {
+			return std::unexpected(result.error());
+		}
+
+		if (!result->has_value()) {
+			return std::unexpected(Status{
+				StatusCode::RecordNotFound,
+				"Record not found"
+				});
+		}
+
+		const RecordID id = **result;
+
+		auto delete_result = delete_record(id);
+
+		if (!delete_result) {
+			return std::unexpected(delete_result.error());
+		}
+
+		if (!*delete_result) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				"Primary index references an already deleted record"
+				});
+		}
+
+		auto erase_result = primary_index_->erase(key);
+
+		if (!erase_result) {
+			return std::unexpected(erase_result.error());
+		}
+
+
+		return true;
+
+
 	}
 
 	Result<bool> Table::delete_record(RecordID id)
 	{
-		return Result<bool>();
+		Page page{};
+
+		auto read_result = pager_.read_page(static_cast<std::size_t>(id.page_id), page);
+
+		if (!read_result) {
+			return std::unexpected(Status{
+				StatusCode::StorageError,
+				"Failed to read table page"
+				});
+		}
+
+		auto header = load_header(page);
+
+		if (id.slot_index >= header.slot_count)	 {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				"RecordID references an invalid slot"
+				});
+		}
+		const auto slot_offset = HEADER_SIZE + static_cast<std::size_t>(id.slot_index) * SLOT_SIZE;
+
+		const auto record_offset = read_u16(page, slot_offset);
+		const auto record_length = read_u16(page, slot_offset + 2);
+
+		if (record_length == 0) {
+			return false;
+		}
+		if (record_offset < header.free_end ||
+			static_cast<std::size_t>(record_offset) + record_length > PAGE_SIZE) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				"Record slot contains invalid boundaries"
+				});
+		}
+		write_u16(page, slot_offset + 2, 0);
+
+		auto write_result = pager_.write_page(
+			static_cast<std::size_t>(id.page_id), page
+		);
+
+		if (!write_result) {
+			return std::unexpected(Status{
+				StatusCode::StorageError,
+				"Failed to write table page"
+				});
+		}
+
+		return true;
 	}
 
 	

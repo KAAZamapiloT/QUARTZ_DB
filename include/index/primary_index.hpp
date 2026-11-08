@@ -36,6 +36,9 @@ namespace qdb {
             return tree_.MetaDataPage();
         }
 
+        [[nodiscard]]
+        Result<void> erase(std::int64_t key);
+
     private:
 
         PrimaryIndex(

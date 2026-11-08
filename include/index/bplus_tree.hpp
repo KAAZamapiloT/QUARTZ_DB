@@ -22,6 +22,12 @@ namespace qdb {
 		bool inserted = false;
 		std::optional<Split> split;
 	};
+
+	struct EraseResult {
+		bool erased = false;
+		bool underflow = false;
+		std::optional<std::int64_t> new_min;
+	};
 	class BplusTree {
 	public:
 
@@ -43,16 +49,24 @@ namespace qdb {
 		PageID RootPage() const {
 			return root_page_;
 		}
+
+		[[nodiscard]]
+		bool erase(std::int64_t key);
+
+
+		bool validate() const;
+
 	private:
 		static constexpr std::size_t MAX_KEYS = 128;
-
+		static constexpr std::size_t MIN_KEYS = MAX_KEYS / 2;
 
 		pager& pager_;
 		PageID metadata_page_;
 		PageID root_page_;
 
 
-		[[nodiscard]] BplusTree_Node read_node(PageID page_id);
+		[[nodiscard]] BplusTree_Node read_node(PageID page_id) const;
+
 		void write_node(PageID page_id, const BplusTree_Node& node);
 		[[nodiscard]] PageID allocate_node(const BplusTree_Node& node);
 		[[nodiscard]] InsertResult insert_recursive(
@@ -60,7 +74,12 @@ namespace qdb {
 			std::int64_t key,
 			RecordID value
 		);
-
+		[[nodiscard]]
+		EraseResult erase_recursive(
+			PageID page_id,
+			std::int64_t key,
+			bool is_root
+		);
 
 
 		

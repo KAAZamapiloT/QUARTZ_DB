@@ -1,9 +1,30 @@
+
 #include"index/primary_index.hpp"
 
 
 
 namespace qdb {
-	
+	Result<void> PrimaryIndex::erase(std::int64_t key)
+	{
+		try {
+
+			if (!tree_.erase(key)) {
+				return std::unexpected(Status{ StatusCode::RecordNotFound,"Primary key does not exist in the index" });
+			}
+
+			return {};
+		}
+		catch (const std::runtime_error& error) {
+			return std::unexpected(Status{
+				StatusCode::IndexError,
+				error.what()
+				});
+		}
+	}
+
+
+
+
 	PrimaryIndex::PrimaryIndex(
 		pager& storage,
 		PageID metadata_page

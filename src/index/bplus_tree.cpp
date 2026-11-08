@@ -1,4 +1,7 @@
+
+
 #include<index/bplus_tree.hpp>
+#include<unordered_set>
 
 
 
@@ -23,6 +26,7 @@ namespace qdb {
 					throw std::runtime_error(what);
 				}
 	 }
+
 
 	std::size_t page_index(PageID id)
 	{
@@ -316,6 +320,8 @@ namespace qdb {
 
     }
 
+  
+
 	bool BplusTree::insert(std::int64_t key, RecordID value)
 	{
 
@@ -344,7 +350,308 @@ namespace qdb {
         return true;
 	}
 
-	BplusTree_Node BplusTree::read_node(PageID page_id)
+    bool BplusTree::erase(std::int64_t key)
+    {
+		auto res = erase_recursive(root_page_, key, true);
+        if (!res.erased) {
+            return false;
+        }
+		BplusTree_Node root_node = read_node(root_page_);
+        if(root_node.keys.empty() && !root_node.is_leaf) {
+            root_page_ = root_node.children.front();
+            persist_root();
+        }
+        return true;
+    }
+
+    bool BplusTree::validate() const
+    {
+        if (read_metadata_page(pager_, metadata_page_) != root_page_) {
+            throw std::logic_error("B+ tree root_page_ is out of sync with metadata page");
+        }
+
+		std::unordered_set<PageID> visited_pages;
+        std::vector<PageID> leaf_chain;
+
+		std::optional<std::size_t> expected_leaf_depth;
+
+        auto dfs = [&](auto& self,
+            PageID page_id,
+            std::size_t depth,
+            std::optional<std::int64_t> lower,
+            std::optional<std::int64_t> upper,
+            bool is_root) -> std::optional<std::int64_t>
+            {
+                if (!visited_pages.insert(page_id).second) {
+                    throw std::logic_error("Cycle or duplicate page reference detected in B+ tree");
+                }
+
+                // read_node already validates magic, version, sorting, duplicates, and child/value counts
+                const BplusTree_Node node = read_node(page_id);
+
+                if (is_root) {
+                    if (!node.is_leaf && node.keys.empty()) {
+                        throw std::logic_error("Internal root node must have at least 1 key");
+                    }
+                }
+                else {
+                    if (node.keys.size() < MIN_KEYS || node.keys.size() > MAX_KEYS) {
+                        throw std::logic_error("Non-root node violates [MIN_KEYS, MAX_KEYS] occupancy");
+                    }
+                }
+
+                for (const std::int64_t k : node.keys) {
+                    if (lower.has_value() && k < *lower) {
+                        throw std::logic_error("Node key violates lower separator bound");
+                    }
+                    if (upper.has_value() && k >= *upper) {
+                        throw std::logic_error("Node key violates upper separator bound");
+                    }
+                }
+
+                if (node.is_leaf) {
+                    if (!expected_leaf_depth.has_value()) {
+                        expected_leaf_depth = depth;
+                    }
+                    else if (*expected_leaf_depth != depth) {
+                        throw std::logic_error("B+ tree leaves are not all at the same depth");
+                    }
+
+                    leaf_chain.push_back(page_id);
+                    return node.keys.empty() ? std::nullopt : std::optional<std::int64_t>(node.keys.front());
+                }
+
+                if (node.next_leaf != NO_PAGE) {
+                    throw std::logic_error("Internal node must have next_leaf == NO_PAGE");
+                }
+
+                std::optional<std::int64_t> subtree_min = std::nullopt;
+
+                for (std::size_t i = 0; i < node.children.size(); ++i) {
+                    const std::optional<std::int64_t> child_lower = (i == 0) ? lower : node.keys[i - 1];
+                    const std::optional<std::int64_t> child_upper = (i == node.keys.size()) ? upper : node.keys[i];
+
+                    const auto child_min = self(self, node.children[i], depth + 1, child_lower, child_upper, false);
+
+                    if (!child_min.has_value()) {
+                        throw std::logic_error("Non-root subtree cannot be empty");
+                    }
+                    if (i == 0) {
+                        subtree_min = child_min;
+                    }
+                    else if (node.keys[i - 1] != *child_min) {
+                        throw std::logic_error("Internal separator key does not match right subtree minimum");
+                    }
+                }
+
+                return subtree_min;
+            };
+
+        dfs(dfs, root_page_, 0, std::nullopt, std::nullopt, true);
+
+        // Verify leaf linked-list chain integrity
+        for (std::size_t i = 0; i < leaf_chain.size(); ++i) {
+            const BplusTree_Node leaf = read_node(leaf_chain[i]);
+            const PageID expected_next = (i + 1 < leaf_chain.size()) ? leaf_chain[i + 1] : NO_PAGE;
+            if (leaf.next_leaf != expected_next) {
+                throw std::logic_error("Broken next_leaf linked list chain across leaves");
+            }
+        }
+		
+
+    }
+
+    EraseResult BplusTree::erase_recursive(PageID page_id, std::int64_t key, bool is_root)
+    {
+		BplusTree_Node node = read_node(page_id);
+
+        if (node.is_leaf) {
+            const auto it = std::lower_bound(node.keys.begin(), node.keys.end(), key);
+
+            if (it == node.keys.end() || *it != key) {
+				return { false,false,std::nullopt };
+            }
+
+            std::size_t index = static_cast<std::size_t>(it - node.keys.begin());
+
+			node.keys.erase(it);
+			node.values.erase(node.values.begin() + static_cast<std::ptrdiff_t>(index));
+
+            write_node(page_id, node);
+
+			const bool underflow = !is_root && node.keys.size() < MIN_KEYS;
+
+            const std::optional<std::int64_t> new_min = node.keys.empty() ? std::nullopt : std::optional<std::int64_t>(node.keys.front());
+
+            return{ true,underflow,new_min };
+
+        }
+
+		const auto it = std::upper_bound(node.keys.begin(), node.keys.end(), key);
+
+        const std::size_t child_index = static_cast<std::size_t>(it - node.keys.begin());
+
+		const PageID child_page = node.children[child_index];
+
+		EraseResult child_result = erase_recursive(node.children[child_index], key, false);
+
+        if (!child_result.erased) {
+            return {false,false,std::nullopt};
+        }
+
+		bool parent_dirty = false;
+
+		std::optional<std::int64_t> propgated_min = std::nullopt;
+
+        if (child_index > 0 && child_result.new_min.has_value()) {
+			if (node.keys[child_index - 1] != *child_result.new_min) {
+				node.keys[child_index - 1] = *child_result.new_min;
+				parent_dirty = true;
+			}
+        }
+        else if (child_index == 0) {
+			propgated_min = child_result.new_min;
+		}
+
+        if (!child_result.underflow) {
+            if (parent_dirty) {
+                write_node(page_id,node);
+            }
+            return{true,false,propgated_min};
+        }
+
+		BplusTree_Node child_node = read_node(child_page);
+
+        if (child_index > 0) {
+			const PageID left_sibling_page = node.children[child_index - 1];
+			BplusTree_Node left_sibling_node = read_node(left_sibling_page);
+
+            if (left_sibling_node.keys.size() > MIN_KEYS) {
+            
+
+                if (child_node.is_leaf) {
+					child_node.keys.insert(child_node.keys.begin(), left_sibling_node.keys.back());
+					child_node.values.insert(child_node.values.begin(), left_sibling_node.values.back());
+
+					left_sibling_node.keys.pop_back();
+                    left_sibling_node.values.pop_back();
+
+                    node.keys[child_index - 1] = child_node.keys.front();
+                }
+                else {
+
+                    child_node.keys.insert(child_node.keys.begin(), node.keys[child_index - 1]);
+					child_node.children.insert(child_node.children.begin(), left_sibling_node.children.back());
+
+					node.keys[child_index - 1] = left_sibling_node.keys.back();
+
+					left_sibling_node.keys.pop_back();
+					left_sibling_node.children.pop_back();
+                }
+
+                write_node(left_sibling_page, left_sibling_node);
+				write_node(child_page, child_node);
+                write_node(page_id, node);
+
+				return{ true,false,propgated_min};
+            }
+            
+        }
+
+
+        if (child_index + 1 < node.children.size()) {
+			const PageID right_sibling_page = node.children[child_index + 1];
+			BplusTree_Node right_sibling_node = read_node(right_sibling_page);
+
+            if (right_sibling_node.keys.size() > MIN_KEYS) {
+                if (child_node.is_leaf) {
+                    child_node.keys.push_back(right_sibling_node.keys.front());
+					child_node.values.push_back(right_sibling_node.values.front());
+
+					right_sibling_node.keys.erase(right_sibling_node.keys.begin());
+                    right_sibling_node.values.erase(right_sibling_node.values.begin());
+
+					node.keys[child_index] = right_sibling_node.keys.front();
+
+					if (child_index == 0) {
+						propgated_min = child_node.keys.front();
+					}
+                }
+                else {
+                    child_node.keys.push_back(node.keys[child_index]);
+					child_node.children.push_back(right_sibling_node.children.front());
+
+                    node.keys[child_index] = right_sibling_node.keys.front();
+
+					right_sibling_node.keys.erase(right_sibling_node.keys.begin());
+					right_sibling_node.children.erase(right_sibling_node.children.begin());
+
+
+                }
+
+                write_node(right_sibling_page, right_sibling_node);
+                write_node(child_page, child_node);
+                write_node(page_id, node);
+
+				return{ true,false,propgated_min };
+            }
+        }
+
+        if (child_index > 0) {
+			const PageID left_sibling_page = node.children[child_index - 1];
+			BplusTree_Node left_sibling_node = read_node(left_sibling_page);
+
+            if (child_node.is_leaf) {
+				left_sibling_node.keys.append_range(child_node.keys);
+				left_sibling_node.values.append_range(child_node.values);
+                
+				left_sibling_node.next_leaf = child_node.next_leaf;
+            }
+            else {
+
+				left_sibling_node.keys.push_back(node.keys[child_index - 1]);
+
+				left_sibling_node.keys.append_range(child_node.keys);
+				left_sibling_node.children.append_range(child_node.children);
+
+
+            }
+
+			node.keys.erase(node.keys.begin() + static_cast<std::ptrdiff_t>(child_index - 1));
+			node.children.erase(node.children.begin() + static_cast<std::ptrdiff_t>(child_index));
+
+			write_node(left_sibling_page, left_sibling_node);
+			write_node(page_id, node); 
+        }
+        else {
+			const PageID right_sibling_page = node.children[child_index + 1];
+			BplusTree_Node right_sibling_node = read_node(right_sibling_page);
+
+            if (child_node.is_leaf) {
+				child_node.values.append_range(right_sibling_node.values);
+				child_node.keys.append_range(right_sibling_node.keys);
+				child_node.next_leaf = right_sibling_node.next_leaf;
+
+				propgated_min = child_node.keys.empty() ? std::nullopt : std::optional<std::int64_t>(child_node.keys.front());
+            }
+            else {
+                child_node.keys.push_back(node.keys[child_index]);
+				child_node.keys.append_range(right_sibling_node.keys);
+				child_node.children.append_range(right_sibling_node.children);
+            }
+			node.keys.erase(node.keys.begin() + static_cast<std::ptrdiff_t>(child_index));
+            node.children.erase(node.children.begin() + static_cast<std::ptrdiff_t>(child_index+1));
+
+			write_node(child_page, child_node);
+			write_node(page_id, node);
+        }
+
+		bool underflow = !is_root && node.keys.size() < MIN_KEYS;
+
+        return{ true,underflow,propgated_min };
+    }
+
+    BplusTree_Node BplusTree::read_node(PageID page_id) const
 	{
         check_page_id(pager_, page_id, "B+ tree node page ID is invalid");
 
@@ -463,7 +770,7 @@ namespace qdb {
 
         Page page{};
         write_u32(page, 0, NODE_MAGIC);
-        write_u32(page, 4, FORMAT_VERSION);
+        write_u16(page, 4, FORMAT_VERSION);
 
         page.data[6] = static_cast<std::byte>(node.is_leaf ? LEAF_NODE : INTERNAL_NODE);
 
