@@ -91,6 +91,8 @@ if(QUARTZ_BUILD_TESTS)
         tests/bplus_tree_tests.cpp
         tests/primary_index_tests.cpp
         tests/bplus_tree_deletion_tests.cpp
+        tests/sql_tests.cpp
+        tests/sql_scale_tests.cpp
     )
 
     target_link_libraries(quartz_tests

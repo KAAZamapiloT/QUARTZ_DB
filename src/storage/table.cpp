@@ -362,12 +362,36 @@ namespace  qdb {
 
 		auto update_result = update_record(ID, updated_record);
 
-		if (!update_result){
-			return std::unexpected(update_result.error());
-     	}
-	   
-		return ID;
+		if (!update_result) {
+			if (update_result.error().code() == StatusCode::RecordTooLarge) {
+				auto delete_result = delete_record(ID);
+				if (!delete_result) {
+					return std::unexpected(delete_result.error());
+				}
 
+				auto insert_result = insert_record_data(updated_record);
+				if (!insert_result) {
+					return std::unexpected(insert_result.error());
+				}
+
+				RecordID new_id = *insert_result;
+
+				auto erase_result = primary_index_->erase(key);
+				if (!erase_result) {
+					return std::unexpected(erase_result.error());
+				}
+
+				auto index_insert = primary_index_->insert(key, new_id);
+				if (!index_insert) {
+					return std::unexpected(index_insert.error());
+				}
+
+				return new_id;
+			}
+			return std::unexpected(update_result.error());
+		}
+
+		return ID;
 	}
 
 	Result<RecordID> Table::update_record(
@@ -399,7 +423,7 @@ namespace  qdb {
 		}
 
 		Page page{};
-	      
+
 		if (!pager_.read_page(static_cast<std::size_t>(id.page_id), page)) {
 			return std::unexpected(Status{
 				StatusCode::StorageError,
@@ -426,59 +450,74 @@ namespace  qdb {
 				});
 		}
 
-		std::vector< std::vector<std::byte>> existing_bytes;
+		std::vector<std::vector<std::byte>> existing_bytes;
 		existing_bytes.reserve(header.slot_count);
 
-		for (std::size_t i = 0;i < header.slot_count;++i) {
+		for (std::size_t i = 0; i < header.slot_count; ++i) {
 			const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(i) * SLOT_SIZE;
-
 			const std::size_t record_offset = read_u16(page, slot_offset);
-
 			const std::size_t record_length = read_u16(page, slot_offset + 2);
 
-			if (record_length == 0 || record_offset<header.free_end || record_offset > PAGE_SIZE || 
-				record_length > PAGE_SIZE - record_offset) {
-				return std::unexpected(Status{
-					StatusCode::Corruption,
-					"Corrupt record slot"
-					});
-			}
-			
-			if (i == id.slot_index && primary_key_column_) {
-
-				auto existing = RecordCodec::deserialize(
-					page.data.data() + record_offset,
-					record_length
-				);
-
-				if (!existing) {
+			if (i == id.slot_index) {
+				if (record_length == 0) {
+					return std::unexpected(Status{
+						StatusCode::RecordNotFound,
+						"Cannot update an already deleted record"
+						});
+				}
+				if (record_offset < header.free_end || record_offset > PAGE_SIZE ||
+					record_length > PAGE_SIZE - record_offset) {
 					return std::unexpected(Status{
 						StatusCode::Corruption,
-						"Failed to decode existing record"
+						"Corrupt record slot"
 						});
 				}
 
-				const auto* old_key =
-					std::get_if<std::int64_t>(
-						&existing->values[*primary_key_column_]
+				if (primary_key_column_) {
+					auto existing = RecordCodec::deserialize(
+						page.data.data() + record_offset,
+						record_length
 					);
 
-				const auto* new_key =
-					std::get_if<std::int64_t>(
-						&updated_record.values[*primary_key_column_]
-					);
+					if (!existing) {
+						return std::unexpected(Status{
+							StatusCode::Corruption,
+							"Failed to decode existing record"
+							});
+					}
 
-				if (!old_key || !new_key || *old_key != *new_key) {
-					return std::unexpected(Status{
-						StatusCode::InvalidRecord,
-						"Changing primary keys through update is not supported"
-						});
+					const auto* old_key =
+						std::get_if<std::int64_t>(
+							&existing->values[*primary_key_column_]
+						);
+
+					const auto* new_key =
+						std::get_if<std::int64_t>(
+							&updated_record.values[*primary_key_column_]
+						);
+
+					if (!old_key || !new_key || *old_key != *new_key) {
+						return std::unexpected(Status{
+							StatusCode::InvalidRecord,
+							"Changing primary keys through update is not supported"
+							});
+					}
 				}
-			}
-			if(i==id.slot_index) {
+
 				existing_bytes.push_back(updated_bytes);
 			}
+			else if (record_length == 0) {
+				// Tombstone slot: keep empty to preserve slot index
+				existing_bytes.push_back({});
+			}
 			else {
+				if (record_offset < header.free_end || record_offset > PAGE_SIZE ||
+					record_length > PAGE_SIZE - record_offset) {
+					return std::unexpected(Status{
+						StatusCode::Corruption,
+						"Corrupt record slot"
+						});
+				}
 				existing_bytes.emplace_back(page.data.data() + record_offset, page.data.data() + record_offset + record_length);
 			}
 		}
@@ -503,41 +542,38 @@ namespace  qdb {
 		initialize_page(rebuilt_page);
 
 		write_u16(rebuilt_page, 4, static_cast<std::uint16_t>(header.slot_count));
-
 		write_u16(rebuilt_page, 6, static_cast<std::uint16_t>(new_free_start));
-
 		write_u64(rebuilt_page, 12, header.next_page);
 
 		std::size_t free_end = PAGE_SIZE;
 
 		for (std::size_t i = 0; i < existing_bytes.size(); ++i) {
 			const auto& bytes = existing_bytes[i];
-			
-			free_end -= bytes.size();
-			
-			std::copy(bytes.begin(), bytes.end(), rebuilt_page.data.begin() + static_cast<std::ptrdiff_t>(free_end));
-
 			const std::size_t slot_offset = HEADER_SIZE + i * SLOT_SIZE;
 
-			write_u16(rebuilt_page, slot_offset, static_cast<std::uint16_t>(free_end));
-
-			write_u16(rebuilt_page, slot_offset + 2, static_cast<std::uint16_t>(bytes.size()));
-
-			write_u16(rebuilt_page, 6, static_cast<std::uint16_t>(new_free_start));
-
-			if (!pager_.write_page(static_cast<std::size_t>(id.page_id),rebuilt_page)) {
-				return std::unexpected(Status{
-		  StatusCode::StorageError,
-		  "Failed to persist updated record"
-					});
+			if (bytes.empty()) {
+				write_u16(rebuilt_page, slot_offset, 0);
+				write_u16(rebuilt_page, slot_offset + 2, 0);
+			} else {
+				free_end -= bytes.size();
+				std::copy(bytes.begin(), bytes.end(), rebuilt_page.data.begin() + static_cast<std::ptrdiff_t>(free_end));
+				write_u16(rebuilt_page, slot_offset, static_cast<std::uint16_t>(free_end));
+				write_u16(rebuilt_page, slot_offset + 2, static_cast<std::uint16_t>(bytes.size()));
 			}
 		}
 
+		write_u16(rebuilt_page, 8, static_cast<std::uint16_t>(free_end));
+		write_u16(rebuilt_page, 20, 0);
+
+		if (!pager_.write_page(static_cast<std::size_t>(id.page_id), rebuilt_page)) {
+			return std::unexpected(Status{
+				StatusCode::StorageError,
+				"Failed to persist updated record"
+				});
+		}
 
 		return id;
 	}
-
-	
 
 	Result<bool> Table::delete_by_primary_key(std::int64_t key)
 	{
@@ -684,6 +720,9 @@ namespace  qdb {
 					write_u64(prev_page, 12, header.next_page);
 					if (pager_.write_page(static_cast<std::size_t>(prev_id), prev_page)) {
 						(void)pager_.deallocate_page(id.page_id);
+						if (last_page_ == id.page_id) {
+							last_page_ = first_page_;
+						}
 						return true;
 					}
 					break;
@@ -715,6 +754,7 @@ namespace  qdb {
 	) noexcept
 		: pager_(storage),
 		first_page_(first_page),
+		last_page_(first_page),
 		schema_(std::move(schema)),
 		primary_index_(std::move(primary_index)),
 		primary_key_column_(primary_key_column) {
@@ -760,7 +800,7 @@ namespace  qdb {
 	}
 
 	Table::Table(pager& storage, PageID first_page, Schema schema, std::optional<PageID> primary_index_metadata_page)
-		: pager_(storage), first_page_(first_page), schema_(std::move(schema))
+		: pager_(storage), first_page_(first_page), last_page_(first_page), schema_(std::move(schema))
 	{
 		auto schema_result = validate_schema(schema_);
 
@@ -910,8 +950,11 @@ namespace  qdb {
 
 				const std::size_t record_length = read_u16(page, slot_offset + 2);
 
-				if (record_length == 0 ||
-					record_offset < header.free_end ||
+				if (record_length == 0) {
+					continue;
+				}
+
+				if (record_offset < header.free_end ||
 					record_offset > PAGE_SIZE ||
 					record_length > PAGE_SIZE - record_offset) {
 					throw CorruptionFailure("Corrupt record slot");
@@ -958,7 +1001,7 @@ namespace  qdb {
 		}
 
 		try {
-			PageID current_page = first_page_;
+			PageID current_page = (last_page_ != 0 && last_page_ != NO_PAGE) ? last_page_ : first_page_;
 			std::unordered_set<PageID> visited;
 
 			while (true) {
@@ -996,10 +1039,12 @@ namespace  qdb {
 
 					write_page_or_throw(pager_, current_page, page);
 
+					last_page_ = current_page;
 					return RecordID{ current_page, slot_index };
 				}
 				if (header.next_page != NO_PAGE) {
 					current_page = header.next_page;
+					last_page_ = current_page;
 					continue;
 				}
 
@@ -1024,6 +1069,7 @@ namespace  qdb {
 				write_page_or_throw(pager_, current_page, page);
 
 				current_page = newID;
+				last_page_ = newID;
 			}
 		}
 		catch (const StorageFailure& error) {

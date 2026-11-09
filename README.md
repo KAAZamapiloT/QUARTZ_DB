@@ -55,10 +55,40 @@ flowchart TD
 - **Multi-Table Registry**: Allows creating and retrieving independent tables within a single database file.
 - **Metadata Persistence**: Saves table names, schema definitions, and root data pages to Page 0, surviving database close and reload cycles.
 
-### 5. SQL Layer (`sql/token.hpp`, `src/sql/`, `src/execution/`) *(Under Development)*
-- **Lexer**: Tokenizes SQL statements into executable tokens (`CREATE`, `SELECT`, `WHERE`, `JOIN`, `DROP`, `TRUNCATE`).
-- **Parser**: Converts token streams into an Abstract Syntax Tree (AST).
-- **Executor**: Executes plans against the database and table APIs.
+### 5. SQL Layer (`include/sql/`, `src/sql/`, `src/execution/`, `src/cli/`)
+- **Lexer**: Hand-written token scanner supporting keywords, identifiers, string literals with escapes, numbers, and comparison operators.
+- **Parser**: Hand-written recursive-descent AST parser generating type-safe statement variants (`CREATE TABLE`, `DROP TABLE`, `INSERT`, `SELECT`, `UPDATE`, `DELETE`).
+- **Executor**: Executes plans with expression evaluation, filtering, column projections, and $O(\log N)$ fast-path B+ tree index lookups.
+- **Interactive CLI**: Production REPL shell (`quartz.exe`) with multi-line query accumulation, dynamic database creation/switching (`CREATE DATABASE`, `USE`, `.open`), schema inspection (`.schema`, `.tables`), and pretty-printed tabular output.
+
+---
+
+## Benchmarks
+
+### SQL Engine Scale & Limits Benchmark
+Evaluated end-to-end on an interactive SQL engine workload (Lexer $\to$ Parser $\to$ Query Executor $\to$ Slotted Pages & B+ Tree Index) scaling from 100 to 120,000+ records:
+
+```text
+===================================================================
+       QUARTZ DB - SQL ENGINE SCALE & LIMITS BENCHMARK
+===================================================================
+
++---------+----------------------+----------------------+------------------+
+| Scale   | SQL Writes (INSERT)  | SQL Reads (SELECT)   | Disk Footprint   |
+| Rows    | Throughput / Latency | Throughput / Latency | File Size / Pgs  |
++---------+----------------------+----------------------+------------------+
+| 100     | 2720 qps (367.6 us)  | 3349 qps (298.6 us)  | 16 KB (4 pgs)    |
+| 1000    | 2247 qps (445.0 us)  | 3228 qps (309.8 us)  | 112 KB (28 pgs)  |
+| 10000   | 1932 qps (517.3 us)  | 2760 qps (362.3 us)  | 1.00 MB (257 pgs) |
+| 50000   | 3263 qps (306.4 us)  | 9987 qps (100.1 us)  | 5.03 MB (1288 pgs) |
+| 100000  | 3496 qps (286.0 us)  | 2848 qps (351.1 us)  | 10.06 MB (2576 pgs) |
+| 120000  | 2219 qps (450.7 us)  | 3032 qps (329.7 us)  | 12.09 MB (3094 pgs) |
++---------+----------------------+----------------------+------------------+
+```
+
+- **Sustained Throughput**: Maintained 2,000–3,500+ QPS across 120,000 continuous SQL inserts and reads.
+- **Logarithmic Point Reads**: Fast-path primary-key point lookups via B+ tree ($O(\log N)$) consistently execute in sub-millisecond latencies ($\sim 100\text{--}360\,\mu\text{s}$) across all scales.
+- **Compact Disk Utilization**: Entire 120,000-row table and multi-level B+ tree index requires only $\sim 12.09\text{ MB}$ on disk.
 
 ---
 

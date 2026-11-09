@@ -94,6 +94,7 @@ namespace qdb {
 
         pager& pager_;
         PageID first_page_;
+        PageID last_page_{first_page_};
         Schema schema_;
 
         std::unique_ptr<PrimaryIndex> primary_index_;

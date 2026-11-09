@@ -18,6 +18,8 @@ namespace qdb {
         DuplicatePrimaryKey,
         NoPrimaryKey,
 
+        SyntaxError,
+
         StorageError,
         Corruption,
         IndexError,
