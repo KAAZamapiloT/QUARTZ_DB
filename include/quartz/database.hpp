@@ -35,6 +35,21 @@ namespace qdb {
             return tables_.size();
         }
 
+        [[nodiscard]]
+        const std::unordered_map<std::string, std::unique_ptr<Table>>& tables() const noexcept {
+            return tables_;
+        }
+
+        [[nodiscard]]
+        std::vector<std::string> list_tables() noexcept {
+            std::vector<std::string> tables;
+
+            for (auto& tab : tables_) {
+                tables.push_back(tab.first);
+            }
+            return tables;
+        }
+
     private:
         pager pager_;
 

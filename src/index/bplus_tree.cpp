@@ -358,8 +358,10 @@ namespace qdb {
         }
 		BplusTree_Node root_node = read_node(root_page_);
         if(root_node.keys.empty() && !root_node.is_leaf) {
+			const PageID old_root = root_page_;
             root_page_ = root_node.children.front();
             persist_root();
+            (void)pager_.deallocate_page(old_root);
         }
         return true;
     }
@@ -458,7 +460,7 @@ namespace qdb {
             }
         }
 		
-
+        return true;
     }
 
     EraseResult BplusTree::erase_recursive(PageID page_id, std::int64_t key, bool is_root)
@@ -552,6 +554,7 @@ namespace qdb {
                 write_node(left_sibling_page, left_sibling_node);
 				write_node(child_page, child_node);
                 write_node(page_id, node);
+                
 
 				return{ true,false,propgated_min};
             }
@@ -622,6 +625,7 @@ namespace qdb {
 
 			write_node(left_sibling_page, left_sibling_node);
 			write_node(page_id, node); 
+            (void)pager_.deallocate_page(child_page);
         }
         else {
 			const PageID right_sibling_page = node.children[child_index + 1];
@@ -644,6 +648,7 @@ namespace qdb {
 
 			write_node(child_page, child_node);
 			write_node(page_id, node);
+            (void)pager_.deallocate_page(right_sibling_page);
         }
 
 		bool underflow = !is_root && node.keys.size() < MIN_KEYS;
@@ -782,7 +787,7 @@ namespace qdb {
         if (node.is_leaf) {
 
             for (std::size_t i = 0;i < node.keys.size();++i) {
-                write_u64(page, offset, std::bit_cast<std::int64_t>(node.keys[i]));
+                write_u64(page, offset, std::bit_cast<std::uint64_t>(node.keys[i]));
 
                 offset += 8;
 
@@ -835,6 +840,7 @@ namespace qdb {
 	}
 
 	
+  
 
 
 

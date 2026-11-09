@@ -223,7 +223,41 @@ namespace qdb {
                 schema = default_schema();
             }
 
-            auto table = std::make_unique<Table>(pager_, first_page, std::move(schema));
+            // read primary index meta data page
+			std::optional<PageID> primary_index_metadata_page;
+
+            if (offset < PAGE_SIZE) {
+                const auto has_index = std::to_integer<std::uint8_t>(page.data[offset++]);
+                if (has_index > 1) {
+                    throw std::runtime_error("Invalid primary-index flag in catalog");
+                }
+                if (has_index == 1) {
+                    if (offset + 8 > PAGE_SIZE) {
+                        throw std::runtime_error(
+                            "Truncated primary-index metadata page in catalog"
+                        );
+                    }
+
+                    const PageID index_meta_page = read_u64(page, offset);
+                    offset += 8;
+
+                    if (index_meta_page == 0 ||
+                        index_meta_page >= static_cast<PageID>(pager_.page_count()) ||
+                        !used_first_pages.insert(index_meta_page).second) {
+                        throw std::runtime_error(
+                            "Catalog references an invalid primary-index metadata page"
+                        );
+                    }
+                    primary_index_metadata_page = index_meta_page;
+                }
+            }
+
+            auto table = std::make_unique<Table>(
+                pager_,
+                first_page,
+                std::move(schema),
+                primary_index_metadata_page
+            );
             tables_.emplace(name, std::move(table));
         }
 
@@ -284,11 +318,27 @@ namespace qdb {
                 page.data[offset++] = static_cast<std::byte>(col.nullable ? 1 : 0);
                 page.data[offset++] = static_cast<std::byte>(col.primary_key ? 1 : 0);
             }
+
+            const auto index_meta_page = table->primary_index_metadata_page();
+
+            const std::size_t index_bytes = 1 + (index_meta_page.has_value() ? 8 : 0);
+            if (offset + index_bytes > PAGE_SIZE) {
+                throw std::runtime_error("Catalog exceeds page capacity");
+            }
+
+            page.data[offset++]=static_cast<std::byte>(index_meta_page.has_value()?1:0);
+
+            if (index_meta_page.has_value()) {
+                write_u64(page, offset, *index_meta_page);
+                offset += 8;
+            }
+
         }
 
         if (!pager_.write_page(0, page)) {
             throw std::runtime_error("Failed to persist database catalog");
         }
+
     }
 
     Table& Database::create_table(const std::string& name, Schema schema) {

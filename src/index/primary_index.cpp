@@ -68,8 +68,10 @@ namespace qdb {
 			if (!tree_.insert(key, id)) {
 				return std::unexpected(Status{StatusCode::DuplicatePrimaryKey, "Primary key already exists" });
 			}
+
+			return {};
 		}
-		catch (const std::runtime_error& error) {
+		catch (const std::exception& error) {
 
 			return std::unexpected(Status{ StatusCode::IndexError,error.what() });
 		}

@@ -3,6 +3,7 @@
 #include<storage/pager.hpp>
 #include<storage/RecordID.hpp>
 
+#include<optional>
 namespace qdb {
 
 	struct BplusTree_Node {

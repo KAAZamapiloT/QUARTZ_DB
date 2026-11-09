@@ -183,7 +183,7 @@ namespace  qdb {
 			header.free_end = new_free_end;
 			header.fragmented_bytes = 0;
 		}
-		}
+		
 
 		Page read_page_or_throw(pager& p, PageID id) {
 			if (id > static_cast<PageID>(
@@ -590,33 +590,49 @@ namespace  qdb {
 
 	Result<bool> Table::delete_record(RecordID id)
 	{
+		if (id.page_id == 0 || id.page_id >= pager_.page_count()) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				"RecordID references an invalid page"
+				});
+		}
+
 		Page page{};
-
-		auto read_result = pager_.read_page(static_cast<std::size_t>(id.page_id), page);
-
-		if (!read_result) {
+		if (!pager_.read_page(static_cast<std::size_t>(id.page_id), page)) {
 			return std::unexpected(Status{
 				StatusCode::StorageError,
 				"Failed to read table page"
 				});
 		}
 
-		auto header = load_header(page);
+		PageHeader header;
+		try {
+			header = load_header(page);
+		}
+		catch (const CorruptionFailure& error) {
+			return std::unexpected(Status{
+				StatusCode::Corruption,
+				error.what()
+				});
+		}
 
-		if (id.slot_index >= header.slot_count)	 {
+		if (id.slot_index >= header.slot_count) {
 			return std::unexpected(Status{
 				StatusCode::Corruption,
 				"RecordID references an invalid slot"
 				});
 		}
-		const auto slot_offset = HEADER_SIZE + static_cast<std::size_t>(id.slot_index) * SLOT_SIZE;
+
+		const std::size_t slot_offset =
+			HEADER_SIZE + static_cast<std::size_t>(id.slot_index) * SLOT_SIZE;
 
 		const auto record_offset = read_u16(page, slot_offset);
 		const auto record_length = read_u16(page, slot_offset + 2);
 
 		if (record_length == 0) {
-			return false;
+			return false; // Slot is already deleted
 		}
+
 		if (record_offset < header.free_end ||
 			static_cast<std::size_t>(record_offset) + record_length > PAGE_SIZE) {
 			return std::unexpected(Status{
@@ -624,13 +640,61 @@ namespace  qdb {
 				"Record slot contains invalid boundaries"
 				});
 		}
+
+		// 1. Mark slot as a tombstone (offset = 0, length = 0)
+		write_u16(page, slot_offset, 0);
 		write_u16(page, slot_offset + 2, 0);
 
-		auto write_result = pager_.write_page(
-			static_cast<std::size_t>(id.page_id), page
-		);
+		// 2. Accumulate reclaimed bytes in fragmented_bytes (byte offset 20) for lazy compaction
+		const auto new_fragmented =
+			static_cast<std::uint16_t>(header.fragmented_bytes + record_length);
+		write_u16(page, 20, new_fragmented);
 
-		if (!write_result) {
+		// 3. Check if every slot on this page is now deleted
+		bool page_is_empty = true;
+		for (std::uint16_t i = 0; i < header.slot_count; ++i) {
+			const std::size_t s_off = HEADER_SIZE + static_cast<std::size_t>(i) * SLOT_SIZE;
+			if (read_u16(page, s_off + 2) != 0) {
+				page_is_empty = false;
+				break;
+			}
+		}
+
+		// 4. If a non-first page is completely empty, unlink it from the chain and deallocate it
+		if (page_is_empty && id.page_id != first_page_) {
+			PageID prev_id = first_page_;
+			std::unordered_set<PageID> visited;
+
+			while (prev_id != NO_PAGE && visited.insert(prev_id).second) {
+				Page prev_page{};
+				if (!pager_.read_page(static_cast<std::size_t>(prev_id), prev_page)) {
+					break;
+				}
+
+				PageHeader prev_header;
+				try {
+					prev_header = load_header(prev_page);
+				}
+				catch (const CorruptionFailure&) {
+					break;
+				}
+
+				if (prev_header.next_page == id.page_id) {
+					// Sever reference: point predecessor's next_page to this page's next_page
+					write_u64(prev_page, 12, header.next_page);
+					if (pager_.write_page(static_cast<std::size_t>(prev_id), prev_page)) {
+						(void)pager_.deallocate_page(id.page_id);
+						return true;
+					}
+					break;
+				}
+
+				prev_id = prev_header.next_page;
+			}
+		}
+
+		// 5. Otherwise, persist the updated page with the tombstone slot
+		if (!pager_.write_page(static_cast<std::size_t>(id.page_id), page)) {
 			return std::unexpected(Status{
 				StatusCode::StorageError,
 				"Failed to write table page"
