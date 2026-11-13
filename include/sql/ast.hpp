@@ -110,6 +110,16 @@ struct JoinClause {
     std::string right_column;
 };
 
+enum class OrderDirection {
+    Ascending,
+    Descending
+};
+
+struct OrderByClause {
+    std::string    column_name;
+    OrderDirection direction{OrderDirection::Ascending};
+};
+
 struct CreateTableStatement {
     std::string         table_name;
     std::vector<Column> columns;
@@ -126,10 +136,13 @@ struct InsertStatement {
 };
 
 struct SelectStatement {
-    std::string              table_name;
-    std::vector<std::string> columns;      // Empty means "*" (all columns)
-    std::vector<JoinClause>  joins;        // Zero or more JOIN clauses
-    std::unique_ptr<Expr>    where_clause; // nullptr = no WHERE
+    std::string                  table_name;
+    std::vector<std::string>     columns;      // Empty means "*" (all columns)
+    std::vector<JoinClause>      joins;        // Zero or more JOIN clauses
+    std::unique_ptr<Expr>        where_clause; // nullptr = no WHERE
+    std::optional<OrderByClause> order_by;     // std::nullopt = no ORDER BY
+    std::optional<std::size_t>   limit;        // std::nullopt = no LIMIT
+    std::optional<std::size_t>   offset;       // std::nullopt = no OFFSET
 };
 
 struct UpdateStatement {

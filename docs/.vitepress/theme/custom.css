@@ -1,0 +1,237 @@
+/* ==========================================================================
+   QuartzDB Editorial & Systems Documentation Theme
+   Visual: Clean, light-default with DIM mode, serif prose, monospace code
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Typography */
+  --vp-font-family-base: 'Newsreader', Charter, Georgia, 'Times New Roman', serif;
+  --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --vp-font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Editorial Warm Cream Light Palette */
+  --vp-c-bg: #f9f7f2;
+  --vp-c-bg-alt: #f1ede4;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #f4f0e6;
+
+  --vp-c-text-1: #1f1e1d;
+  --vp-c-text-2: #54524e;
+  --vp-c-text-3: #8a867f;
+
+  --vp-c-border: #e3ded2;
+  --vp-c-divider: #e8e3d8;
+
+  /* Accents */
+  --vp-c-brand-1: #9e2a2b;       /* Editorial Deep Rust/Vermilion */
+  --vp-c-brand-2: #bd3a41;
+  --vp-c-brand-3: #7d2021;
+  --vp-c-brand-soft: rgba(158, 42, 43, 0.08);
+
+  --qdb-teal: #0d9488;
+  --qdb-violet: #7c3aed;
+  --qdb-amber: #d97706;
+  --qdb-red: #dc2626;
+
+  /* Badges & Tables */
+  --badge-pk-bg: #fef3c7;
+  --badge-pk-text: #92400e;
+  --badge-fk-bg: #e0f2fe;
+  --badge-fk-text: #0369a1;
+  --badge-pii-bg: #fee2e2;
+  --badge-pii-text: #b91c1c;
+  --badge-null-bg: #f3f4f6;
+  --badge-null-text: #4b5563;
+
+  /* Shadows */
+  --vp-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --vp-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Dim Mode (Dark Mode) */
+.dark {
+  --vp-c-bg: #141416;
+  --vp-c-bg-alt: #1a1a1d;
+  --vp-c-bg-elv: #202024;
+  --vp-c-bg-soft: #26262b;
+
+  --vp-c-text-1: #f4f4f5;
+  --vp-c-text-2: #a1a1aa;
+  --vp-c-text-3: #71717a;
+
+  --vp-c-border: #2e2e34;
+  --vp-c-divider: #27272a;
+
+  --vp-c-brand-1: #e05a47;
+  --vp-c-brand-2: #f87171;
+  --vp-c-brand-3: #c2410c;
+  --vp-c-brand-soft: rgba(224, 90, 71, 0.15);
+
+  --badge-pk-bg: #451a03;
+  --badge-pk-text: #fde68a;
+  --badge-fk-bg: #082f49;
+  --badge-fk-text: #7dd3fc;
+  --badge-pii-bg: #450a0a;
+  --badge-pii-text: #fca5a5;
+  --badge-null-bg: #27272a;
+  --badge-null-text: #d4d4d8;
+}
+
+/* Global Typography Refinements */
+body {
+  font-family: var(--vp-font-family-base);
+  font-size: 17px;
+  line-height: 1.7;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--vp-font-family-base);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+code, kbd, samp, pre {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.9em;
+}
+
+/* Badges */
+.badge-pk {
+  background-color: var(--badge-pk-bg);
+  color: var(--badge-pk-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(146, 64, 14, 0.2);
+}
+
+.badge-fk {
+  background-color: var(--badge-fk-bg);
+  color: var(--badge-fk-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(3, 105, 161, 0.2);
+}
+
+.badge-pii {
+  background-color: var(--badge-pii-bg);
+  color: var(--badge-pii-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(185, 28, 28, 0.2);
+}
+
+.badge-null {
+  background-color: var(--badge-null-bg);
+  color: var(--badge-null-text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+/* Tables Styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 15px;
+}
+
+th {
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-family: var(--vp-font-family-sans);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--vp-c-border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-1);
+}
+
+tr:nth-child(even) td {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.dark tr:nth-child(even) td {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Click to copy text helper */
+.click-copy {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  font-family: var(--vp-font-family-mono);
+  background: var(--vp-c-bg-soft);
+}
+
+.click-copy:hover {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+/* Stat Box Cards */
+.stat-card-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 1.5rem 0;
+}
+
+.stat-card {
+  background: var(--vp-c-bg-elv);
+  border: 1px solid var(--vp-c-border);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--vp-shadow-1);
+}
+
+.stat-card-label {
+  font-family: var(--vp-font-family-sans);
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.stat-card-val {
+  font-family: var(--vp-font-family-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vp-c-text-1);
+}

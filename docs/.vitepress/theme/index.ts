@@ -1,0 +1,21 @@
+import DefaultTheme from 'vitepress/theme'
+import './custom.css'
+
+import HeroForge from './components/HeroForge.vue'
+import SqlPlayground from './components/SqlPlayground.vue'
+import CodeDiff from './components/CodeDiff.vue'
+import PrerequisiteGraph from './components/PrerequisiteGraph.vue'
+import DataDictionary from './components/DataDictionary.vue'
+import InteractiveErd from './components/InteractiveErd.vue'
+
+export default {
+  extends: DefaultTheme,
+  enhanceApp({ app }) {
+    app.component('HeroForge', HeroForge)
+    app.component('SqlPlayground', SqlPlayground)
+    app.component('CodeDiff', CodeDiff)
+    app.component('PrerequisiteGraph', PrerequisiteGraph)
+    app.component('DataDictionary', DataDictionary)
+    app.component('InteractiveErd', InteractiveErd)
+  }
+}

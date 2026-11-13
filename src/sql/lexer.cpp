@@ -40,6 +40,9 @@ std::string_view token_type_name(TokenType type) noexcept {
         case TokenType::KeywordLeft:          return "LEFT";
         case TokenType::KeywordRight:         return "RIGHT";
         case TokenType::KeywordOn:            return "ON";
+        case TokenType::KeywordOffset:        return "OFFSET";
+        case TokenType::KeywordAsc:           return "ASC";
+        case TokenType::KeywordDesc:          return "DESC";
         case TokenType::IntegerLiteral:       return "IntegerLiteral";
         case TokenType::FloatLiteral:         return "FloatLiteral";
         case TokenType::StringLiteral:        return "StringLiteral";
@@ -119,6 +122,9 @@ const std::unordered_map<std::string, TokenType>& keyword_map() {
         {"LEFT",     TokenType::KeywordLeft},
         {"RIGHT",    TokenType::KeywordRight},
         {"ON",       TokenType::KeywordOn},
+        {"OFFSET",   TokenType::KeywordOffset},
+        {"ASC",      TokenType::KeywordAsc},
+        {"DESC",     TokenType::KeywordDesc},
         {"TRUE",     TokenType::BooleanLiteral},
         {"FALSE",    TokenType::BooleanLiteral}
     };

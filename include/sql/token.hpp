@@ -44,6 +44,9 @@ enum class TokenType : std::uint16_t {
     KeywordLeft,
     KeywordRight,
     KeywordOn,
+    KeywordOffset,
+    KeywordAsc,
+    KeywordDesc,
 
     // Literals
     IntegerLiteral,
@@ -87,7 +90,7 @@ struct Token {
     }
 
     [[nodiscard]] constexpr bool is_keyword() const noexcept {
-        return type >= TokenType::KeywordCreate && type <= TokenType::KeywordJoin;
+        return type >= TokenType::KeywordCreate && type <= TokenType::KeywordDesc;
     }
 
     [[nodiscard]] constexpr bool is_literal() const noexcept {

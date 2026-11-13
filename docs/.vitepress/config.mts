@@ -4,7 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 export default withMermaid(
   defineConfig({
     title: "QuartzDB",
-    description: "A lightweight, embedded relational database engine written in modern C++23.",
+    description: "A serial publication & comprehensive database documentation portal for QuartzDB C++23.",
     cleanUrls: true,
     lastUpdated: true,
 
@@ -13,16 +13,15 @@ export default withMermaid(
     ],
 
     mermaid: {
-      // Mermaid configuration options
       theme: 'base',
       themeVariables: {
-        primaryColor: '#0284c7',
+        primaryColor: '#9e2a2b',
         primaryTextColor: '#ffffff',
-        primaryBorderColor: '#0369a1',
+        primaryBorderColor: '#7d2021',
         lineColor: '#64748b',
-        secondaryColor: '#f1f5f9',
-        tertiaryColor: '#e2e8f0',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        secondaryColor: '#f4f0e6',
+        tertiaryColor: '#e3ded2',
+        fontFamily: 'Inter, system-ui, sans-serif'
       }
     },
 
@@ -33,57 +32,70 @@ export default withMermaid(
       },
 
       nav: [
-        { text: 'Guide', link: '/guide/what-is-quartz' },
-        { text: 'Architecture', link: '/architecture/overview' },
-        { text: 'SQL & CLI', link: '/sql/reference' },
-        { text: 'Benchmarks', link: '/benchmarks/performance' },
-        { text: 'C++ API', link: '/guide/cpp-integration' },
-        { text: 'v1.0', items: [
-          { text: 'GitHub Repository', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB' },
-          { text: 'Issue Tracker', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB/issues' }
-        ]}
+        { text: 'Overview', link: '/overview' },
+        { text: 'Tables', link: '/tables' },
+        { text: 'Diagrams', link: '/diagrams' },
+        { text: 'Dictionary', link: '/data-dictionary' },
+        { text: 'Governance', items: [
+          { text: 'Business Rules & Constraints', link: '/rules' },
+          { text: 'Security, Roles & PII Map', link: '/security' },
+          { text: 'Operations & Compaction Runbooks', link: '/operations' }
+        ]},
+        { text: 'Architecture', items: [
+          { text: 'System Architecture', link: '/architecture/overview' },
+          { text: 'Block Pager (4KB)', link: '/architecture/pager' },
+          { text: 'Slotted-Page Layout', link: '/architecture/slotted-pages' },
+          { text: 'Disk-Backed B+ Tree', link: '/architecture/bplus-tree' },
+          { text: 'SQL Syntax Reference', link: '/sql/reference' },
+          { text: 'Scale Benchmarks', link: '/benchmarks/performance' }
+        ]},
+        { text: 'Changelog', link: '/changelog' }
       ],
 
-      sidebar: {
-        '/guide/': [
-          {
-            text: 'Introduction',
-            items: [
-              { text: 'What is QuartzDB?', link: '/guide/what-is-quartz' },
-              { text: 'Getting Started & Building', link: '/guide/getting-started' },
-              { text: 'C++ Embedding API', link: '/guide/cpp-integration' }
-            ]
-          }
-        ],
-        '/architecture/': [
-          {
-            text: 'Engine Internals',
-            items: [
-              { text: 'Architecture Overview', link: '/architecture/overview' },
-              { text: 'Pager & 4KB Boundaries', link: '/architecture/pager' },
-              { text: 'Slotted-Page Storage', link: '/architecture/slotted-pages' },
-              { text: 'Disk-Backed B+ Tree', link: '/architecture/bplus-tree' }
-            ]
-          }
-        ],
-        '/sql/': [
-          {
-            text: 'SQL & Terminal',
-            items: [
-              { text: 'SQL Syntax Reference', link: '/sql/reference' },
-              { text: 'Interactive REPL CLI', link: '/sql/interactive-cli' }
-            ]
-          }
-        ],
-        '/benchmarks/': [
-          {
-            text: 'Benchmarking',
-            items: [
-              { text: 'Scale & Limits (120k Rows)', link: '/benchmarks/performance' }
-            ]
-          }
-        ]
-      },
+      sidebar: [
+        {
+          text: 'Database Catalog',
+          collapsed: false,
+          items: [
+            { text: 'Database Overview', link: '/overview' },
+            { text: 'All Tables Index', link: '/tables' },
+            { text: '▸ Table: orders', link: '/tables/orders' },
+            { text: '▸ Table: users', link: '/tables/users' },
+            { text: '▸ Table: products', link: '/tables/products' },
+            { text: 'Interactive ERD', link: '/diagrams' },
+            { text: 'Data Dictionary', link: '/data-dictionary' }
+          ]
+        },
+        {
+          text: 'Governance & Operations',
+          collapsed: false,
+          items: [
+            { text: 'Business Rules & Constraints', link: '/rules' },
+            { text: 'Security, Roles & PII Map', link: '/security' },
+            { text: 'Operations & Compaction Runbooks', link: '/operations' }
+          ]
+        },
+        {
+          text: 'Engine Internals (Series)',
+          collapsed: false,
+          items: [
+            { text: 'Architecture Overview', link: '/architecture/overview' },
+            { text: 'Pager & 4KB Boundaries', link: '/architecture/pager' },
+            { text: 'Slotted-Page Storage', link: '/architecture/slotted-pages' },
+            { text: 'Disk-Backed B+ Tree', link: '/architecture/bplus-tree' },
+            { text: 'SQL Syntax Reference', link: '/sql/reference' },
+            { text: 'Interactive REPL CLI', link: '/sql/interactive-cli' },
+            { text: 'Scale Benchmarks (120k Rows)', link: '/benchmarks/performance' }
+          ]
+        },
+        {
+          text: 'Meta',
+          collapsed: true,
+          items: [
+            { text: 'Documentation History', link: '/changelog' }
+          ]
+        }
+      ],
 
       search: {
         provider: 'local'
@@ -94,8 +106,8 @@ export default withMermaid(
       ],
 
       footer: {
-        message: 'Released under the MIT License. Designed for educational depth and high performance.',
-        copyright: 'Copyright © 2026 QuartzDB Contributors'
+        message: 'A serial publication for systems & database engineers. Released under the MIT License.',
+        copyright: 'Copyright © 2026 QuartzDB Engineering Team'
       },
 
       editLink: {
