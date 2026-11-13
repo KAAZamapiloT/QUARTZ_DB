@@ -40,10 +40,15 @@ When records are updated or deleted, slotted pages accumulate `fragmented_bytes`
 
 ```mermaid
 flowchart TD
-    Scan["Run Diagnostics on .db File"] --> CheckFrag{"Fragmented Bytes &gt; Threshold?"}
-    CheckFrag -- "Yes (&gt; 20% fragmentation)" --> Compact["Execute Table Compaction:<br>Iterate pages and invoke compact_page()"]
-    Compact --> Reclaim["Slide active payloads contiguous to byte 4096<br>Reset fragmented_bytes = 0"]
-    CheckFrag -- "No (&lt; 20% fragmentation)" --> OK["Optimal Packing Density"]
+    classDef stepScan fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
+    classDef stepAct fill:#e11d48,stroke:#fb7185,stroke-width:2px,color:#ffffff;
+    classDef stepOk fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
+
+    Scan["1. Run Diagnostics on .db File<br>Inspect free_start, free_end, fragmented_bytes"]:::stepScan --> CheckFrag{"Fragmented Bytes &gt; 20%?"}:::stepCheck
+    CheckFrag -- "Yes (&gt; 20% Fragmentation)" --> Compact["2. Execute Table Compaction:<br>Iterate pages &amp; invoke compact_page()"]:::stepAct
+    Compact --> Reclaim["3. Slide active payloads contiguous to 4096<br>Reset fragmented_bytes = 0"]:::stepAct
+    CheckFrag -- "No (Optimal)" --> OK["4. Optimal Packing Density Maintained"]:::stepOk
 ```
 
 ### Compaction Mechanics

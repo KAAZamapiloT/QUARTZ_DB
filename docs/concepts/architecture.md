@@ -98,46 +98,7 @@ flowchart LR
 
 ### Detailed Pipeline Stages
 
-```mermaid
-flowchart TD
-    classDef stepBox fill:#18181b,stroke:#e05a47,stroke-width:2px,color:#f4f4f5;
-    classDef branchFast fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ecfdf5;
-    classDef branchScan fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fffbeb;
-    classDef aggBox fill:#3b0764,stroke:#c084fc,stroke-width:2px,color:#faf5ff;
-
-    InSQL["SQL Statement Input"]:::stepBox
-    LexerPass["qdb::sql::Lexer: Tokenizes keywords, string escapes, numbers, operators"]:::stepBox
-    ParserPass["qdb::sql::Parser: Recursive-descent AST tree construction"]:::stepBox
-    CheckStmt{"Statement Type?"}:::stepBox
-
-    %% Routing
-    CheckStmt -- "SELECT" --> CheckFilter{"WHERE id = :val<br>on Primary Key?"}:::stepBox
-    CheckFilter -- "Yes (Fast-Path)" --> BTreeFind["B+ Tree find_by_primary_key()<br>O(log N) root-to-leaf descent"]:::branchFast
-    CheckFilter -- "No (Scan)" --> TableScan["Linear Slotted-Page Scan<br>O(N) traversal across linked pages"]:::branchScan
-
-    BTreeFind --> PostFilter["Evaluate remaining AND/OR expression predicates"]:::stepBox
-    TableScan --> PostFilter
-
-    PostFilter --> CheckJoin{"Has JOIN?"}:::stepBox
-    CheckJoin -- "Yes" --> ExecJoin["Index Nested-Loop Join (O(N log M))<br>or Nested Scan"]:::stepBox
-    CheckJoin -- "No" --> CheckAgg{"Has Aggregates?"}:::stepBox
-    ExecJoin --> CheckAgg
-
-    CheckAgg -- "Yes (COUNT, SUM, AVG...)" --> RunAgg["evaluate_aggregates()<br>Single-pass accumulator"]:::aggBox
-    CheckAgg -- "No (Raw Columns)" --> OrderLimit["Apply ORDER BY (stable sort)<br>and LIMIT / OFFSET windowing"]:::stepBox
-    RunAgg --> OrderLimit
-
-    OrderLimit --> ReturnRes["Return qdb::QueryResult<br>Formatted tabular rows"]:::stepBox
-
-    %% Other statements
-    CheckStmt -- "INSERT" --> DoInsert["Serialize tuple -> Allocate slot -> Insert B+ Tree key"]:::stepBox
-    CheckStmt -- "UPDATE" --> DoUpdate["In-place / re-slot rewrite -> Update B+ Tree index"]:::stepBox
-    CheckStmt -- "DELETE" --> DoDelete["Zero slot length (tombstone) -> Erase B+ Tree key"]:::stepBox
-    CheckStmt -- "CREATE TABLE" --> DoCreate["Validate schema -> Allocate Page 1 & Meta -> Register in Page 0"]:::stepBox
-    CheckStmt -- "DROP TABLE" --> DoDrop["Unregister from Page 0 -> Recycle pages into freelist"]:::stepBox
-
-    InSQL --> LexerPass --> ParserPass --> CheckStmt
-```
+<PipelineStages />
 
 ---
 

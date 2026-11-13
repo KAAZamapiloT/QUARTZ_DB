@@ -16,29 +16,34 @@ It is designed with two core objectives:
 QuartzDB is structured into clear abstraction layers separating query evaluation from physical disk serialization:
 
 ```mermaid
-graph TB
+flowchart TB
+    classDef cFrontend fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef cCatalog fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
+    classDef cStorage fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef cDisk fill:#475569,stroke:#94a3b8,stroke-width:2px,color:#ffffff;
+
     subgraph Frontend ["1. Query Processing Layer"]
-        SQL["SQL Query String"] --> Lexer["Lexer Scanner"]
-        Lexer --> Parser["AST Parser"]
-        Parser --> AST["Statement AST Node"]
-        AST --> Executor["Query Executor"]
+        SQL["SQL Query String"]:::cFrontend --> Lexer["Lexer Scanner"]:::cFrontend
+        Lexer --> Parser["AST Parser"]:::cFrontend
+        Parser --> AST["Statement AST Node"]:::cFrontend
+        AST --> Executor["Query Executor"]:::cFrontend
     end
     
     subgraph CatalogLayer ["2. Catalog & Table Manager"]
-        Executor --> Database["Database Catalog"]
-        Database --> Table["Table Manager"]
-        Database --> PrimaryIndex["Primary Key Index"]
+        Executor --> Database["Database Catalog (Page 0)"]:::cCatalog
+        Database --> Table["Table Manager"]:::cCatalog
+        Database --> PrimaryIndex["Primary Key Index"]:::cCatalog
         Table <--> PrimaryIndex
     end
 
     subgraph StorageSubsystem ["3. Physical Storage Engine"]
-        PrimaryIndex <--> BPlusTree["Disk B+ Tree"]
-        Table <--> Record["Slotted Data Pages"]
-        BPlusTree <--> Pager["Block Pager (4KB)"]
+        PrimaryIndex <--> BPlusTree["Disk B+ Tree Index"]:::cStorage
+        Table <--> Record["Slotted Data Pages"]:::cStorage
+        BPlusTree <--> Pager["Block Pager (4KB)"]:::cStorage
         Record <--> Pager
     end
 
-    Pager <--> Disk[("Database File (*.db)")]
+    Pager <--> Disk[("Database File (*.db)<br>Aligned 4KB Blocks")]:::cDisk
 ```
 
 ---

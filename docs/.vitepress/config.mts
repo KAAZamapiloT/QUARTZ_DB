@@ -19,10 +19,25 @@ export default withMermaid(
         primaryColor: '#1e1e24',
         primaryTextColor: '#f7f3e9',
         primaryBorderColor: '#e05a47',
-        lineColor: '#94a3b8',
+        lineColor: '#e05a47',
         secondaryColor: '#282830',
         tertiaryColor: '#16161a',
-        edgeLabelBackground: '#1e1e24'
+        edgeLabelBackground: '#1e1e24',
+        // Sequence diagram variables
+        actorBkg: '#1c1917',
+        actorBorder: '#e05a47',
+        actorTextColor: '#f7f3e9',
+        actorLineColor: '#64748b',
+        signalColor: '#e05a47',
+        signalTextColor: '#f7f3e9',
+        sequenceNumberColor: '#ffffff',
+        labelBoxBkgColor: '#24231f',
+        labelBoxBorderColor: '#e05a47',
+        labelTextColor: '#f7f3e9',
+        loopTextColor: '#f7f3e9',
+        noteBkgColor: '#292524',
+        noteBorderColor: '#f59e0b',
+        noteTextColor: '#fef08a'
       },
       flowchart: {
         htmlLabels: true,

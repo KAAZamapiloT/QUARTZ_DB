@@ -107,17 +107,24 @@ When searching for a primary key (e.g. `WHERE id = 75`), traversal runs in $O(\l
 
 ```mermaid
 flowchart TD
-    Start["Call find(key)"] --> ReadRoot["Read root_page_"]
-    ReadRoot --> CheckType{"Is Leaf Node?"}
+    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
+    classDef stepInternal fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
+    classDef stepLeaf fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef stepSuccess fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef stepFail fill:#991b1b,stroke:#f87171,stroke-width:2px,color:#ffffff;
+
+    Start["1. Call find(key)<br><code>O(log N) Point Query</code>"]:::stepStart --> ReadRoot["2. Read root_page_ from Meta<br><code>Pager::read_page(root)</code>"]:::stepStart
+    ReadRoot --> CheckType{"Node Type == LEAF?"}:::stepCheck
     
-    CheckType -- "No (Internal)" --> SearchInt["Binary Search Keys"]
-    SearchInt --> FetchChild["Read Child Page"]
+    CheckType -- "No (Internal Page)" --> SearchInt["3a. Binary Search Keys<br>Find separator index: <code>keys[i] &le; key</code>"]:::stepInternal
+    SearchInt --> FetchChild["4a. Pager::read_page(child_id)<br>Follow downward pointer"]:::stepInternal
     FetchChild --> CheckType
     
-    CheckType -- "Yes (Leaf)" --> SearchLeaf["Binary Search Leaf"]
-    SearchLeaf --> Found{"Key Exists?"}
-    Found -- "Yes" --> ReturnRID["Return RecordID"]
-    Found -- "No" --> ReturnNull["Return Not Found"]
+    CheckType -- "Yes (Leaf Page)" --> SearchLeaf["3b. Binary Search Leaf Keys<br>Find exact primary key match"]:::stepLeaf
+    SearchLeaf --> Found{"Key exists in Leaf?"}:::stepCheck
+    Found -- "Yes (Match Found)" --> ReturnRID["4b. Return RecordID<br><code>{page_id, slot_index}</code>"]:::stepSuccess
+    Found -- "No (Key Missing)" --> ReturnNull["4c. Return std::nullopt<br><code>Record Not Found</code>"]:::stepFail
 ```
 
 ---

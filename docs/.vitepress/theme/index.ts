@@ -14,6 +14,7 @@ import MemoryMap from './components/MemoryMap.vue'
 import BTreeVisualizer from './components/BTreeVisualizer.vue'
 import QueryPlanVisualizer from './components/QueryPlanVisualizer.vue'
 import HexInspector from './components/HexInspector.vue'
+import PipelineStages from './components/PipelineStages.vue'
 
 export default {
   extends: DefaultTheme,
@@ -31,5 +32,6 @@ export default {
     app.component('BTreeVisualizer', BTreeVisualizer)
     app.component('QueryPlanVisualizer', QueryPlanVisualizer)
     app.component('HexInspector', HexInspector)
+    app.component('PipelineStages', PipelineStages)
   }
 }
