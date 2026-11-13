@@ -32,25 +32,26 @@ The `DROP TABLE` statement deletes a registered table from the database catalog,
 Dropping a table in QuartzDB cleans up state across Catalog Page 0, data page chains, and B+ tree index hierarchies:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    %% Colorful DROP TABLE flow
-    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
-    classDef stepFree fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef stepCat fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
-    classDef stepSuccess fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Start["1. Client Issues DROP TABLE<br><code>DROP TABLE staging_orders;</code>"]:::stepStart
-    FindTable{"2. Table Exists in<br>Catalog Page 0?"}:::stepCheck
-    FindTable -- "No" --> AbortFail["Abort: QERR_TABLE_NOT_FOUND (1003)"]:::stepCheck
+    Start["1. Client Issues DROP TABLE<br/>DROP TABLE staging_orders;"]:::entry
+    FindTable{"2. Table Exists in<br/>Catalog Page 0?"}:::guard
+    FindTable -- "No" --> AbortFail["Abort: QERR_TABLE_NOT_FOUND (1003)"]:::error
 
-    FindTable -- "Yes" --> FreeDataPages["<b>3. Free Slotted Data Pages:</b><br>Traverse next_page linked list from first_page_<br>Pass each PageID to pager::deallocate_page()"]:::stepFree
+    FindTable -- "Yes" --> FreeDataPages["3. Free Slotted Data Pages<br/>Traverse next_page linked list from first_page_<br/>Pass each PageID to pager::deallocate_page()"]:::disk
 
-    FreeDataPages --> FreeIndexPages["<b>4. Free B+ Tree Index Pages:</b><br>Post-order DFS traversal through internal &amp; leaf nodes<br>Recycle all index pages + metadata page into freelist"]:::stepFree
+    FreeDataPages --> FreeIndexPages["4. Free B+ Tree Index Pages<br/>Post-order DFS traversal through internal &amp; leaf nodes<br/>Recycle all index pages + metadata page into freelist"]:::shared
 
-    FreeIndexPages --> EraseCatalog["<b>5. Unregister from Catalog Page 0:</b><br>Remove table metadata entry<br>Decrement table_count &amp; call persist_catalog()"]:::stepCat
+    FreeIndexPages --> EraseCatalog["5. Unregister from Catalog Page 0<br/>Remove table metadata entry<br/>Decrement table_count &amp; call persist_catalog()"]:::disk
 
-    EraseCatalog --> PoolReady["<b>6. Instant Zero-Cost Block Reuse:</b><br>All freed PageIDs reside in pager.free_pages<br>Subsequent queries reuse pages without disk allocation"]:::stepSuccess
+    EraseCatalog --> PoolReady["6. Instant Zero-Cost Block Reuse<br/>All freed PageIDs reside in pager.free_pages<br/>Subsequent queries reuse pages without disk allocation"]:::success
 ```
 
 ### Detailed Deallocation Stages:

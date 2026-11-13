@@ -28,34 +28,32 @@ QuartzDB is a lightweight, embedded relational database engine written in modern
 The system is structured as a layered storage and execution pipeline:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TB
-    classDef client fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef lexer fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
-    classDef parser fill:#6366f1,stroke:#a5b4fc,stroke-width:2px,color:#ffffff;
-    classDef executor fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef catalog fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
-    classDef table fill:#e11d48,stroke:#fb7185,stroke-width:2px,color:#ffffff;
-    classDef index fill:#ea580c,stroke:#fb923c,stroke-width:2px,color:#ffffff;
-    classDef pager fill:#2563eb,stroke:#60a5fa,stroke-width:2px,color:#ffffff;
-    classDef disk fill:#1e1e24,stroke:#e05a47,stroke-width:3px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
     subgraph Client ["Client Interface Layer"]
-        SQL["SQL Query Text"]:::client
-        CPP["C++ Native Embedding API"]:::client
+        SQL["SQL Query Text"]:::entry
+        CPP["C++ Native Embedding API"]:::entry
     end
 
     subgraph Compiler ["1. Query Compiler Engine"]
-        LEX["Lexical Scanner"]:::lexer
-        PARSE["Recursive AST Parser"]:::parser
+        LEX["Lexical Scanner"]:::entry
+        PARSE["Recursive AST Parser"]:::entry
         SQL --> LEX
         LEX --> PARSE
     end
 
     subgraph Runtime ["2. Execution & Catalog Engine"]
-        EXEC["Query Executor"]:::executor
-        CATALOG["Catalog (Page 0)"]:::catalog
-        TABLE["Table Engine"]:::table
-        INDEX["Primary Key Index"]:::index
+        EXEC["Query Executor"]:::guard
+        CATALOG["Catalog (Page 0)"]:::shared
+        TABLE["Table Engine"]:::guard
+        INDEX["Primary Key Index"]:::guard
 
         PARSE --> EXEC
         EXEC <--> CATALOG
@@ -65,9 +63,9 @@ flowchart TB
     end
 
     subgraph Storage ["3. Physical Storage Engine"]
-        SLOT["Slotted-Page Records"]:::table
-        BPT["Disk B+ Tree Nodes"]:::index
-        PAGER["Block Pager (4KB I/O)"]:::pager
+        SLOT["Slotted-Page Records"]:::disk
+        BPT["Disk B+ Tree Nodes"]:::shared
+        PAGER["Block Pager (4KB I/O)"]:::disk
         DISK[("Database File (*.db)")]:::disk
 
         TABLE --> SLOT

@@ -69,32 +69,33 @@ QuartzDB supports standard SQL aggregate functions for calculating statistical s
 Aggregation in QuartzDB is implemented inside `src/execution/executor.cpp` (`evaluate_aggregates()`):
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    %% Colorful Aggregation Flow
-    classDef inputNode fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef matchNode fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
-    classDef loopNode fill:#4f46e5,stroke:#818cf8,stroke-width:2px,color:#ffffff;
-    classDef checkType fill:#78350f,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
-    classDef resultNode fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Start["1. SELECT with Aggregate Functions<br>e.g. <code>SELECT COUNT(*), SUM(cents) FROM orders...</code>"]:::inputNode
-    FilterPhase["2. Filter Phase: Evaluate WHERE predicates<br>Generates filtered <code>matched_rows</code> vector"]:::matchNode
+    Start["1. SELECT with Aggregate Functions<br/>SELECT COUNT(*), SUM(cents) FROM orders..."]:::entry
+    FilterPhase["2. Filter Phase: Evaluate WHERE predicates<br/>Generates filtered matched_rows vector"]:::shared
     
-    CheckLimit{"3. Is LIMIT = 0?"}:::checkType
-    CheckLimit -- "Yes" --> EmptySet["Return 0 rows immediately"]:::resultNode
-    CheckLimit -- "No" --> InitAcc["4. Initialize Accumulator Record<br>Reserve slots for each AggregateCall"]:::loopNode
+    CheckLimit{"3. Is LIMIT = 0?"}:::guard
+    CheckLimit -- "Yes" --> EmptySet["Return 0 rows immediately"]:::success
+    CheckLimit -- "No" --> InitAcc["4. Initialize Accumulator Record<br/>Reserve slots for each AggregateCall"]:::shared
 
-    InitAcc --> LoopCols["5. For each AggregateCall:"]:::loopNode
+    InitAcc --> LoopCols["5. For each AggregateCall"]:::entry
 
-    LoopCols -- "COUNT(*)" --> DoStar["Append matched_rows.size()"]:::resultNode
-    LoopCols -- "COUNT(col)" --> DoCount["Scan column: increment if != std::monostate"]:::resultNode
-    LoopCols -- "SUM / AVG" --> ValidateInt{"Column type == INT?"}:::checkType
-    LoopCols -- "MIN / MAX" --> DoExtremal["Track min/max via order_by_compare()"]:::resultNode
+    LoopCols -- "COUNT(*)" --> DoStar["Append matched_rows.size()"]:::success
+    LoopCols -- "COUNT(col)" --> DoCount["Scan column: increment if != std::monostate"]:::success
+    LoopCols -- "SUM / AVG" --> ValidateInt{"Column type == INT?"}:::guard
+    LoopCols -- "MIN / MAX" --> DoExtremal["Track min/max via order_by_compare()"]:::success
 
-    ValidateInt -- "No (Text)" --> ErrorType["Abort: 'Aggregate requires an integer column'"]:::checkType
-    ValidateInt -- "Yes" --> AccumulateSum["Sum values & count non-nulls<br>AVG = sum / count"]:::resultNode
+    ValidateInt -- "No (Text)" --> ErrorType["Abort: Aggregate requires an integer column"]:::error
+    ValidateInt -- "Yes" --> AccumulateSum["Sum values &amp; count non-nulls<br/>AVG = sum / count"]:::success
 
-    DoStar --> BuildResult["6. Package QueryResult:<br>1 row containing accumulated metrics"]:::resultNode
+    DoStar --> BuildResult["6. Package QueryResult:<br/>1 row containing accumulated metrics"]:::success
     DoCount --> BuildResult
     AccumulateSum --> BuildResult
     DoExtremal --> BuildResult

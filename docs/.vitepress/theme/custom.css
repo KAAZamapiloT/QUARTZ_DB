@@ -315,11 +315,128 @@ tr:nth-child(even) td {
 }
 
 .mermaid .edgeLabel {
-  background-color: var(--vp-c-bg) !important;
-  padding: 2px 6px !important;
+  background-color: #1e1e2e !important;
+  color: #cdd6f4 !important;
+  padding: 3px 8px !important;
   border-radius: 4px !important;
   font-family: var(--vp-font-family-mono) !important;
   font-size: 11px !important;
+  border: 1px solid rgba(205, 214, 244, 0.2) !important;
+}
+
+.mermaid .edgeLabel span,
+.mermaid .edgeLabel p {
+  color: #cdd6f4 !important;
+}
+
+.mermaid .edgePath path {
+  stroke: #6c7086 !important;
+  stroke-width: 2px !important;
+}
+
+/* Centralized High-Contrast Dark Systems Palette */
+/* 1. Entry nodes: Query, Procedure Call, Start */
+.mermaid .entry rect,
+.mermaid .node.entry rect,
+.mermaid .node.entry polygon,
+.mermaid .node.entry circle {
+  fill: #1e2030 !important;
+  stroke: #89b4fa !important;
+  stroke-width: 2px !important;
+}
+.mermaid .entry text,
+.mermaid .node.entry text,
+.mermaid .node.entry span {
+  fill: #cdd6f4 !important;
+  color: #cdd6f4 !important;
+}
+
+/* 2. Guard / Decision nodes: Validation, Conditions, Type Checks */
+.mermaid .guard rect,
+.mermaid .node.guard rect,
+.mermaid .node.guard polygon,
+.mermaid .node.guard circle {
+  fill: #2e2619 !important;
+  stroke: #f9e2af !important;
+  stroke-width: 2px !important;
+}
+.mermaid .guard text,
+.mermaid .node.guard text,
+.mermaid .node.guard span {
+  fill: #f9e2af !important;
+  color: #f9e2af !important;
+}
+
+/* 3. Success nodes: Hits, Allocation, Successful Commit */
+.mermaid .success rect,
+.mermaid .node.success rect,
+.mermaid .node.success polygon,
+.mermaid .node.success circle {
+  fill: #182c25 !important;
+  stroke: #a6e3a1 !important;
+  stroke-width: 2px !important;
+}
+.mermaid .success text,
+.mermaid .node.success text,
+.mermaid .node.success span {
+  fill: #a6e3a1 !important;
+  color: #a6e3a1 !important;
+}
+
+/* 4. Error / Abort nodes: Rejections, Violations */
+.mermaid .error rect,
+.mermaid .node.error rect,
+.mermaid .node.error polygon,
+.mermaid .node.error circle {
+  fill: #331c24 !important;
+  stroke: #f38ba8 !important;
+  stroke-width: 2px !important;
+}
+.mermaid .error text,
+.mermaid .node.error text,
+.mermaid .node.error span {
+  fill: #f38ba8 !important;
+  color: #f38ba8 !important;
+}
+
+/* 5. Disk I/O nodes: 4KB File Blocks, Pager Reads/Writes, Append */
+.mermaid .disk rect,
+.mermaid .node.disk rect,
+.mermaid .node.disk polygon,
+.mermaid .node.disk path,
+.mermaid .diskIO rect,
+.mermaid .node.diskIO rect {
+  fill: #241e38 !important;
+  stroke: #cba6f7 !important;
+  stroke-width: 2px !important;
+}
+.mermaid .disk text,
+.mermaid .node.disk text,
+.mermaid .node.disk span,
+.mermaid .diskIO text,
+.mermaid .node.diskIO text {
+  fill: #cdd6f4 !important;
+  color: #cdd6f4 !important;
+}
+
+/* 6. Shared State nodes: In-memory vector, Freelist, Buffer Pool */
+.mermaid .shared rect,
+.mermaid .node.shared rect,
+.mermaid .node.shared polygon,
+.mermaid .node.shared path,
+.mermaid .sharedState rect,
+.mermaid .node.sharedState rect {
+  fill: #162a35 !important;
+  stroke: #89dceb !important;
+  stroke-width: 2px !important;
+}
+.mermaid .shared text,
+.mermaid .node.shared text,
+.mermaid .node.shared span,
+.mermaid .sharedState text,
+.mermaid .node.sharedState text {
+  fill: #cdd6f4 !important;
+  color: #cdd6f4 !important;
 }
 
 /* Sequence Diagram Enhancements */

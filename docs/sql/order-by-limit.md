@@ -66,29 +66,31 @@ QuartzDB provides row ordering and result windowing clauses for sorting query ou
 Sorting and pagination execute in the final stages of the query pipeline inside `src/execution/executor.cpp`:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    %% Colorful Sorting Pipeline
-    classDef step1 fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef step2 fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
-    classDef step3 fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef step4 fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Candidates["1. Candidate Tuples<br>Produced from Slotted-Page Scan or B+ Tree Lookup"]:::step1
-    FilterPass["2. Filter Pass<br>Evaluate WHERE predicates across rows"]:::step1
+    Candidates["1. Candidate Tuples<br/>Produced from Slotted-Page Scan or B+ Tree Lookup"]:::entry
+    FilterPass["2. Filter Pass<br/>Evaluate WHERE predicates across rows"]:::entry
 
-    SortDecision{"3. Has ORDER BY?"}:::step2
-    SortDecision -- "Yes" --> StableSort["<b>In-Memory Stable Sort (std::stable_sort)</b><br>Evaluates order_by_compare() on variant values<br>Handles INT64, String, and NULL ordering"]:::step2
+    SortDecision{"3. Has ORDER BY?"}:::guard
+    SortDecision -- "Yes" --> StableSort["In-Memory Stable Sort (std::stable_sort)<br/>Evaluates order_by_compare() on variant values<br/>Handles INT64, String, and NULL ordering"]:::shared
     SortDecision -- "No" --> PaginationPass
 
-    StableSort --> PaginationPass["4. Windowing Pass: OFFSET &amp; LIMIT"]:::step3
+    StableSort --> PaginationPass["4. Windowing Pass: OFFSET &amp; LIMIT"]:::entry
 
-    PaginationPass --> OffsetCheck{"Has OFFSET?"}:::step3
-    OffsetCheck -- "Yes (OFFSET K)" --> SliceOffset["Skip first K records in memory buffer"]:::step3
+    PaginationPass --> OffsetCheck{"Has OFFSET?"}:::guard
+    OffsetCheck -- "Yes (OFFSET K)" --> SliceOffset["Skip first K records in memory buffer"]:::shared
     OffsetCheck -- "No" --> LimitCheck
 
-    SliceOffset --> LimitCheck{"Has LIMIT?"}:::step3
-    LimitCheck -- "Yes (LIMIT M)" --> SliceLimit["Truncate buffer to M records"]:::step3
-    LimitCheck -- "No" --> FinalEmit["5. Format QueryResult Output"]:::step4
+    SliceOffset --> LimitCheck{"Has LIMIT?"}:::guard
+    LimitCheck -- "Yes (LIMIT M)" --> SliceLimit["Truncate buffer to M records"]:::shared
+    LimitCheck -- "No" --> FinalEmit["5. Format QueryResult Output"]:::success
 
     SliceLimit --> FinalEmit
 ```

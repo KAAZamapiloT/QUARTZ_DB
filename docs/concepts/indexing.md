@@ -15,29 +15,31 @@ Type integer keys below (e.g. `10`, `25`, `50`, `120`) to watch the B+ Tree visu
 ## Topology & Node Fan-Out
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    %% Colorful class definitions for B+ Tree components
-    classDef meta fill:#78350f,stroke:#fbbf24,stroke-width:2px,color:#fffbeb;
-    classDef rootNode fill:#581c87,stroke:#c084fc,stroke-width:3px,color:#ffffff;
-    classDef intNode fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#ffffff;
-    classDef leafNode fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Meta["<b>Metadata Page 2</b><br>Magic: BPM1 · Root: Page 3"]:::meta
+    Meta["Metadata Page 2<br/>Magic: BPM1 · Root: Page 3"]:::shared
     Meta -.->|Root Pointer| Root
 
     subgraph Hierarchy ["On-Disk Multi-Level Tree Hierarchy (4096-Byte Pages)"]
-        Root["<b>Root Page 3 (Internal)</b><br>Separator: [ 100 ]<br>Fan-out: &le; 128 keys"]:::rootNode
+        Root["Root Page 3 (Internal)<br/>Separator: [ 100 ]<br/>Fan-out: &le; 128 keys"]:::entry
 
-        LeftInt["<b>Internal Page 5</b><br>Key Range: &lt; 100<br>Separator: [ 50 ]"]:::intNode
-        RightInt["<b>Internal Page 6</b><br>Key Range: &ge; 100<br>Separator: [ 150 ]"]:::intNode
+        LeftInt["Internal Page 5<br/>Key Range: &lt; 100<br/>Separator: [ 50 ]"]:::disk
+        RightInt["Internal Page 6<br/>Key Range: &ge; 100<br/>Separator: [ 150 ]"]:::disk
 
         Root -->|Child 0: key &lt; 100| LeftInt
         Root -->|Child 1: key &ge; 100| RightInt
 
-        L1["<b>Leaf Page 10</b><br>Keys: [ 10 .. 49 ]<br>Payload: RecordID {P, S}"]:::leafNode
-        L2["<b>Leaf Page 11</b><br>Keys: [ 50 .. 99 ]<br>Payload: RecordID {P, S}"]:::leafNode
-        L3["<b>Leaf Page 12</b><br>Keys: [ 100 .. 149 ]<br>Payload: RecordID {P, S}"]:::leafNode
-        L4["<b>Leaf Page 13</b><br>Keys: [ 150 .. 200 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L1["Leaf Page 10<br/>Keys: [ 10 .. 49 ]<br/>Payload: RecordID {P, S}"]:::success
+        L2["Leaf Page 11<br/>Keys: [ 50 .. 99 ]<br/>Payload: RecordID {P, S}"]:::success
+        L3["Leaf Page 12<br/>Keys: [ 100 .. 149 ]<br/>Payload: RecordID {P, S}"]:::success
+        L4["Leaf Page 13<br/>Keys: [ 150 .. 200 ]<br/>Payload: RecordID {P, S}"]:::success
 
         LeftInt -->|key &lt; 50| L1
         LeftInt -->|key &ge; 50| L2
@@ -49,7 +51,7 @@ flowchart TD
     L1 ==>|next_leaf: 11| L2
     L2 ==>|next_leaf: 12| L3
     L3 ==>|next_leaf: 13| L4
-    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::meta
+    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::guard
 ```
 
 - **Fan-Out (`MAX_KEYS = 128`)**: A 3-level tree indexes over 2 million records with only 3 disk page reads.

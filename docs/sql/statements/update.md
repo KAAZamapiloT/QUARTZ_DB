@@ -47,32 +47,33 @@ The `UPDATE` statement modifies column values for records matching an optional `
 Updating records in QuartzDB coordinates query execution routing, slotted-page payload resizing, and index pointer stability:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    %% Colorful UPDATE Flow
-    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
-    classDef stepFast fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef stepStorage fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
-    classDef stepSuccess fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Start["1. Client Issues UPDATE<br><code>UPDATE users SET email = 'new@mail.org' WHERE id = 42</code>"]:::stepStart
-    CheckPK{"2. Is target column<br>the PRIMARY KEY?"}:::stepCheck
-    CheckPK -- "Yes" --> AbortPK["Abort: Primary keys are immutable<br>Error: 'Updating primary key column is not supported'"]:::stepCheck
-    CheckPK -- "No" --> CheckRouting{"3. Is WHERE filter<br>simple equality on Primary Key?"}:::stepCheck
+    Start["1. Client Issues UPDATE<br/>UPDATE users SET email = 'new@mail.org' WHERE id = 42"]:::entry
+    CheckPK{"2. Is target column<br/>the PRIMARY KEY?"}:::guard
+    CheckPK -- "Yes" --> AbortPK["Abort: Primary keys are immutable<br/>Error: Updating primary key column is not supported"]:::error
+    CheckPK -- "No" --> CheckRouting{"3. Is WHERE filter<br/>simple equality on Primary Key?"}:::guard
 
-    CheckRouting -- "Yes (Fast-Path)" --> BTreeFetch["4a. B+ Tree Point Fetch: O(log N)<br>Locate exact RecordID {page_id, slot_index}"]:::stepFast
-    CheckRouting -- "No (Table Scan)" --> ScanTable["4b. Slotted-Page Scan: O(N)<br>Evaluate WHERE expression tree across pages"]:::stepCheck
+    CheckRouting -- "Yes (Fast-Path)" --> BTreeFetch["4a. B+ Tree Point Fetch: O(log N)<br/>Locate exact RecordID {page_id, slot_index}"]:::success
+    CheckRouting -- "No (Table Scan)" --> ScanTable["4b. Slotted-Page Scan: O(N)<br/>Evaluate WHERE expression tree across pages"]:::disk
 
-    BTreeFetch --> WritePath["5. Slotted-Page Modify Check"]:::stepStorage
+    BTreeFetch --> WritePath["5. Slotted-Page Modify Check"]:::guard
     ScanTable --> WritePath
 
-    WritePath --> SizeCheck{"Updated payload length &le; old slot length?"}:::stepCheck
-    SizeCheck -- "Yes (Fits)" --> InPlace["<b>In-Place Overwrite:</b><br>Write new bytes at existing offset.<br>No fragmented gap created."]:::stepFast
-    SizeCheck -- "No (Larger)" --> ReSlot["<b>Out-of-Place Re-Slotting:</b><br>Mark old payload bytes as fragmented.<br>Write new payload at free_end.<br>Update slot record_offset &amp; length."]:::stepStorage
+    WritePath --> SizeCheck{"Updated payload length &le; old slot length?"}:::guard
+    SizeCheck -- "Yes (Fits)" --> InPlace["In-Place Overwrite:<br/>Write new bytes at existing offset.<br/>No fragmented gap created."]:::success
+    SizeCheck -- "No (Larger)" --> ReSlot["Out-of-Place Re-Slotting:<br/>Mark old payload bytes as fragmented.<br/>Write new payload at free_end.<br/>Update slot record_offset &amp; length."]:::disk
 
-    InPlace --> PointerSafe["6. RecordID Pointer Preserved:<br>slot_index does not change!<br>B+ Tree index pointers remain 100% valid!"]:::stepSuccess
+    InPlace --> PointerSafe["6. RecordID Pointer Preserved:<br/>slot_index does not change!<br/>B+ Tree index pointers remain 100% valid!"]:::shared
     ReSlot --> PointerSafe
-    PointerSafe --> Finish["7. Return QueryResult:<br>'N row(s) updated.'"]:::stepSuccess
+    PointerSafe --> Finish["7. Return QueryResult:<br/>'N row(s) updated.'"]:::success
 ```
 
 ### Detailed Engine Mechanics:

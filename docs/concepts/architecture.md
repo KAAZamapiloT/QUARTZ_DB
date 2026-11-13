@@ -9,30 +9,26 @@ QuartzDB decouples query compilation, catalog management, and physical disk stor
 The system architecture cleanly separates query processing, catalog coordination, and on-disk block serialization:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TB
-    %% Class Definitions for High-Contrast Colorful Theme
-    classDef client fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef lexer fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
-    classDef parser fill:#6366f1,stroke:#a5b4fc,stroke-width:2px,color:#ffffff;
-    classDef ast fill:#7c3aed,stroke:#c084fc,stroke-width:2px,color:#ffffff;
-    classDef executor fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef catalog fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
-    classDef table fill:#e11d48,stroke:#fb7185,stroke-width:2px,color:#ffffff;
-    classDef index fill:#ea580c,stroke:#fb923c,stroke-width:2px,color:#ffffff;
-    classDef pager fill:#2563eb,stroke:#60a5fa,stroke-width:2px,color:#ffffff;
-    classDef disk fill:#1e1e24,stroke:#e05a47,stroke-width:3px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
     subgraph Layer0 ["0. Client Interface Layer"]
-        CLI["Interactive CLI REPL<br>(quartz.exe)"]:::client
-        CPP["C++ Native Embedding API<br>(qdb::Database, qdb::Executor)"]:::client
+        CLI["Interactive CLI REPL<br/>quartz.exe"]:::entry
+        CPP["C++ Native Embedding API<br/>qdb::Database, qdb::Executor"]:::entry
     end
 
     subgraph Layer1 ["1. Query Compilation Engine (qdb::sql)"]
-        SQL["Raw SQL String"]:::client
-        LEX["Lexical Scanner<br>(lexer.cpp)"]:::lexer
-        TOK["Token Stream<br>(qdb::Token)"]:::lexer
-        PARSE["Recursive-Descent Parser<br>(parser.cpp)"]:::parser
-        AST["Statement AST Variant<br>(Select, Insert, Update, Delete...)"]:::ast
+        SQL["Raw SQL String"]:::entry
+        LEX["Lexical Scanner<br/>lexer.cpp"]:::entry
+        TOK["Token Stream<br/>qdb::Token"]:::entry
+        PARSE["Recursive-Descent Parser<br/>parser.cpp"]:::entry
+        AST["Statement AST Variant<br/>Select, Insert, Update, Delete"]:::entry
 
         SQL --> LEX
         LEX --> TOK
@@ -40,11 +36,11 @@ flowchart TB
         PARSE --> AST
     end
 
-    subgraph Layer2 ["2. Execution & Catalog Engine (qdb::execution & qdb)"]
-        EXEC["Query Executor<br>(executor.cpp)"]:::executor
-        CATALOG["Database Catalog<br>(Page 0 · database.cpp)"]:::catalog
-        TABLE["Table Engine<br>(table.cpp)"]:::table
-        INDEX["Primary Key Index<br>(primary_index.cpp)"]:::index
+    subgraph Layer2 ["2. Execution & Catalog Engine (qdb::execution &amp; qdb)"]
+        EXEC["Query Executor<br/>executor.cpp"]:::guard
+        CATALOG["Database Catalog<br/>Page 0 · database.cpp"]:::shared
+        TABLE["Table Engine<br/>table.cpp"]:::guard
+        INDEX["Primary Key Index<br/>primary_index.cpp"]:::guard
 
         AST --> EXEC
         EXEC <--> CATALOG
@@ -53,11 +49,11 @@ flowchart TB
         TABLE <--> INDEX
     end
 
-    subgraph Layer3 ["3. Physical Storage Subsystem (qdb::storage & qdb::index)"]
-        SLOT["Slotted-Page Storage<br>(4KB Page Frames · table.cpp)"]:::table
-        BPT["Disk-Backed B+ Tree<br>(Nodes on 4KB Pages · bplus_tree.cpp)"]:::index
-        PAGER["Block Pager Engine<br>(4096-Byte I/O · pager.cpp)"]:::pager
-        DISK[("Database File (*.db)<br>Single-File Persistent Store")]:::disk
+    subgraph Layer3 ["3. Physical Storage Subsystem (qdb::storage &amp; qdb::index)"]
+        SLOT["Slotted-Page Storage<br/>4KB Page Frames · table.cpp"]:::disk
+        BPT["Disk-Backed B+ Tree<br/>Nodes on 4KB Pages · bplus_tree.cpp"]:::shared
+        PAGER["Block Pager Engine<br/>4096-Byte I/O · pager.cpp"]:::disk
+        DISK[("Database File (*.db)<br/>Single-File Persistent Store")]:::disk
 
         TABLE --> SLOT
         INDEX --> BPT
@@ -77,21 +73,21 @@ flowchart TB
 The lifecycle of an SQL query through QuartzDB follows an explicit 6-phase pipeline:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart LR
-    %% Pipeline Node Styling
-    classDef pInput fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef pLex fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
-    classDef pParse fill:#6366f1,stroke:#a5b4fc,stroke-width:2px,color:#ffffff;
-    classDef pPlan fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef pExec fill:#e11d48,stroke:#fb7185,stroke-width:2px,color:#ffffff;
-    classDef pOutput fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Q1["1. Raw SQL Query<br><code>SELECT * FROM users...</code>"]:::pInput
-    Q2["2. Lexical Scan<br>Keyword, Ident, Literal Tokens"]:::pLex
-    Q3["3. AST Construction<br>Expression Trees & Clauses"]:::pParse
-    Q4["4. Planning & Routing<br>PK Fast-Path vs Full Scan"]:::pPlan
-    Q5["5. Physical Execution<br>INLJ, B+ Tree, Slotted Page"]:::pExec
-    Q6["6. QueryResult<br>Tabular Rows & Affected Counts"]:::pOutput
+    Q1["1. Raw SQL Query<br/>SELECT * FROM users..."]:::entry
+    Q2["2. Lexical Scan<br/>Keyword, Ident, Literal Tokens"]:::entry
+    Q3["3. AST Construction<br/>Expression Trees &amp; Clauses"]:::guard
+    Q4["4. Planning &amp; Routing<br/>PK Fast-Path vs Full Scan"]:::guard
+    Q5["5. Physical Execution<br/>INLJ, B+ Tree, Slotted Page"]:::disk
+    Q6["6. QueryResult<br/>Tabular Rows &amp; Affected Counts"]:::success
 
     Q1 --> Q2 --> Q3 --> Q4 --> Q5 --> Q6
 ```

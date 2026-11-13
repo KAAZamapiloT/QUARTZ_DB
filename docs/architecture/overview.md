@@ -14,25 +14,26 @@ Every subsystem in QuartzDB corresponds directly to concrete C++23 classes and n
 The following diagram maps the entire pipeline from raw SQL query text down to physical 4096-byte blocks on disk:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TB
-    %% Multi-Layer Architectural Subsystem Classes
-    classDef cClient fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef cCompiler fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
-    classDef cExec fill:#6366f1,stroke:#a5b4fc,stroke-width:2px,color:#ffffff;
-    classDef cStorage fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
-    classDef cDisk fill:#475569,stroke:#94a3b8,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
     subgraph Client ["Client Interface Layer"]
-        CLI["CLI REPL Shell<br><code>quartz.exe</code>"]:::cClient
-        CPP["C++ Embedding API<br><code>qdb::Database</code>"]:::cClient
+        CLI["CLI REPL Shell<br/>quartz.exe"]:::entry
+        CPP["C++ Embedding API<br/>qdb::Database"]:::entry
     end
 
     subgraph Compiler ["1. Query Compiler Engine"]
-        SQL["SQL Query String<br><code>std::string</code>"]:::cCompiler
-        LEX["Lexer Scanner<br><code>qdb::Lexer</code>"]:::cCompiler
-        TOK["Token Stream<br><code>vector&lt;Token&gt;</code>"]:::cCompiler
-        PARSE["AST Parser<br><code>qdb::Parser</code>"]:::cCompiler
-        AST["Statement AST Node<br><code>qdb::sql::Statement</code>"]:::cCompiler
+        SQL["SQL Query String<br/>std::string"]:::entry
+        LEX["Lexer Scanner<br/>qdb::Lexer"]:::entry
+        TOK["Token Stream<br/>vector&lt;Token&gt;"]:::entry
+        PARSE["AST Parser<br/>qdb::Parser"]:::entry
+        AST["Statement AST Node<br/>qdb::sql::Statement"]:::entry
         
         SQL --> LEX
         LEX --> TOK
@@ -41,10 +42,10 @@ flowchart TB
     end
 
     subgraph Runtime ["2. Execution & Catalog"]
-        EXEC["Query Executor<br><code>qdb::Executor</code>"]:::cExec
-        CATALOG["Catalog (Page 0)<br><code>Table Registry</code>"]:::cExec
-        TABLE["Table Manager<br><code>qdb::Table</code>"]:::cExec
-        INDEX["Primary Index<br><code>qdb::PrimaryIndex</code>"]:::cExec
+        EXEC["Query Executor<br/>qdb::Executor"]:::guard
+        CATALOG["Catalog (Page 0)<br/>Table Registry"]:::shared
+        TABLE["Table Manager<br/>qdb::Table"]:::guard
+        INDEX["Primary Index<br/>qdb::PrimaryIndex"]:::guard
         
         AST --> EXEC
         EXEC --> CATALOG
@@ -54,9 +55,9 @@ flowchart TB
     end
 
     subgraph Storage ["3. Storage & Index Subsystem"]
-        SLOT["Slotted Data Pages<br><code>Magic 0x31475051</code>"]:::cStorage
-        BPT["Disk B+ Tree<br><code>Magic 0x31545042</code>"]:::cStorage
-        PAGER["Block Pager (4KB)<br><code>qdb::Pager</code>"]:::cStorage
+        SLOT["Slotted Data Pages<br/>Magic 0x31475051"]:::disk
+        BPT["Disk B+ Tree<br/>Magic 0x31545042"]:::shared
+        PAGER["Block Pager (4KB)<br/>qdb::Pager"]:::disk
         
         TABLE --> SLOT
         INDEX --> BPT
@@ -65,7 +66,7 @@ flowchart TB
     end
 
     subgraph DiskLayer ["4. File Layer"]
-        DISK[("Disk File (*.db)<br>Direct 4KB Offset I/O")]:::cDisk
+        DISK[("Disk File (*.db)<br/>Direct 4KB Offset I/O")]:::disk
         PAGER <--> DISK
     end
 

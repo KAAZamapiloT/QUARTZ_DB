@@ -46,29 +46,30 @@ The `CREATE TABLE` statement defines a new relational table, registers its schem
 Table creation coordinates schema validation, 4KB page allocation, B+ tree root construction, and Catalog Page 0 persistence:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    %% Colorful CREATE TABLE flow
-    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
-    classDef stepAlloc fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef stepBpt fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
-    classDef stepCat fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Start["1. Client Issues CREATE TABLE<br><code>CREATE TABLE users (id INT PRIMARY KEY, name TEXT NOT NULL);</code>"]:::stepStart
-    ValidateSchema["2. Schema Validation:<br>&bull; Exactly 1 PRIMARY KEY (must be INT)<br>&bull; Column names non-empty &amp; unique<br>&bull; Valid types: INT, TEXT"]:::stepStart
+    Start["1. Client Issues CREATE TABLE<br/>CREATE TABLE users (id INT PRIMARY KEY, name TEXT NOT NULL);"]:::entry
+    ValidateSchema["2. Schema Validation:<br/>&bull; Exactly 1 PRIMARY KEY (must be INT)<br/>&bull; Column names non-empty &amp; unique<br/>&bull; Valid types: INT, TEXT"]:::entry
 
-    CheckCatalog{"3. Table Name already<br>exists in Page 0?"}:::stepCheck
-    CheckCatalog -- "Yes" --> AbortDup["Abort: Table already exists"]:::stepCheck
+    CheckCatalog{"3. Table Name already<br/>exists in Page 0?"}:::guard
+    CheckCatalog -- "Yes" --> AbortDup["Abort: Table already exists"]:::error
 
-    CheckCatalog -- "No" --> AllocDataPage["<b>4. Allocate First Slotted Page (Page 1):</b><br>&bull; Header initialized: Magic = 0x31475051 (QPG1)<br>&bull; free_start = 24, free_end = 4096, slot_count = 0"]:::stepAlloc
+    CheckCatalog -- "No" --> AllocDataPage["4. Allocate First Slotted Page (Page 1)<br/>&bull; Header initialized: Magic = 0x31475051 (QPG1)<br/>&bull; free_start = 24, free_end = 4096, slot_count = 0"]:::disk
 
-    AllocDataPage --> AllocMetaPage["<b>5. Allocate Index Metadata (Page 2):</b><br>&bull; Header initialized: Magic = 0x314D5042 (BPM1)"]:::stepBpt
+    AllocDataPage --> AllocMetaPage["5. Allocate Index Metadata (Page 2)<br/>&bull; Header initialized: Magic = 0x314D5042 (BPM1)"]:::shared
 
-    AllocMetaPage --> AllocBptRoot["<b>6. Allocate B+ Tree Root Node (Page 3):</b><br>&bull; Header initialized: Magic = 0x31545042 (BPT1)<br>&bull; Node Type: LEAF (1), key_count = 0, next_leaf = NO_PAGE"]:::stepBpt
+    AllocMetaPage --> AllocBptRoot["6. Allocate B+ Tree Root Node (Page 3)<br/>&bull; Header initialized: Magic = 0x31545042 (BPT1)<br/>&bull; Node Type: LEAF (1), key_count = 0, next_leaf = NO_PAGE"]:::shared
 
-    AllocBptRoot --> WriteCatalog["<b>7. Serialize into Catalog Page 0:</b><br>&bull; Write table_name, first_page (1), index_meta_page (2)<br>&bull; Serialize schema columns &amp; increment table_count<br>&bull; pager::write_page(0, catalog_buffer)"]:::stepCat
+    AllocBptRoot --> WriteCatalog["7. Serialize into Catalog Page 0<br/>&bull; Write table_name, first_page (1), index_meta_page (2)<br/>&bull; Serialize schema columns &amp; increment table_count<br/>&bull; pager::write_page(0, catalog_buffer)"]:::disk
 
-    WriteCatalog --> SuccessDone["8. Table Ready for Queries!"]:::stepCat
+    WriteCatalog --> SuccessDone["8. Table Ready for Queries!"]:::success
 ```
 
 ### Allocation Flow Sequence

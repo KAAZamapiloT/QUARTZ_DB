@@ -14,28 +14,31 @@ Every node in the tree is persisted directly into a dedicated **4096-byte databa
 The tree separates metadata tracking, internal routing nodes, and data-pointing leaf pages:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    classDef meta fill:#78350f,stroke:#fbbf24,stroke-width:2px,color:#fffbeb;
-    classDef rootNode fill:#581c87,stroke:#c084fc,stroke-width:3px,color:#ffffff;
-    classDef intNode fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#ffffff;
-    classDef leafNode fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Meta["<b>Metadata Page 2</b><br>Magic: BPM1 · Root: Page 3"]:::meta
+    Meta["Metadata Page 2<br/>Magic: BPM1 · Root: Page 3"]:::shared
     Meta -.->|Root Pointer| Root
 
     subgraph Hierarchy ["On-Disk Multi-Level Tree Hierarchy (4096-Byte Pages)"]
-        Root["<b>Root Page 3 (Internal)</b><br>Separator: [ 100 ]<br>Fan-out: &le; 128 keys"]:::rootNode
+        Root["Root Page 3 (Internal)<br/>Separator: [ 100 ]<br/>Fan-out: &le; 128 keys"]:::entry
 
-        IntL["<b>Internal Page 5</b><br>Key Range: &lt; 100<br>Separator: [ 50 ]"]:::intNode
-        IntR["<b>Internal Page 6</b><br>Key Range: &ge; 100<br>Separator: [ 150 ]"]:::intNode
+        IntL["Internal Page 5<br/>Key Range: &lt; 100<br/>Separator: [ 50 ]"]:::disk
+        IntR["Internal Page 6<br/>Key Range: &ge; 100<br/>Separator: [ 150 ]"]:::disk
 
         Root -->|Child 0: key &lt; 100| IntL
         Root -->|Child 1: key &ge; 100| IntR
 
-        L1["<b>Leaf Page 10</b><br>Keys: [ 10 .. 49 ]<br>Payload: RecordID {P, S}"]:::leafNode
-        L2["<b>Leaf Page 11</b><br>Keys: [ 50 .. 99 ]<br>Payload: RecordID {P, S}"]:::leafNode
-        L3["<b>Leaf Page 12</b><br>Keys: [ 100 .. 149 ]<br>Payload: RecordID {P, S}"]:::leafNode
-        L4["<b>Leaf Page 13</b><br>Keys: [ 150 .. 200 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L1["Leaf Page 10<br/>Keys: [ 10 .. 49 ]<br/>Payload: RecordID {P, S}"]:::success
+        L2["Leaf Page 11<br/>Keys: [ 50 .. 99 ]<br/>Payload: RecordID {P, S}"]:::success
+        L3["Leaf Page 12<br/>Keys: [ 100 .. 149 ]<br/>Payload: RecordID {P, S}"]:::success
+        L4["Leaf Page 13<br/>Keys: [ 150 .. 200 ]<br/>Payload: RecordID {P, S}"]:::success
 
         IntL -->|key &lt; 50| L1
         IntL -->|key &ge; 50| L2
@@ -46,7 +49,7 @@ flowchart TD
     L1 ==>|next_leaf: 11| L2
     L2 ==>|next_leaf: 12| L3
     L3 ==>|next_leaf: 13| L4
-    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::meta
+    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::guard
 ```
 
 - **Horizontal Leaf Chaining (`next_leaf`)**: All leaf pages form a singly-linked list, allowing fast range scans (`BETWEEN X AND Y`) without backtracking to internal nodes.
@@ -106,25 +109,26 @@ Internal nodes store separator keys and child page pointers to direct tree searc
 When searching for a primary key (e.g. `WHERE id = 75`), traversal runs in $O(\log N)$:
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
 flowchart TD
-    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
-    classDef stepInternal fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
-    classDef stepLeaf fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
-    classDef stepSuccess fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
-    classDef stepFail fill:#991b1b,stroke:#f87171,stroke-width:2px,color:#ffffff;
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
 
-    Start["1. Call find(key)<br><code>O(log N) Point Query</code>"]:::stepStart --> ReadRoot["2. Read root_page_ from Meta<br><code>Pager::read_page(root)</code>"]:::stepStart
-    ReadRoot --> CheckType{"Node Type == LEAF?"}:::stepCheck
+    Start["1. Call find(key)<br/>O(log N) Point Query"]:::entry --> ReadRoot["2. Read root_page_ from Meta<br/>Pager::read_page(root)"]:::disk
+    ReadRoot --> CheckType{"Node Type == LEAF?"}:::guard
     
-    CheckType -- "No (Internal Page)" --> SearchInt["3a. Binary Search Keys<br>Find separator index: <code>keys[i] &le; key</code>"]:::stepInternal
-    SearchInt --> FetchChild["4a. Pager::read_page(child_id)<br>Follow downward pointer"]:::stepInternal
+    CheckType -- "No (Internal Page)" --> SearchInt["3a. Binary Search Keys<br/>Find separator index: keys[i] &le; key"]:::entry
+    SearchInt --> FetchChild["4a. Pager::read_page(child_id)<br/>Follow downward pointer"]:::disk
     FetchChild --> CheckType
     
-    CheckType -- "Yes (Leaf Page)" --> SearchLeaf["3b. Binary Search Leaf Keys<br>Find exact primary key match"]:::stepLeaf
-    SearchLeaf --> Found{"Key exists in Leaf?"}:::stepCheck
-    Found -- "Yes (Match Found)" --> ReturnRID["4b. Return RecordID<br><code>{page_id, slot_index}</code>"]:::stepSuccess
-    Found -- "No (Key Missing)" --> ReturnNull["4c. Return std::nullopt<br><code>Record Not Found</code>"]:::stepFail
+    CheckType -- "Yes (Leaf Page)" --> SearchLeaf["3b. Binary Search Leaf Keys<br/>Find exact primary key match"]:::entry
+    SearchLeaf --> Found{"Key exists in Leaf?"}:::guard
+    Found -- "Yes (Match Found)" --> ReturnRID["4b. Return RecordID<br/>{page_id, slot_index}"]:::success
+    Found -- "No (Key Missing)" --> ReturnNull["4c. Return std::nullopt<br/>Record Not Found"]:::error
 ```
 
 ---
