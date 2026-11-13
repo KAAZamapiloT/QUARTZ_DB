@@ -52,6 +52,47 @@ Must specify a valid table registered in Catalog Page 0.
 
 ---
 
+## How INSERT Works Under the Hood in QuartzDB
+
+Tuple insertion coordinates schema validation, slotted-page two-way spatial allocation, and disk B+ tree indexing:
+
+```mermaid
+flowchart TD
+    %% Colorful INSERT Flow
+    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
+    classDef stepPage fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef stepIndex fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
+    classDef stepSuccess fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+
+    Start["1. Client Issues INSERT<br><code>INSERT INTO users VALUES (42, 'Ada', 'ada@lovelace.org')</code>"]:::stepStart
+    ValidateSchema["2. Schema & Constraint Check<br>Verify column count, types, and NOT NULL invariants"]:::stepStart
+
+    CheckPK{"3. Check Primary Key<br>in Disk B+ Tree"}:::stepCheck
+    CheckPK -- "Key Exists" --> AbortPK["Abort: QERR_PK_DUPLICATE (1001)<br>Zero disk pages modified"]:::stepCheck
+    CheckPK -- "Key Unique" --> Serialize["4. RecordCodec::serialize()<br>Packs INT64 (Tag 1), TEXT (Tag 2), NULL (Tag 0)"]:::stepPage
+
+    Serialize --> CheckSpace{"5. Contiguous Free Space?<br>free_end - free_start &ge; 4B + payload_len"}:::stepCheck
+    CheckSpace -- "No &amp; Fragmented &gt; 0" --> Compact["compact_page() in-memory pass"]:::stepPage
+    Compact --> CheckSpace
+    CheckSpace -- "No Space" --> AllocNew["Pager::allocate_page()<br>Link via next_page"]:::stepPage
+    CheckSpace -- "Yes (Sufficient)" --> DoAlloc["6. Two-Way Spatial Placement:<br>Slot written at free_start (grows &darr;)<br>Payload written at free_end - len (grows &uarr;)"]:::stepPage
+
+    AllocNew --> DoAlloc
+    DoAlloc --> IndexBPT["7. Index Insertion in B+ Tree:<br>Map key &rarr; RecordID {page_id, slot_index}<br>Split node if keys &gt; 128"]:::stepIndex
+    IndexBPT --> Done["8. Return Success<br>QueryResult: '1 row inserted.'"]:::stepSuccess
+```
+
+### Detailed Execution Stages:
+1. **Schema Reordering**: If optional column names are specified (`INSERT INTO users (email, id, name)`), the parser maps values into canonical table schema column ordering; missing nullable columns are populated with `NULL`.
+2. **Pre-Write Primary Key Guard**: Before modifying any 4KB data pages, QuartzDB verifies primary key uniqueness directly against the on-disk B+ Tree. If a conflict occurs, the operation immediately aborts without leaving dirty partial records.
+3. **Slotted-Page Allocation**:
+   - `Slot { offset, length }` is recorded at offset `free_start` (grows downward).
+   - Dynamic bytes are written backward from `free_end` (grows upward).
+4. **B+ Tree Leaf Indexing**: The resulting `RecordID {page_id, slot_index}` is inserted into the primary index. If the leaf node reaches `MAX_KEYS = 128`, it triggers a leaf split, promotes the median separator key to its internal parent, and links the sibling leaf via `next_leaf`.
+
+---
+
 ## Engine Invariants
 
 1. **Primary Key Uniqueness**: If the primary key value already exists in the `PrimaryIndex` B+ Tree, insertion fails with error `QERR_PK_DUPLICATE` (1001).

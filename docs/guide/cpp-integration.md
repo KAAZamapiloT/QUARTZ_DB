@@ -11,7 +11,7 @@ Include `QUARTZ_DB` in your project's `CMakeLists.txt`:
 ```cmake
 add_subdirectory(path/to/QUARTZ_DB)
 
-target_link_libraries(my_app PRIVATE quartz_db)
+target_link_libraries(my_app PRIVATE quartz_core)
 target_include_directories(my_app PRIVATE path/to/QUARTZ_DB/include)
 ```
 

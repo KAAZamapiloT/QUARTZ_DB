@@ -14,23 +14,39 @@ Every node in the tree is persisted directly into a dedicated **4096-byte databa
 The tree separates metadata tracking, internal routing nodes, and data-pointing leaf pages:
 
 ```mermaid
-graph TD
-    Meta["Metadata Page (BPM1)"] -.->|Root Pointer| Root
+flowchart TD
+    classDef meta fill:#78350f,stroke:#fbbf24,stroke-width:2px,color:#fffbeb;
+    classDef rootNode fill:#581c87,stroke:#c084fc,stroke-width:3px,color:#ffffff;
+    classDef intNode fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#ffffff;
+    classDef leafNode fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
 
-    subgraph InternalNodes ["Routing Layer (Internal Nodes)"]
-        Root["Root (Page 3)"] -->|key &lt; 100| IntL["Internal (Page 5)"]
-        Root -->|key &gt;= 100| IntR["Internal (Page 6)"]
-        IntL -->|key &lt; 50| L1["Leaf 10"]
-        IntL -->|key &gt;= 50| L2["Leaf 11"]
-        IntR -->|key &lt; 150| L3["Leaf 12"]
-        IntR -->|key &gt;= 150| L4["Leaf 13"]
+    Meta["<b>Metadata Page 2</b><br>Magic: BPM1 · Root: Page 3"]:::meta
+    Meta -.->|Root Pointer| Root
+
+    subgraph Hierarchy ["On-Disk Multi-Level Tree Hierarchy (4096-Byte Pages)"]
+        Root["<b>Root Page 3 (Internal)</b><br>Separator: [ 100 ]<br>Fan-out: &le; 128 keys"]:::rootNode
+
+        IntL["<b>Internal Page 5</b><br>Key Range: &lt; 100<br>Separator: [ 50 ]"]:::intNode
+        IntR["<b>Internal Page 6</b><br>Key Range: &ge; 100<br>Separator: [ 150 ]"]:::intNode
+
+        Root -->|Child 0: key &lt; 100| IntL
+        Root -->|Child 1: key &ge; 100| IntR
+
+        L1["<b>Leaf Page 10</b><br>Keys: [ 10 .. 49 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L2["<b>Leaf Page 11</b><br>Keys: [ 50 .. 99 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L3["<b>Leaf Page 12</b><br>Keys: [ 100 .. 149 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L4["<b>Leaf Page 13</b><br>Keys: [ 150 .. 200 ]<br>Payload: RecordID {P, S}"]:::leafNode
+
+        IntL -->|key &lt; 50| L1
+        IntL -->|key &ge; 50| L2
+        IntR -->|key &lt; 150| L3
+        IntR -->|key &ge; 150| L4
     end
 
-    subgraph LeafChain ["Storage Layer (Singly-Linked Leaves)"]
-        L1 ==>|next_leaf| L2
-        L2 ==>|next_leaf| L3
-        L3 ==>|next_leaf| L4
-    end
+    L1 ==>|next_leaf: 11| L2
+    L2 ==>|next_leaf: 12| L3
+    L3 ==>|next_leaf: 13| L4
+    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::meta
 ```
 
 - **Horizontal Leaf Chaining (`next_leaf`)**: All leaf pages form a singly-linked list, allowing fast range scans (`BETWEEN X AND Y`) without backtracking to internal nodes.

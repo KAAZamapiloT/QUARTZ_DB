@@ -16,3 +16,9 @@ build
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Presentations
+demo/presentation/
+presentation/
+*.pptx
+

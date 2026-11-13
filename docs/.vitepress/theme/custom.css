@@ -274,10 +274,50 @@ tr:nth-child(even) td {
 .mermaid {
   display: flex;
   justify-content: center;
-  padding: 1.5rem 1rem;
+  padding: 1.75rem 1.25rem;
   background: var(--qd-paper, #f7f3e9);
   border: 1px solid var(--qd-border, #ded8cb);
-  border-radius: 8px;
-  margin: 1.5rem 0;
+  border-radius: 10px;
+  margin: 1.75rem 0;
   overflow-x: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.dark .mermaid {
+  background: #141416;
+  border-color: #27272a;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Custom Mermaid SVG Enhancements */
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid .node rect,
+.mermaid .node polygon,
+.mermaid .node circle {
+  rx: 6px;
+  ry: 6px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  transition: all 0.2s ease;
+}
+
+.mermaid .cluster rect {
+  rx: 8px;
+  ry: 8px;
+  stroke-dasharray: 4 4;
+}
+
+.mermaid .edgePath path {
+  stroke-width: 2px !important;
+}
+
+.mermaid .edgeLabel {
+  background-color: var(--vp-c-bg) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 11px !important;
 }

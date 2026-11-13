@@ -28,23 +28,56 @@ QuartzDB is a lightweight, embedded relational database engine written in modern
 The system is structured as a layered storage and execution pipeline:
 
 ```mermaid
-flowchart TD
-    SQL["SQL Query"] --> Lexer["Lexer"]
-    Lexer --> Parser["Parser (AST)"]
-    Parser --> Executor["Executor"]
-    Executor --> Database["Database & Catalog"]
+flowchart TB
+    classDef client fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef lexer fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#ffffff;
+    classDef parser fill:#6366f1,stroke:#a5b4fc,stroke-width:2px,color:#ffffff;
+    classDef executor fill:#059669,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef catalog fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+    classDef table fill:#e11d48,stroke:#fb7185,stroke-width:2px,color:#ffffff;
+    classDef index fill:#ea580c,stroke:#fb923c,stroke-width:2px,color:#ffffff;
+    classDef pager fill:#2563eb,stroke:#60a5fa,stroke-width:2px,color:#ffffff;
+    classDef disk fill:#1e1e24,stroke:#e05a47,stroke-width:3px,color:#ffffff;
 
-    Database --> Table["Table"]
-    Database --> PrimaryIndex["Primary Index"]
+    subgraph Client ["Client Interface Layer"]
+        SQL["SQL Query Text"]:::client
+        CPP["C++ Native Embedding API"]:::client
+    end
 
-    Table <--> PrimaryIndex
-    PrimaryIndex <--> BPlusTree["B+ Tree"]
+    subgraph Compiler ["1. Query Compiler Engine"]
+        LEX["Lexical Scanner"]:::lexer
+        PARSE["Recursive AST Parser"]:::parser
+        SQL --> LEX
+        LEX --> PARSE
+    end
 
-    Table <--> Record["Record (Slotted Pages)"]
-    BPlusTree <--> Pager["Pager"]
-    Record <--> Pager
+    subgraph Runtime ["2. Execution & Catalog Engine"]
+        EXEC["Query Executor"]:::executor
+        CATALOG["Catalog (Page 0)"]:::catalog
+        TABLE["Table Engine"]:::table
+        INDEX["Primary Key Index"]:::index
 
-    Pager <--> Disk[("Disk File (*.db)")]
+        PARSE --> EXEC
+        EXEC <--> CATALOG
+        EXEC --> TABLE
+        EXEC --> INDEX
+        TABLE <--> INDEX
+    end
+
+    subgraph Storage ["3. Physical Storage Engine"]
+        SLOT["Slotted-Page Records"]:::table
+        BPT["Disk B+ Tree Nodes"]:::index
+        PAGER["Block Pager (4KB I/O)"]:::pager
+        DISK[("Database File (*.db)")]:::disk
+
+        TABLE --> SLOT
+        INDEX --> BPT
+        SLOT --> PAGER
+        BPT --> PAGER
+        PAGER <--> DISK
+    end
+
+    CPP --> SQL
 ```
 
 ---
@@ -141,6 +174,25 @@ ctest --test-dir build --output-on-failure
 
 # Or run the test executable directly
 ./build/quartz_tests
+```
+
+---
+
+## Demonstrations & Quickstart
+
+The [`demo/`](demo/) directory contains end-to-end scripts and standalone programs:
+
+- **`demo/quickstart.sql`**: Full SQL showcase (DDL, DML, JOIN, ORDER BY, LIMIT/OFFSET, Aggregates).
+- **`demo/c_api_demo.c`**: Pure C embedded demonstration calling `libquartz` via `<quartz/quartz.h>`.
+- **`demo/python_demo.py`**: Python ctypes FFI demonstration.
+- **`demo/run_demo.ps1`** & **`demo/run_demo.sh`**: One-click runners.
+
+```bash
+# Run the automated demo suite (Windows PowerShell)
+.\demo\run_demo.ps1
+
+# Run the automated demo suite (Linux / macOS)
+./demo/run_demo.sh
 ```
 
 ---

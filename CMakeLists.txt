@@ -71,6 +71,15 @@ target_link_libraries(quartz
     PRIVATE quartz_core
 )
 
+# Demo Embedded C Application
+add_executable(quartz_c_demo
+    demo/c_api_demo.cpp
+)
+
+target_link_libraries(quartz_c_demo
+    PRIVATE quartz_core
+)
+
 # Tests
 if(QUARTZ_BUILD_TESTS)
     enable_testing()

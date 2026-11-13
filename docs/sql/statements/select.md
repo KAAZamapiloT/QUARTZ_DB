@@ -85,12 +85,13 @@ Defines the output attributes returned in the result set:
 Specifies the target table. The table must exist on Catalog Page 0, otherwise `QERR_TABLE_NOT_FOUND` (1003) is raised.
 
 ### 3. JOIN Clause (`#join-clause`) {#join-clause}
-Executes an inner join across two tables matching an equality condition:
+Executes an inner or left join across two tables matching an equality condition with automatic **Index Nested-Loop Join (INLJ)** optimization:
 ```sql
 SELECT users.name, orders.amount 
 FROM users 
 JOIN orders ON users.id = orders.user_id;
 ```
+For complete details, see [Relational JOINs](/sql/joins).
 
 ### 4. WHERE Clause (`#where-clause`) {#where-clause}
 Filters records using boolean expression predicates. Supports `=`, `!=`, `<`, `<=`, `>`, `>=`, along with `AND`, `OR`, and parentheses.
@@ -99,6 +100,32 @@ Filters records using boolean expression predicates. Supports `=`, `!=`, `<`, `<
 SELECT * FROM users 
 WHERE id > 100 AND (role = 'admin' OR email != '');
 ```
+
+### 5. Aggregations & Grouping
+Supports `COUNT(*)`, `COUNT(col)`, `SUM(col)`, `AVG(col)`, `MIN(col)`, `MAX(col)`:
+```sql
+SELECT COUNT(*), SUM(total_cents) FROM orders WHERE status = 'PAID';
+```
+For complete details, see [Aggregate Functions](/sql/aggregations).
+
+### 6. ORDER BY, LIMIT & OFFSET
+Supports sorting by column (`ASC` or `DESC`) and windowed result pagination:
+```sql
+SELECT * FROM orders ORDER BY total_cents DESC LIMIT 10 OFFSET 20;
+```
+For complete details, see [ORDER BY, LIMIT & OFFSET](/sql/order-by-limit).
+
+---
+
+## Complete SELECT Query Execution Order in QuartzDB
+
+1. **Table Scan & Join Resolution**: Reads candidate tuples. If a `JOIN` is present, executes Index Nested-Loop Join ($O(N \log M)$) if right key is primary key, otherwise performs block scan.
+2. **Predicate Filtering**: Evaluates `where_clause` expression tree against candidate tuples, short-circuiting on `AND`/`OR`.
+3. **Projection / Aggregation Reduction**:
+   - If aggregate functions exist, runs `evaluate_aggregates()` accumulator across matching rows.
+   - If column projections exist, extracts specified attributes or expands `*`.
+4. **Ordering Pass**: If `ORDER BY` is present, executes `std::stable_sort` over the typed record buffer.
+5. **Pagination Slice**: If `OFFSET` is present, skips $K$ tuples; if `LIMIT` is present, takes at most $M$ tuples.
 
 ---
 

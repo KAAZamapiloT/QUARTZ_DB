@@ -1,6 +1,6 @@
-# UPDATE
+# UPDATE 📝
 
-The `UPDATE` statement modifies existing records satisfying a predicate filter.
+The `UPDATE` statement modifies column values for records matching an optional `WHERE` predicate filter.
 
 ---
 
@@ -26,7 +26,7 @@ The `UPDATE` statement modifies existing records satisfying a predicate filter.
 
   <!-- Assignments -->
   <rect x="325" y="24" width="160" height="32" rx="4" class="token-box" />
-  <text x="405" y="40" class="token-text">col = val, ...</text>
+  <text x="405" y="40" class="token-text">col = val</text>
   <path d="M 485 40 L 505 40" class="track" />
 
   <!-- WHERE Clause -->
@@ -42,20 +42,60 @@ The `UPDATE` statement modifies existing records satisfying a predicate filter.
 
 ---
 
-## Behavior & Storage Mechanics
+## How UPDATE Works Under the Hood in QuartzDB
 
-1. **In-Place vs Re-Slotting**: If the updated record payload fits within the original slot length, the payload is overwritten in-place. If the updated record is larger, the slot is marked fragmented, and the new payload is written to the end of free space (`free_end`).
-2. **Primary Key Modification**: Updating the primary key column will update the `PrimaryIndex` B+ Tree index to point to the record. If the new key collides with an existing key, the transaction aborts with `QERR_PK_DUPLICATE`.
+Updating records in QuartzDB coordinates query execution routing, slotted-page payload resizing, and index pointer stability:
+
+```mermaid
+flowchart TD
+    %% Colorful UPDATE Flow
+    classDef stepStart fill:#0284c7,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef stepCheck fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
+    classDef stepFast fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
+    classDef stepStorage fill:#581c87,stroke:#c084fc,stroke-width:2px,color:#ffffff;
+    classDef stepSuccess fill:#0d9488,stroke:#2dd4bf,stroke-width:2px,color:#ffffff;
+
+    Start["1. Client Issues UPDATE<br><code>UPDATE users SET email = 'new@mail.org' WHERE id = 42</code>"]:::stepStart
+    CheckPK{"2. Is target column<br>the PRIMARY KEY?"}:::stepCheck
+    CheckPK -- "Yes" --> AbortPK["Abort: Primary keys are immutable<br>Error: 'Updating primary key column is not supported'"]:::stepCheck
+    CheckPK -- "No" --> CheckRouting{"3. Is WHERE filter<br>simple equality on Primary Key?"}:::stepCheck
+
+    CheckRouting -- "Yes (Fast-Path)" --> BTreeFetch["4a. B+ Tree Point Fetch: O(log N)<br>Locate exact RecordID {page_id, slot_index}"]:::stepFast
+    CheckRouting -- "No (Table Scan)" --> ScanTable["4b. Slotted-Page Scan: O(N)<br>Evaluate WHERE expression tree across pages"]:::stepCheck
+
+    BTreeFetch --> WritePath["5. Slotted-Page Modify Check"]:::stepStorage
+    ScanTable --> WritePath
+
+    WritePath --> SizeCheck{"Updated payload length &le; old slot length?"}:::stepCheck
+    SizeCheck -- "Yes (Fits)" --> InPlace["<b>In-Place Overwrite:</b><br>Write new bytes at existing offset.<br>No fragmented gap created."]:::stepFast
+    SizeCheck -- "No (Larger)" --> ReSlot["<b>Out-of-Place Re-Slotting:</b><br>Mark old payload bytes as fragmented.<br>Write new payload at free_end.<br>Update slot record_offset &amp; length."]:::stepStorage
+
+    InPlace --> PointerSafe["6. RecordID Pointer Preserved:<br>slot_index does not change!<br>B+ Tree index pointers remain 100% valid!"]:::stepSuccess
+    ReSlot --> PointerSafe
+    PointerSafe --> Finish["7. Return QueryResult:<br>'N row(s) updated.'"]:::stepSuccess
+```
+
+### Detailed Engine Mechanics:
+1. **Immutable Primary Key Constraint**: QuartzDB enforces immutable primary keys. To change a primary key, delete the old record and insert a new one. This prevents index fragmentation and preserves foreign-key referential integrity.
+2. **Point Fast-Path Optimization**: When updating by primary key (`WHERE id = 42`), the executor bypasses full table scans, descending the disk B+ Tree in $O(\log N)$ to find the targeted 4KB page and slot directly.
+3. **In-Place vs Out-of-Place Rewriting**:
+   - If the new serialized tuple length is $\le$ the old tuple length, the existing byte range in the page is overwritten in-place.
+   - If the new tuple is larger (e.g. updating a short text to a long text), the old space is recorded as `fragmented_bytes`, and the new tuple is allocated from the contiguous free space pool (`free_end`).
+4. **Logical Indirection Stability**: Even when records move within the 4KB page, **their `slot_index` never changes**. Thus, external B+ Tree leaf references (`RecordID {PageID, slot_index}`) remain permanently valid without requiring index updates!
 
 ---
 
-## Examples
+## Practical Examples
 
+### 1. Update by Primary Key ($O(\log N)$ Fast-Path)
 ```sql
 UPDATE users 
 SET email = 'alice.new@company.com' 
 WHERE id = 1;
+```
 
+### 2. Update with Boolean Predicate
+```sql
 UPDATE orders 
 SET status = 'SHIPPED' 
 WHERE status = 'PAID' AND id < 5000;

@@ -103,6 +103,9 @@ export default withMermaid(
             { text: 'DELETE', link: '/sql/statements/delete' },
             { text: 'CREATE TABLE', link: '/sql/statements/create-table' },
             { text: 'DROP TABLE', link: '/sql/statements/drop-table' },
+            { text: 'Relational JOINs', link: '/sql/joins' },
+            { text: 'Aggregate Functions', link: '/sql/aggregations' },
+            { text: 'ORDER BY & LIMIT / OFFSET', link: '/sql/order-by-limit' },
             { text: 'Data Types', link: '/sql/data-types' },
             { text: 'Operators', link: '/sql/operators' }
           ]

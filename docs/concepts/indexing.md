@@ -15,22 +15,41 @@ Type integer keys below (e.g. `10`, `25`, `50`, `120`) to watch the B+ Tree visu
 ## Topology & Node Fan-Out
 
 ```mermaid
-graph TD
-    Meta["Metadata Page (BPM1)"] -.->|Root Pointer| Root
-    
-    subgraph TreeNodes ["On-Disk Tree Hierarchy"]
-        Root["Root (Page 3)"] -->|key &lt; 100| LeftInt["Internal (Page 5)"]
-        Root -->|key &gt;= 100| RightInt["Internal (Page 6)"]
+flowchart TD
+    %% Colorful class definitions for B+ Tree components
+    classDef meta fill:#78350f,stroke:#fbbf24,stroke-width:2px,color:#fffbeb;
+    classDef rootNode fill:#581c87,stroke:#c084fc,stroke-width:3px,color:#ffffff;
+    classDef intNode fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#ffffff;
+    classDef leafNode fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#ffffff;
 
-        LeftInt --> L1["Leaf 10 [10..49]"]
-        LeftInt --> L2["Leaf 11 [50..99]"]
-        RightInt --> L3["Leaf 12 [100..149]"]
-        RightInt --> L4["Leaf 13 [150..200]"]
+    Meta["<b>Metadata Page 2</b><br>Magic: BPM1 · Root: Page 3"]:::meta
+    Meta -.->|Root Pointer| Root
 
-        L1 ==>|next_leaf| L2
-        L2 ==>|next_leaf| L3
-        L3 ==>|next_leaf| L4
+    subgraph Hierarchy ["On-Disk Multi-Level Tree Hierarchy (4096-Byte Pages)"]
+        Root["<b>Root Page 3 (Internal)</b><br>Separator: [ 100 ]<br>Fan-out: &le; 128 keys"]:::rootNode
+
+        LeftInt["<b>Internal Page 5</b><br>Key Range: &lt; 100<br>Separator: [ 50 ]"]:::intNode
+        RightInt["<b>Internal Page 6</b><br>Key Range: &ge; 100<br>Separator: [ 150 ]"]:::intNode
+
+        Root -->|Child 0: key &lt; 100| LeftInt
+        Root -->|Child 1: key &ge; 100| RightInt
+
+        L1["<b>Leaf Page 10</b><br>Keys: [ 10 .. 49 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L2["<b>Leaf Page 11</b><br>Keys: [ 50 .. 99 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L3["<b>Leaf Page 12</b><br>Keys: [ 100 .. 149 ]<br>Payload: RecordID {P, S}"]:::leafNode
+        L4["<b>Leaf Page 13</b><br>Keys: [ 150 .. 200 ]<br>Payload: RecordID {P, S}"]:::leafNode
+
+        LeftInt -->|key &lt; 50| L1
+        LeftInt -->|key &ge; 50| L2
+        RightInt -->|key &lt; 150| L3
+        RightInt -->|key &ge; 150| L4
     end
+
+    %% Singly-Linked Horizontal Leaf Chain
+    L1 ==>|next_leaf: 11| L2
+    L2 ==>|next_leaf: 12| L3
+    L3 ==>|next_leaf: 13| L4
+    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::meta
 ```
 
 - **Fan-Out (`MAX_KEYS = 128`)**: A 3-level tree indexes over 2 million records with only 3 disk page reads.
