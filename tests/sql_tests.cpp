@@ -314,7 +314,7 @@ TEST(ParserTest, ParseSelectStarAndColumns) {
         const auto& stmt = std::get<SelectStatement>(*res);
         EXPECT_EQ(stmt.table_name, "users");
         EXPECT_TRUE(stmt.columns.empty());
-        EXPECT_FALSE(stmt.where_clause.has_value());
+        EXPECT_EQ(stmt.where_clause, nullptr);
     }
 
     // 2. SELECT specific columns with WHERE
@@ -331,10 +331,13 @@ TEST(ParserTest, ParseSelectStarAndColumns) {
         EXPECT_EQ(stmt.columns[0], "id");
         EXPECT_EQ(stmt.columns[1], "name");
 
-        ASSERT_TRUE(stmt.where_clause.has_value());
-        EXPECT_EQ(stmt.where_clause->column_name, "id");
-        EXPECT_EQ(stmt.where_clause->op, BinaryOp::Equal);
-        EXPECT_EQ(std::get<std::int64_t>(stmt.where_clause->literal_value), 100);
+        ASSERT_NE(stmt.where_clause, nullptr);
+        ASSERT_TRUE(stmt.where_clause->is_binary());
+        const auto* bin = stmt.where_clause->as_binary();
+        ASSERT_NE(bin, nullptr);
+        EXPECT_EQ(bin->column_name, "id");
+        EXPECT_EQ(bin->op, BinaryOp::Equal);
+        EXPECT_EQ(std::get<std::int64_t>(bin->literal_value), 100);
     }
 }
 
@@ -350,10 +353,13 @@ TEST(ParserTest, ParseUpdateStatement) {
     EXPECT_EQ(stmt.column_name, "name");
     EXPECT_EQ(std::get<std::string>(stmt.new_value), "Charlie");
 
-    ASSERT_TRUE(stmt.where_clause.has_value());
-    EXPECT_EQ(stmt.where_clause->column_name, "id");
-    EXPECT_EQ(stmt.where_clause->op, BinaryOp::Equal);
-    EXPECT_EQ(std::get<std::int64_t>(stmt.where_clause->literal_value), 5);
+    ASSERT_NE(stmt.where_clause, nullptr);
+    ASSERT_TRUE(stmt.where_clause->is_binary());
+    const auto* bin = stmt.where_clause->as_binary();
+    ASSERT_NE(bin, nullptr);
+    EXPECT_EQ(bin->column_name, "id");
+    EXPECT_EQ(bin->op, BinaryOp::Equal);
+    EXPECT_EQ(std::get<std::int64_t>(bin->literal_value), 5);
 }
 
 TEST(ParserTest, ParseDeleteStatement) {
@@ -366,10 +372,13 @@ TEST(ParserTest, ParseDeleteStatement) {
     const auto& stmt = std::get<DeleteStatement>(*res);
     EXPECT_EQ(stmt.table_name, "users");
 
-    ASSERT_TRUE(stmt.where_clause.has_value());
-    EXPECT_EQ(stmt.where_clause->column_name, "age");
-    EXPECT_EQ(stmt.where_clause->op, BinaryOp::GreaterThanOrEqual);
-    EXPECT_EQ(std::get<std::int64_t>(stmt.where_clause->literal_value), 21);
+    ASSERT_NE(stmt.where_clause, nullptr);
+    ASSERT_TRUE(stmt.where_clause->is_binary());
+    const auto* bin = stmt.where_clause->as_binary();
+    ASSERT_NE(bin, nullptr);
+    EXPECT_EQ(bin->column_name, "age");
+    EXPECT_EQ(bin->op, BinaryOp::GreaterThanOrEqual);
+    EXPECT_EQ(std::get<std::int64_t>(bin->literal_value), 21);
 }
 
 TEST(ParserTest, SyntaxErrorHandling) {
@@ -497,6 +506,95 @@ TEST_F(SQLExecutorTest, DuplicatePrimaryKeyIsRejected) {
     ASSERT_FALSE(dup.success);
 }
 
+TEST(ParserTest, ParseCompoundWhereWithAndOr) {
+    // 1. Simple AND
+    {
+        Parser parser("SELECT * FROM users WHERE id > 10 AND score <= 100;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_NE(stmt.where_clause, nullptr);
+        ASSERT_TRUE(stmt.where_clause->is_logical());
+        const auto* log = stmt.where_clause->as_logical();
+        EXPECT_EQ(log->op, LogicalOp::And);
+        ASSERT_TRUE(log->left->is_binary());
+        ASSERT_TRUE(log->right->is_binary());
+        EXPECT_EQ(log->left->as_binary()->column_name, "id");
+        EXPECT_EQ(log->right->as_binary()->column_name, "score");
+    }
+
+    // 2. OR with parentheses
+    {
+        Parser parser("SELECT * FROM users WHERE (role = 'admin' OR role = 'mod') AND active = 1;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_NE(stmt.where_clause, nullptr);
+        ASSERT_TRUE(stmt.where_clause->is_logical());
+        const auto* log = stmt.where_clause->as_logical();
+        EXPECT_EQ(log->op, LogicalOp::And);
+        ASSERT_TRUE(log->left->is_logical());
+        EXPECT_EQ(log->left->as_logical()->op, LogicalOp::Or);
+    }
+}
+
+TEST_F(SQLExecutorTest, MultiConditionWhereAndOr) {
+    qdb::Database db(db_path_);
+    qdb::SQLExecutor executor(db);
+
+    ASSERT_TRUE(executor.execute("CREATE TABLE products (id INT PRIMARY KEY, category TEXT, price INT, in_stock INT);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO products VALUES (1, 'Electronics', 100, 1);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO products VALUES (2, 'Electronics', 500, 0);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO products VALUES (3, 'Books', 20, 1);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO products VALUES (4, 'Books', 45, 1);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO products VALUES (5, 'Clothing', 80, 0);").success);
+
+    // 1. Test AND
+    {
+        auto res = executor.execute("SELECT * FROM products WHERE category = 'Electronics' AND price < 200;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 1);
+    }
+
+    // 2. Test OR
+    {
+        auto res = executor.execute("SELECT * FROM products WHERE category = 'Books' OR category = 'Clothing';");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 3U);
+    }
+
+    // 3. Test Parenthesized AND / OR
+    {
+        auto res = executor.execute("SELECT * FROM products WHERE (category = 'Electronics' OR category = 'Books') AND in_stock = 1;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 3U); // ids 1, 3, 4
+    }
+
+    // 4. Test UPDATE with AND
+    {
+        auto upd = executor.execute("UPDATE products SET in_stock = 1 WHERE category = 'Clothing' AND price = 80;");
+        ASSERT_TRUE(upd.success) << upd.message;
+        EXPECT_EQ(upd.rows_affected, 1U);
+
+        auto check = executor.execute("SELECT in_stock FROM products WHERE id = 5;");
+        ASSERT_TRUE(check.success);
+        ASSERT_EQ(check.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(check.rows[0].values[0]), 1);
+    }
+
+    // 5. Test DELETE with OR
+    {
+        auto del = executor.execute("DELETE FROM products WHERE price > 400 OR id = 1;");
+        ASSERT_TRUE(del.success) << del.message;
+        EXPECT_EQ(del.rows_affected, 2U); // ids 1 and 2 deleted
+
+        auto check = executor.execute("SELECT * FROM products;");
+        ASSERT_TRUE(check.success);
+        EXPECT_EQ(check.rows.size(), 3U); // ids 3, 4, 5 remain
+    }
+}
+
 TEST_F(SQLExecutorTest, PersistenceAcrossReopen) {
     // Session 1: Create and insert
     {
@@ -520,5 +618,125 @@ TEST_F(SQLExecutorTest, PersistenceAcrossReopen) {
         auto scan = executor.execute("SELECT * FROM notes;");
         ASSERT_TRUE(scan.success);
         EXPECT_EQ(scan.rows.size(), 2U);
+    }
+}
+
+TEST(ParserTest, ParseJoinStatements) {
+    // 1. Basic INNER JOIN with ON
+    {
+        Parser parser("SELECT users.name, orders.amount FROM users INNER JOIN orders ON users.id = orders.user_id;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        EXPECT_EQ(stmt.table_name, "users");
+        ASSERT_EQ(stmt.columns.size(), 2U);
+        EXPECT_EQ(stmt.columns[0], "users.name");
+        EXPECT_EQ(stmt.columns[1], "orders.amount");
+        ASSERT_EQ(stmt.joins.size(), 1U);
+        EXPECT_EQ(stmt.joins[0].join_type, JoinType::Inner);
+        EXPECT_EQ(stmt.joins[0].table_name, "orders");
+        EXPECT_EQ(stmt.joins[0].left_column, "users.id");
+        EXPECT_EQ(stmt.joins[0].right_column, "orders.user_id");
+    }
+
+    // 2. JOIN with WHERE
+    {
+        Parser parser("SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE orders.amount > 100;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        EXPECT_TRUE(stmt.columns.empty()); // SELECT *
+        ASSERT_EQ(stmt.joins.size(), 1U);
+        ASSERT_NE(stmt.where_clause, nullptr);
+    }
+
+    // 3. LEFT JOIN
+    {
+        Parser parser("SELECT users.name, orders.product FROM users LEFT JOIN orders ON users.id = orders.user_id;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_EQ(stmt.joins.size(), 1U);
+        EXPECT_EQ(stmt.joins[0].join_type, JoinType::Left);
+    }
+}
+
+TEST_F(SQLExecutorTest, JoinTwoTables) {
+    qdb::Database db(db_path_);
+    qdb::SQLExecutor executor(db);
+
+    // Setup users table
+    ASSERT_TRUE(executor.execute("CREATE TABLE users (id INT PRIMARY KEY, name TEXT);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO users VALUES (1, 'Alice');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO users VALUES (2, 'Bob');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO users VALUES (3, 'Charlie');").success);
+
+    // Setup orders table
+    ASSERT_TRUE(executor.execute("CREATE TABLE orders (order_id INT PRIMARY KEY, user_id INT, product TEXT, amount INT);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO orders VALUES (101, 1, 'Laptop', 1200);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO orders VALUES (102, 1, 'Mouse', 25);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO orders VALUES (103, 2, 'Keyboard', 75);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO orders VALUES (104, 99, 'Orphan', 10);").success); // No matching user
+
+    // 1. INNER JOIN (all columns: SELECT *)
+    {
+        auto res = executor.execute("SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 3U);
+        EXPECT_EQ(res.column_names.size(), 6U); // users.id, users.name, orders.order_id, orders.user_id, orders.product, orders.amount
+    }
+
+    // 2. INNER JOIN with specific projected columns
+    {
+        auto res = executor.execute("SELECT users.name, orders.product, orders.amount FROM users JOIN orders ON users.id = orders.user_id;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 3U);
+        ASSERT_EQ(res.column_names.size(), 3U);
+
+        // Spot check row values
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "Alice");
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[1]), "Laptop");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[2]), 1200);
+
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[0]), "Alice");
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[1]), "Mouse");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[1].values[2]), 25);
+
+        EXPECT_EQ(std::get<std::string>(res.rows[2].values[0]), "Bob");
+        EXPECT_EQ(std::get<std::string>(res.rows[2].values[1]), "Keyboard");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[2].values[2]), 75);
+    }
+
+    // 3. INNER JOIN with WHERE filter
+    {
+        auto res = executor.execute("SELECT users.name, orders.product FROM users JOIN orders ON users.id = orders.user_id WHERE orders.amount > 50;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 2U); // Alice (Laptop), Bob (Keyboard)
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[1]), "Laptop");
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[1]), "Keyboard");
+    }
+
+    // 4. Reversible ON condition: ON orders.user_id = users.id
+    {
+        auto res = executor.execute("SELECT users.name, orders.product FROM users JOIN orders ON orders.user_id = users.id;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 3U);
+    }
+
+    // 5. LEFT JOIN (Charlie has no orders, should appear with NULLs)
+    {
+        auto res = executor.execute("SELECT users.name, orders.product FROM users LEFT JOIN orders ON users.id = orders.user_id;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 4U); // Alice (Laptop), Alice (Mouse), Bob (Keyboard), Charlie (NULL)
+
+        // Find Charlie's row
+        bool found_charlie = false;
+        for (const auto& row : res.rows) {
+            if (std::get<std::string>(row.values[0]) == "Charlie") {
+                found_charlie = true;
+                EXPECT_TRUE(std::holds_alternative<std::monostate>(row.values[1])); // NULL product
+            }
+        }
+        EXPECT_TRUE(found_charlie);
     }
 }

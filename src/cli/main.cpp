@@ -102,8 +102,10 @@ void print_help() {
               << "  INSERT INTO users VALUES (1, 'Alice', 'alice@example.com');\n"
               << "  SELECT * FROM users;\n"
               << "  SELECT name, email FROM users WHERE id = 1;\n"
+              << "  SELECT * FROM users WHERE id > 0 AND (name = 'Alice' OR email != '');\n"
+              << "  SELECT users.name, orders.product FROM users JOIN orders ON users.id = orders.user_id;\n"
               << "  UPDATE users SET email = 'alice@new.com' WHERE id = 1;\n"
-              << "  DELETE FROM users WHERE id = 1;\n"
+              << "  DELETE FROM users WHERE id = 1 OR name = 'Bob';\n"
               << "  DROP TABLE users;\n"
               << "===================================================================\n\n";
 }

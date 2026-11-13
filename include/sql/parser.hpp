@@ -28,7 +28,14 @@ private:
     [[nodiscard]] Result<Column> parse_column_definition();
     [[nodiscard]] Result<DataType> parse_data_type();
     [[nodiscard]] Result<Value> parse_literal_value();
-    [[nodiscard]] Result<BinaryExpression> parse_where_clause();
+    [[nodiscard]] Result<std::string> parse_column_reference();
+
+    // WHERE expression tree parsers (operator precedence: OR < AND < Atom)
+    [[nodiscard]] Result<std::unique_ptr<sql::Expr>> parse_where_expr();
+    [[nodiscard]] Result<std::unique_ptr<sql::Expr>> parse_or_expr();
+    [[nodiscard]] Result<std::unique_ptr<sql::Expr>> parse_and_expr();
+    [[nodiscard]] Result<std::unique_ptr<sql::Expr>> parse_atom_expr();
+
     [[nodiscard]] Result<BinaryOp> parse_binary_op();
 
     [[nodiscard]] const Token& peek() const noexcept;

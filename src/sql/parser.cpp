@@ -39,27 +39,27 @@ Result<Statement> Parser::parse() {
     if (check(TokenType::KeywordCreate)) {
         auto stmt = parse_create_table();
         if (!stmt) return std::unexpected(stmt.error());
-        result = Statement{*stmt};
+        result = Statement{std::move(*stmt)};
     } else if (check(TokenType::KeywordDrop)) {
         auto stmt = parse_drop_table();
         if (!stmt) return std::unexpected(stmt.error());
-        result = Statement{*stmt};
+        result = Statement{std::move(*stmt)};
     } else if (check(TokenType::KeywordInsert)) {
         auto stmt = parse_insert();
         if (!stmt) return std::unexpected(stmt.error());
-        result = Statement{*stmt};
+        result = Statement{std::move(*stmt)};
     } else if (check(TokenType::KeywordSelect)) {
         auto stmt = parse_select();
         if (!stmt) return std::unexpected(stmt.error());
-        result = Statement{*stmt};
+        result = Statement{std::move(*stmt)};
     } else if (check(TokenType::KeywordUpdate)) {
         auto stmt = parse_update();
         if (!stmt) return std::unexpected(stmt.error());
-        result = Statement{*stmt};
+        result = Statement{std::move(*stmt)};
     } else if (check(TokenType::KeywordDelete)) {
         auto stmt = parse_delete();
         if (!stmt) return std::unexpected(stmt.error());
-        result = Statement{*stmt};
+        result = Statement{std::move(*stmt)};
     } else {
         return std::unexpected(syntax_error(
             "Unexpected token '" + peek().text + "', expected statement keyword (CREATE, SELECT, INSERT, UPDATE, DELETE, DROP)",
@@ -250,13 +250,12 @@ Result<SelectStatement> Parser::parse_select() {
 
     std::vector<std::string> columns;
     if (match(TokenType::Star)) {
-        // Empty means all columns
-        columns.clear();
+        columns.clear(); // Empty means all columns
     } else {
         while (!check(TokenType::KeywordFrom) && !is_at_end()) {
-            auto col = consume(TokenType::Identifier, "Expected column name or '*' in SELECT");
+            auto col = parse_column_reference();
             if (!col) return std::unexpected(col.error());
-            columns.push_back(col->text);
+            columns.push_back(std::move(*col));
 
             if (match(TokenType::Comma)) {
                 continue;
@@ -271,9 +270,46 @@ Result<SelectStatement> Parser::parse_select() {
     auto name_tok = consume(TokenType::Identifier, "Expected table name after 'FROM'");
     if (!name_tok) return std::unexpected(name_tok.error());
 
-    std::optional<BinaryExpression> where_clause;
+    std::vector<JoinClause> joins;
+    while (check(TokenType::KeywordJoin) || check(TokenType::KeywordInner) || check(TokenType::KeywordLeft)) {
+        JoinType jtype = JoinType::Inner;
+        if (match(TokenType::KeywordInner)) {
+            auto join_tok = consume(TokenType::KeywordJoin, "Expected 'JOIN' after 'INNER'");
+            if (!join_tok) return std::unexpected(join_tok.error());
+        } else if (match(TokenType::KeywordLeft)) {
+            auto join_tok = consume(TokenType::KeywordJoin, "Expected 'JOIN' after 'LEFT'");
+            if (!join_tok) return std::unexpected(join_tok.error());
+            jtype = JoinType::Left;
+        } else {
+            advance(); // consume KeywordJoin
+        }
+
+        auto right_tbl = consume(TokenType::Identifier, "Expected table name after JOIN");
+        if (!right_tbl) return std::unexpected(right_tbl.error());
+
+        auto on_tok = consume(TokenType::KeywordOn, "Expected 'ON' after JOIN table name");
+        if (!on_tok) return std::unexpected(on_tok.error());
+
+        auto left_col = parse_column_reference();
+        if (!left_col) return std::unexpected(left_col.error());
+
+        auto eq_tok = consume(TokenType::Equal, "Expected '=' in JOIN ON condition");
+        if (!eq_tok) return std::unexpected(eq_tok.error());
+
+        auto right_col = parse_column_reference();
+        if (!right_col) return std::unexpected(right_col.error());
+
+        joins.push_back(JoinClause{
+            .join_type = jtype,
+            .table_name = right_tbl->text,
+            .left_column = std::move(*left_col),
+            .right_column = std::move(*right_col)
+        });
+    }
+
+    std::unique_ptr<Expr> where_clause;
     if (match(TokenType::KeywordWhere)) {
-        auto where_res = parse_where_clause();
+        auto where_res = parse_where_expr();
         if (!where_res) return std::unexpected(where_res.error());
         where_clause = std::move(*where_res);
     }
@@ -281,6 +317,7 @@ Result<SelectStatement> Parser::parse_select() {
     return SelectStatement{
         .table_name = name_tok->text,
         .columns = std::move(columns),
+        .joins = std::move(joins),
         .where_clause = std::move(where_clause)
     };
 }
@@ -304,9 +341,9 @@ Result<UpdateStatement> Parser::parse_update() {
     auto val_res = parse_literal_value();
     if (!val_res) return std::unexpected(val_res.error());
 
-    std::optional<BinaryExpression> where_clause;
+    std::unique_ptr<Expr> where_clause;
     if (match(TokenType::KeywordWhere)) {
-        auto where_res = parse_where_clause();
+        auto where_res = parse_where_expr();
         if (!where_res) return std::unexpected(where_res.error());
         where_clause = std::move(*where_res);
     }
@@ -329,9 +366,9 @@ Result<DeleteStatement> Parser::parse_delete() {
     auto name_tok = consume(TokenType::Identifier, "Expected table name after 'DELETE FROM'");
     if (!name_tok) return std::unexpected(name_tok.error());
 
-    std::optional<BinaryExpression> where_clause;
+    std::unique_ptr<Expr> where_clause;
     if (match(TokenType::KeywordWhere)) {
-        auto where_res = parse_where_clause();
+        auto where_res = parse_where_expr();
         if (!where_res) return std::unexpected(where_res.error());
         where_clause = std::move(*where_res);
     }
@@ -342,9 +379,66 @@ Result<DeleteStatement> Parser::parse_delete() {
     };
 }
 
-Result<BinaryExpression> Parser::parse_where_clause() {
-    auto col_tok = consume(TokenType::Identifier, "Expected column name in WHERE clause");
-    if (!col_tok) return std::unexpected(col_tok.error());
+// ============================================================================
+// WHERE expression tree parser
+// Precedence (lowest to highest): OR < AND < atom comparison
+// ============================================================================
+
+Result<std::unique_ptr<Expr>> Parser::parse_where_expr() {
+    return parse_or_expr();
+}
+
+Result<std::unique_ptr<Expr>> Parser::parse_or_expr() {
+    auto left = parse_and_expr();
+    if (!left) return std::unexpected(left.error());
+
+    while (match(TokenType::KeywordOr)) {
+        auto right = parse_and_expr();
+        if (!right) return std::unexpected(right.error());
+
+        auto node = std::make_unique<Expr>(LogicalExpression{
+            .op    = LogicalOp::Or,
+            .left  = std::move(*left),
+            .right = std::move(*right)
+        });
+        left = std::move(node);
+    }
+
+    return left;
+}
+
+Result<std::unique_ptr<Expr>> Parser::parse_and_expr() {
+    auto left = parse_atom_expr();
+    if (!left) return std::unexpected(left.error());
+
+    while (match(TokenType::KeywordAnd)) {
+        auto right = parse_atom_expr();
+        if (!right) return std::unexpected(right.error());
+
+        auto node = std::make_unique<Expr>(LogicalExpression{
+            .op    = LogicalOp::And,
+            .left  = std::move(*left),
+            .right = std::move(*right)
+        });
+        left = std::move(node);
+    }
+
+    return left;
+}
+
+Result<std::unique_ptr<Expr>> Parser::parse_atom_expr() {
+    // Parenthesised sub-expression:  ( expr )
+    if (match(TokenType::LeftParen)) {
+        auto inner = parse_or_expr();
+        if (!inner) return std::unexpected(inner.error());
+        auto rparen = consume(TokenType::RightParen, "Expected ')' after expression");
+        if (!rparen) return std::unexpected(rparen.error());
+        return inner;
+    }
+
+    // Leaf: column op literal
+    auto col_res = parse_column_reference();
+    if (!col_res) return std::unexpected(col_res.error());
 
     auto op_res = parse_binary_op();
     if (!op_res) return std::unexpected(op_res.error());
@@ -352,11 +446,28 @@ Result<BinaryExpression> Parser::parse_where_clause() {
     auto val_res = parse_literal_value();
     if (!val_res) return std::unexpected(val_res.error());
 
-    return BinaryExpression{
-        .column_name = col_tok->text,
-        .op = *op_res,
+    return std::make_unique<Expr>(BinaryExpression{
+        .column_name  = std::move(*col_res),
+        .op           = *op_res,
         .literal_value = std::move(*val_res)
-    };
+    });
+}
+
+Result<std::string> Parser::parse_column_reference() {
+    auto id_tok = consume(TokenType::Identifier, "Expected column name");
+    if (!id_tok) return std::unexpected(id_tok.error());
+
+    std::string ref = id_tok->text;
+    if (match(TokenType::Dot)) {
+        if (match(TokenType::Star)) {
+            ref += ".*";
+        } else {
+            auto field_tok = consume(TokenType::Identifier, "Expected column name after '.'");
+            if (!field_tok) return std::unexpected(field_tok.error());
+            ref += "." + field_tok->text;
+        }
+    }
+    return ref;
 }
 
 Result<BinaryOp> Parser::parse_binary_op() {

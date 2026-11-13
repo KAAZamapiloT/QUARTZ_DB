@@ -40,6 +40,10 @@ enum class TokenType : std::uint16_t {
     KeywordBy,
     KeywordLimit,
     KeywordJoin,
+    KeywordInner,
+    KeywordLeft,
+    KeywordRight,
+    KeywordOn,
 
     // Literals
     IntegerLiteral,

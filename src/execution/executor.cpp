@@ -10,11 +10,33 @@ namespace qdb {
 namespace {
 
 std::optional<std::size_t> find_column_index(const Schema& schema, std::string_view name) {
+    // 1. Exact match (e.g. "users.id" or "id")
     for (std::size_t i = 0; i < schema.columns.size(); ++i) {
         if (schema.columns[i].name == name) {
             return i;
         }
     }
+
+    // 2. Unqualified match (if name does not contain '.')
+    if (name.find('.') == std::string_view::npos) {
+        std::optional<std::size_t> found;
+        for (std::size_t i = 0; i < schema.columns.size(); ++i) {
+            const std::string_view col_name = schema.columns[i].name;
+            const auto dot_pos = col_name.find('.');
+            if (dot_pos != std::string_view::npos) {
+                if (col_name.substr(dot_pos + 1) == name) {
+                    if (found) {
+                        return std::nullopt; // Ambiguous column name
+                    }
+                    found = i;
+                }
+            }
+        }
+        if (found) {
+            return found;
+        }
+    }
+
     return std::nullopt;
 }
 
@@ -72,6 +94,34 @@ bool evaluate_condition(const sql::BinaryExpression& expr, const Schema& schema,
         case sql::BinaryOp::GreaterThanOrEqual: return cmp >= 0;
     }
     return false;
+}
+
+bool evaluate_expr(const sql::Expr* expr, const Schema& schema, const Record& record) {
+    if (!expr) {
+        return true;
+    }
+
+    return std::visit([&](const auto& n) -> bool {
+        using T = std::decay_t<decltype(n)>;
+        if constexpr (std::is_same_v<T, sql::BinaryExpression>) {
+            return evaluate_condition(n, schema, record);
+        } else if constexpr (std::is_same_v<T, sql::LogicalExpression>) {
+            if (n.op == sql::LogicalOp::And) {
+                return evaluate_expr(n.left.get(), schema, record) &&
+                       evaluate_expr(n.right.get(), schema, record);
+            } else if (n.op == sql::LogicalOp::Or) {
+                return evaluate_expr(n.left.get(), schema, record) ||
+                       evaluate_expr(n.right.get(), schema, record);
+            }
+            return false;
+        }
+        return false;
+    }, expr->node);
+}
+
+const sql::BinaryExpression* as_single_binary_condition(const sql::Expr* expr) {
+    if (!expr) return nullptr;
+    return expr->as_binary();
 }
 
 Record project_record(const Record& rec, const std::vector<std::size_t>& indices) {
@@ -211,6 +261,10 @@ QueryResult SQLExecutor::execute_insert(const sql::InsertStatement& stmt) {
 }
 
 QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
+    if (!stmt.joins.empty()) {
+        return execute_select_join(stmt);
+    }
+
     auto* table = db_.find_table(stmt.table_name);
     if (!table) {
         return QueryResult{
@@ -249,14 +303,15 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
     const auto pk_idx = find_primary_key_column(schema);
 
     // Fast-path: O(log N) point lookup via B+ tree primary index
-    if (stmt.where_clause.has_value() &&
-        stmt.where_clause->op == sql::BinaryOp::Equal &&
+    const auto* single_cond = as_single_binary_condition(stmt.where_clause.get());
+    if (single_cond != nullptr &&
+        single_cond->op == sql::BinaryOp::Equal &&
         pk_idx.has_value() &&
-        stmt.where_clause->column_name == schema.columns[*pk_idx].name &&
-        std::holds_alternative<std::int64_t>(stmt.where_clause->literal_value) &&
+        single_cond->column_name == schema.columns[*pk_idx].name &&
+        std::holds_alternative<std::int64_t>(single_cond->literal_value) &&
         table->has_primary_index())
     {
-        const std::int64_t pk_val = std::get<std::int64_t>(stmt.where_clause->literal_value);
+        const std::int64_t pk_val = std::get<std::int64_t>(single_cond->literal_value);
         auto find_res = table->find_by_primary_key(pk_val);
         if (!find_res) {
             return QueryResult{
@@ -271,8 +326,174 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
         // General table scan path
         auto all_rows = table->scan();
         for (const auto& row : all_rows) {
-            if (!stmt.where_clause.has_value() || evaluate_condition(*stmt.where_clause, schema, row)) {
+            if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
                 result_rows.push_back(project_record(row, proj_indices));
+            }
+        }
+    }
+
+    return QueryResult{
+        .success = true,
+        .message = std::to_string(result_rows.size()) + " row(s) selected.",
+        .column_names = std::move(proj_names),
+        .rows = std::move(result_rows),
+        .rows_affected = 0
+    };
+}
+
+QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
+    auto* left_table = db_.find_table(stmt.table_name);
+    if (!left_table) {
+        return QueryResult{.success = false, .message = "Table '" + stmt.table_name + "' not found."};
+    }
+
+    const Schema left_schema = left_table->get_schema();
+
+    const auto& join = stmt.joins.front();
+    auto* right_table = db_.find_table(join.table_name);
+    if (!right_table) {
+        return QueryResult{.success = false, .message = "Joined table '" + join.table_name + "' not found."};
+    }
+
+    const Schema right_schema = right_table->get_schema();
+
+    // Build joined schema with qualified column names: left_table.col, right_table.col
+    Schema joined_schema;
+    joined_schema.columns.reserve(left_schema.columns.size() + right_schema.columns.size());
+    for (const auto& col : left_schema.columns) {
+        Column c = col;
+        c.name = stmt.table_name + "." + col.name;
+        joined_schema.columns.push_back(std::move(c));
+    }
+    for (const auto& col : right_schema.columns) {
+        Column c = col;
+        c.name = join.table_name + "." + col.name;
+        joined_schema.columns.push_back(std::move(c));
+    }
+
+    // Resolve join keys
+    auto left_idx = find_column_index(joined_schema, join.left_column);
+    auto right_idx = find_column_index(joined_schema, join.right_column);
+
+    if (!left_idx || !right_idx) {
+        return QueryResult{
+            .success = false,
+            .message = "Cannot resolve JOIN ON columns '" + join.left_column + "' and '" + join.right_column + "'."
+        };
+    }
+
+    std::size_t left_key_pos = *left_idx;
+    std::size_t right_key_pos = *right_idx;
+    if (left_key_pos >= left_schema.columns.size()) {
+        std::swap(left_key_pos, right_key_pos);
+    }
+
+    if (left_key_pos >= left_schema.columns.size() || right_key_pos < left_schema.columns.size()) {
+        return QueryResult{
+            .success = false,
+            .message = "JOIN condition must link a column from '" + stmt.table_name + "' with a column from '" + join.table_name + "'."
+        };
+    }
+
+    const std::size_t right_col_in_right_schema = right_key_pos - left_schema.columns.size();
+
+    const auto right_pk_idx = find_primary_key_column(right_schema);
+    const bool can_use_right_index = (right_pk_idx.has_value() &&
+                                      *right_pk_idx == right_col_in_right_schema &&
+                                      right_table->has_primary_index());
+
+    // Resolve projected columns
+    std::vector<std::string> proj_names;
+    std::vector<std::size_t> proj_indices;
+
+    if (stmt.columns.empty()) {
+        proj_names.reserve(joined_schema.columns.size());
+        proj_indices.reserve(joined_schema.columns.size());
+        for (std::size_t i = 0; i < joined_schema.columns.size(); ++i) {
+            proj_names.push_back(joined_schema.columns[i].name);
+            proj_indices.push_back(i);
+        }
+    } else {
+        proj_names.reserve(stmt.columns.size());
+        proj_indices.reserve(stmt.columns.size());
+        for (const auto& col_name : stmt.columns) {
+            auto idx = find_column_index(joined_schema, col_name);
+            if (!idx) {
+                return QueryResult{
+                    .success = false,
+                    .message = "Column '" + col_name + "' does not exist in joined tables."
+                };
+            }
+            proj_names.push_back(col_name);
+            proj_indices.push_back(*idx);
+        }
+    }
+
+    std::vector<Record> result_rows;
+    const auto left_rows = left_table->scan();
+
+    if (can_use_right_index) {
+        // Index Nested Loop Join: O(N * log M)
+        for (const auto& lrow : left_rows) {
+            if (left_key_pos >= lrow.values.size()) continue;
+            const auto& lval = lrow.values[left_key_pos];
+            if (std::holds_alternative<std::monostate>(lval)) continue;
+
+            if (std::holds_alternative<std::int64_t>(lval)) {
+                const auto pk_key = std::get<std::int64_t>(lval);
+                auto find_res = right_table->find_by_primary_key(pk_key);
+                if (find_res && find_res->has_value()) {
+                    Record joined_rec;
+                    joined_rec.values = lrow.values;
+                    const auto& rrow = **find_res;
+                    joined_rec.values.insert(joined_rec.values.end(), rrow.values.begin(), rrow.values.end());
+
+                    if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
+                        result_rows.push_back(project_record(joined_rec, proj_indices));
+                    }
+                } else if (join.join_type == JoinType::Left) {
+                    Record joined_rec;
+                    joined_rec.values = lrow.values;
+                    joined_rec.values.resize(joined_schema.columns.size(), std::monostate{});
+
+                    if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
+                        result_rows.push_back(project_record(joined_rec, proj_indices));
+                    }
+                }
+            }
+        }
+    } else {
+        // Nested Loop Join: O(N * M)
+        const auto right_rows = right_table->scan();
+        for (const auto& lrow : left_rows) {
+            if (left_key_pos >= lrow.values.size()) continue;
+            const auto& lval = lrow.values[left_key_pos];
+            bool matched = false;
+
+            for (const auto& rrow : right_rows) {
+                if (right_col_in_right_schema >= rrow.values.size()) continue;
+                const auto& rval = rrow.values[right_col_in_right_schema];
+
+                if (compare_values(lval, rval) == 0) {
+                    matched = true;
+                    Record joined_rec;
+                    joined_rec.values = lrow.values;
+                    joined_rec.values.insert(joined_rec.values.end(), rrow.values.begin(), rrow.values.end());
+
+                    if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
+                        result_rows.push_back(project_record(joined_rec, proj_indices));
+                    }
+                }
+            }
+
+            if (!matched && join.join_type == JoinType::Left) {
+                Record joined_rec;
+                joined_rec.values = lrow.values;
+                joined_rec.values.resize(joined_schema.columns.size(), std::monostate{});
+
+                if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
+                    result_rows.push_back(project_record(joined_rec, proj_indices));
+                }
             }
         }
     }
@@ -315,14 +536,15 @@ QueryResult SQLExecutor::execute_update(const sql::UpdateStatement& stmt) {
     std::size_t rows_affected = 0;
 
     // Fast-path: where pk = X
-    if (stmt.where_clause.has_value() &&
-        stmt.where_clause->op == sql::BinaryOp::Equal &&
+    const auto* single_cond = as_single_binary_condition(stmt.where_clause.get());
+    if (single_cond != nullptr &&
+        single_cond->op == sql::BinaryOp::Equal &&
         pk_idx.has_value() &&
-        stmt.where_clause->column_name == schema.columns[*pk_idx].name &&
-        std::holds_alternative<std::int64_t>(stmt.where_clause->literal_value) &&
+        single_cond->column_name == schema.columns[*pk_idx].name &&
+        std::holds_alternative<std::int64_t>(single_cond->literal_value) &&
         table->has_primary_index())
     {
-        const std::int64_t pk_val = std::get<std::int64_t>(stmt.where_clause->literal_value);
+        const std::int64_t pk_val = std::get<std::int64_t>(single_cond->literal_value);
         auto find_res = table->find_by_primary_key(pk_val);
         if (!find_res) {
             return QueryResult{.success = false, .message = std::string(find_res.error().message())};
@@ -340,7 +562,7 @@ QueryResult SQLExecutor::execute_update(const sql::UpdateStatement& stmt) {
         // Scan path
         auto all_rows = table->scan();
         for (const auto& row : all_rows) {
-            if (!stmt.where_clause.has_value() || evaluate_condition(*stmt.where_clause, schema, row)) {
+            if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
                 if (!pk_idx.has_value()) {
                     return QueryResult{
                         .success = false,
@@ -380,14 +602,15 @@ QueryResult SQLExecutor::execute_delete(const sql::DeleteStatement& stmt) {
     std::size_t rows_affected = 0;
 
     // Fast-path: where pk = X
-    if (stmt.where_clause.has_value() &&
-        stmt.where_clause->op == sql::BinaryOp::Equal &&
+    const auto* single_cond = as_single_binary_condition(stmt.where_clause.get());
+    if (single_cond != nullptr &&
+        single_cond->op == sql::BinaryOp::Equal &&
         pk_idx.has_value() &&
-        stmt.where_clause->column_name == schema.columns[*pk_idx].name &&
-        std::holds_alternative<std::int64_t>(stmt.where_clause->literal_value) &&
+        single_cond->column_name == schema.columns[*pk_idx].name &&
+        std::holds_alternative<std::int64_t>(single_cond->literal_value) &&
         table->has_primary_index())
     {
-        const std::int64_t pk_val = std::get<std::int64_t>(stmt.where_clause->literal_value);
+        const std::int64_t pk_val = std::get<std::int64_t>(single_cond->literal_value);
         auto del_res = table->delete_by_primary_key(pk_val);
         if (!del_res) {
             return QueryResult{.success = false, .message = std::string(del_res.error().message())};
@@ -400,7 +623,7 @@ QueryResult SQLExecutor::execute_delete(const sql::DeleteStatement& stmt) {
         auto all_rows = table->scan();
         std::vector<std::int64_t> pks_to_delete;
         for (const auto& row : all_rows) {
-            if (!stmt.where_clause.has_value() || evaluate_condition(*stmt.where_clause, schema, row)) {
+            if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
                 if (!pk_idx.has_value()) {
                     return QueryResult{
                         .success = false,

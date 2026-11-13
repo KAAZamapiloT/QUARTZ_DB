@@ -35,6 +35,7 @@ private:
     [[nodiscard]] QueryResult execute_drop_table(const sql::DropTableStatement& stmt);
     [[nodiscard]] QueryResult execute_insert(const sql::InsertStatement& stmt);
     [[nodiscard]] QueryResult execute_select(const sql::SelectStatement& stmt);
+    [[nodiscard]] QueryResult execute_select_join(const sql::SelectStatement& stmt);
     [[nodiscard]] QueryResult execute_update(const sql::UpdateStatement& stmt);
     [[nodiscard]] QueryResult execute_delete(const sql::DeleteStatement& stmt);
 
