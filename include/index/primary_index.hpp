@@ -39,6 +39,10 @@ namespace qdb {
         [[nodiscard]]
         Result<void> erase(std::int64_t key);
 
+        void deallocate_all_pages() {
+            tree_.deallocate_all_pages();
+        }
+
     private:
 
         PrimaryIndex(

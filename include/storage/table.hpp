@@ -7,6 +7,7 @@
 #include <quartz/status.hpp>
 #include <index/primary_index.hpp>
 #include <vector>
+#include <utility>
 #include <optional>
 #include <memory>
 
@@ -46,6 +47,9 @@ namespace qdb {
         std::vector<Record> scan();
 
         [[nodiscard]]
+        std::vector<std::pair<RecordID, Record>> scan_with_ids();
+
+        [[nodiscard]]
         PageID first_page() const noexcept {
             return first_page_;
         }
@@ -79,6 +83,8 @@ namespace qdb {
 
         
         Result<bool> delete_record(RecordID ID);
+
+        void deallocate_all_pages();
 
     private:
         struct AdoptIndexTag {};

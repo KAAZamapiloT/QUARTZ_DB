@@ -7,6 +7,10 @@
 
 namespace qdb {
 
+using sql::JoinType;
+using sql::BinaryOp;
+using sql::LogicalOp;
+
 namespace {
 
 std::optional<std::size_t> find_column_index(const Schema& schema, std::string_view name) {
@@ -34,6 +38,18 @@ std::optional<std::size_t> find_column_index(const Schema& schema, std::string_v
         }
         if (found) {
             return found;
+        }
+    }
+
+    // 3. Qualified query column on unqualified schema (e.g. searching "users.id" in schema that has "id")
+    const auto dot_pos = name.find('.');
+    if (dot_pos != std::string_view::npos) {
+        const std::string_view suffix = name.substr(dot_pos + 1);
+        for (std::size_t i = 0; i < schema.columns.size(); ++i) {
+            if (schema.columns[i].name.find('.') == std::string_view::npos &&
+                schema.columns[i].name == suffix) {
+                return i;
+            }
         }
     }
 
@@ -137,6 +153,32 @@ Record project_record(const Record& rec, const std::vector<std::size_t>& indices
     return out;
 }
 
+Record build_joined_record(const Record& lrow, const Record* rrow,
+                           std::size_t left_col_count, std::size_t total_col_count) {
+    Record joined_rec;
+    joined_rec.values.reserve(total_col_count);
+    for (std::size_t i = 0; i < left_col_count; ++i) {
+        if (i < lrow.values.size()) {
+            joined_rec.values.push_back(lrow.values[i]);
+        } else {
+            joined_rec.values.push_back(std::monostate{});
+        }
+    }
+    if (rrow) {
+        const std::size_t right_col_count = (total_col_count > left_col_count) ? (total_col_count - left_col_count) : 0;
+        for (std::size_t i = 0; i < right_col_count; ++i) {
+            if (i < rrow->values.size()) {
+                joined_rec.values.push_back(rrow->values[i]);
+            } else {
+                joined_rec.values.push_back(std::monostate{});
+            }
+        }
+    } else {
+        joined_rec.values.resize(total_col_count, std::monostate{});
+    }
+    return joined_rec;
+}
+
 } // namespace
 
 SQLExecutor::SQLExecutor(Database& db) noexcept
@@ -190,8 +232,7 @@ QueryResult SQLExecutor::execute_create_table(const sql::CreateTableStatement& s
 }
 
 QueryResult SQLExecutor::execute_drop_table(const sql::DropTableStatement& stmt) {
-    auto* tab = db_.find_table(stmt.table_name);
-    if (!tab) {
+    if (!db_.drop_table(stmt.table_name)) {
         return QueryResult{
             .success = false,
             .message = "Table '" + stmt.table_name + "' does not exist."
@@ -285,9 +326,16 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
             proj_indices.push_back(i);
         }
     } else {
-        proj_names = stmt.columns;
+        proj_names.reserve(stmt.columns.size());
         proj_indices.reserve(stmt.columns.size());
         for (const auto& col_name : stmt.columns) {
+            if (col_name.ends_with(".*")) {
+                for (std::size_t i = 0; i < schema.columns.size(); ++i) {
+                    proj_names.push_back(schema.columns[i].name);
+                    proj_indices.push_back(i);
+                }
+                continue;
+            }
             auto idx = find_column_index(schema, col_name);
             if (!idx) {
                 return QueryResult{
@@ -295,6 +343,7 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
                     .message = "Column '" + col_name + "' does not exist in table '" + stmt.table_name + "'."
                 };
             }
+            proj_names.push_back(col_name);
             proj_indices.push_back(*idx);
         }
     }
@@ -304,10 +353,12 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
 
     // Fast-path: O(log N) point lookup via B+ tree primary index
     const auto* single_cond = as_single_binary_condition(stmt.where_clause.get());
+    const auto cond_col_idx = single_cond ? find_column_index(schema, single_cond->column_name) : std::nullopt;
     if (single_cond != nullptr &&
         single_cond->op == sql::BinaryOp::Equal &&
         pk_idx.has_value() &&
-        single_cond->column_name == schema.columns[*pk_idx].name &&
+        cond_col_idx.has_value() &&
+        *cond_col_idx == *pk_idx &&
         std::holds_alternative<std::int64_t>(single_cond->literal_value) &&
         table->has_primary_index())
     {
@@ -417,6 +468,25 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
         proj_names.reserve(stmt.columns.size());
         proj_indices.reserve(stmt.columns.size());
         for (const auto& col_name : stmt.columns) {
+            if (col_name.ends_with(".*")) {
+                const std::string prefix = col_name.substr(0, col_name.size() - 2);
+                bool matched_any = false;
+                for (std::size_t i = 0; i < joined_schema.columns.size(); ++i) {
+                    if (joined_schema.columns[i].name.starts_with(prefix + ".")) {
+                        proj_names.push_back(joined_schema.columns[i].name);
+                        proj_indices.push_back(i);
+                        matched_any = true;
+                    }
+                }
+                if (!matched_any) {
+                    return QueryResult{
+                        .success = false,
+                        .message = "Table prefix '" + prefix + "' does not match any columns in join."
+                    };
+                }
+                continue;
+            }
+
             auto idx = find_column_index(joined_schema, col_name);
             if (!idx) {
                 return QueryResult{
@@ -435,30 +505,25 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
     if (can_use_right_index) {
         // Index Nested Loop Join: O(N * log M)
         for (const auto& lrow : left_rows) {
-            if (left_key_pos >= lrow.values.size()) continue;
-            const auto& lval = lrow.values[left_key_pos];
-            if (std::holds_alternative<std::monostate>(lval)) continue;
+            const Value lval = (left_key_pos < lrow.values.size()) ? lrow.values[left_key_pos] : Value{std::monostate{}};
+            bool matched = false;
 
             if (std::holds_alternative<std::int64_t>(lval)) {
                 const auto pk_key = std::get<std::int64_t>(lval);
                 auto find_res = right_table->find_by_primary_key(pk_key);
                 if (find_res && find_res->has_value()) {
-                    Record joined_rec;
-                    joined_rec.values = lrow.values;
-                    const auto& rrow = **find_res;
-                    joined_rec.values.insert(joined_rec.values.end(), rrow.values.begin(), rrow.values.end());
-
+                    matched = true;
+                    Record joined_rec = build_joined_record(lrow, &(**find_res), left_schema.columns.size(), joined_schema.columns.size());
                     if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
                         result_rows.push_back(project_record(joined_rec, proj_indices));
                     }
-                } else if (join.join_type == JoinType::Left) {
-                    Record joined_rec;
-                    joined_rec.values = lrow.values;
-                    joined_rec.values.resize(joined_schema.columns.size(), std::monostate{});
+                }
+            }
 
-                    if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
-                        result_rows.push_back(project_record(joined_rec, proj_indices));
-                    }
+            if (!matched && join.join_type == sql::JoinType::Left) {
+                Record joined_rec = build_joined_record(lrow, nullptr, left_schema.columns.size(), joined_schema.columns.size());
+                if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
+                    result_rows.push_back(project_record(joined_rec, proj_indices));
                 }
             }
         }
@@ -466,31 +531,26 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
         // Nested Loop Join: O(N * M)
         const auto right_rows = right_table->scan();
         for (const auto& lrow : left_rows) {
-            if (left_key_pos >= lrow.values.size()) continue;
-            const auto& lval = lrow.values[left_key_pos];
+            const Value lval = (left_key_pos < lrow.values.size()) ? lrow.values[left_key_pos] : Value{std::monostate{}};
             bool matched = false;
 
-            for (const auto& rrow : right_rows) {
-                if (right_col_in_right_schema >= rrow.values.size()) continue;
-                const auto& rval = rrow.values[right_col_in_right_schema];
+            if (!std::holds_alternative<std::monostate>(lval)) {
+                for (const auto& rrow : right_rows) {
+                    if (right_col_in_right_schema >= rrow.values.size()) continue;
+                    const auto& rval = rrow.values[right_col_in_right_schema];
 
-                if (compare_values(lval, rval) == 0) {
-                    matched = true;
-                    Record joined_rec;
-                    joined_rec.values = lrow.values;
-                    joined_rec.values.insert(joined_rec.values.end(), rrow.values.begin(), rrow.values.end());
-
-                    if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
-                        result_rows.push_back(project_record(joined_rec, proj_indices));
+                    if (compare_values(lval, rval) == 0) {
+                        matched = true;
+                        Record joined_rec = build_joined_record(lrow, &rrow, left_schema.columns.size(), joined_schema.columns.size());
+                        if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
+                            result_rows.push_back(project_record(joined_rec, proj_indices));
+                        }
                     }
                 }
             }
 
-            if (!matched && join.join_type == JoinType::Left) {
-                Record joined_rec;
-                joined_rec.values = lrow.values;
-                joined_rec.values.resize(joined_schema.columns.size(), std::monostate{});
-
+            if (!matched && join.join_type == sql::JoinType::Left) {
+                Record joined_rec = build_joined_record(lrow, nullptr, left_schema.columns.size(), joined_schema.columns.size());
                 if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
                     result_rows.push_back(project_record(joined_rec, proj_indices));
                 }
@@ -537,10 +597,12 @@ QueryResult SQLExecutor::execute_update(const sql::UpdateStatement& stmt) {
 
     // Fast-path: where pk = X
     const auto* single_cond = as_single_binary_condition(stmt.where_clause.get());
+    const auto cond_col_idx = single_cond ? find_column_index(schema, single_cond->column_name) : std::nullopt;
     if (single_cond != nullptr &&
         single_cond->op == sql::BinaryOp::Equal &&
         pk_idx.has_value() &&
-        single_cond->column_name == schema.columns[*pk_idx].name &&
+        cond_col_idx.has_value() &&
+        *cond_col_idx == *pk_idx &&
         std::holds_alternative<std::int64_t>(single_cond->literal_value) &&
         table->has_primary_index())
     {
@@ -558,21 +620,40 @@ QueryResult SQLExecutor::execute_update(const sql::UpdateStatement& stmt) {
             }
             rows_affected = 1;
         }
-    } else {
-        // Scan path
+    } else if (pk_idx.has_value() && table->has_primary_index()) {
+        // Scan path with primary index
         auto all_rows = table->scan();
         for (const auto& row : all_rows) {
             if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
-                if (!pk_idx.has_value()) {
-                    return QueryResult{
-                        .success = false,
-                        .message = "Table does not have a primary key for update operation."
-                    };
-                }
                 const auto pk_val = std::get<std::int64_t>(row.values[*pk_idx]);
                 Record updated = row;
                 updated.values[*target_idx] = stmt.new_value;
                 auto upd_res = table->update_by_primary_key(pk_val, updated);
+                if (!upd_res) {
+                    return QueryResult{.success = false, .message = std::string(upd_res.error().message())};
+                }
+                ++rows_affected;
+            }
+        }
+    } else {
+        // Scan path without primary index
+        auto all_rows = table->scan_with_ids();
+        for (const auto& [rid, row] : all_rows) {
+            if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
+                Record updated = row;
+                updated.values[*target_idx] = stmt.new_value;
+                auto upd_res = table->update_record(rid, updated);
+                if (!upd_res && upd_res.error().code() == StatusCode::RecordTooLarge) {
+                    auto del_res = table->delete_record(rid);
+                    if (!del_res) {
+                        return QueryResult{.success = false, .message = std::string(del_res.error().message())};
+                    }
+                    auto ins_res = table->insert(updated);
+                    if (!ins_res) {
+                        return QueryResult{.success = false, .message = std::string(ins_res.error().message())};
+                    }
+                    upd_res = *ins_res;
+                }
                 if (!upd_res) {
                     return QueryResult{.success = false, .message = std::string(upd_res.error().message())};
                 }
@@ -603,10 +684,12 @@ QueryResult SQLExecutor::execute_delete(const sql::DeleteStatement& stmt) {
 
     // Fast-path: where pk = X
     const auto* single_cond = as_single_binary_condition(stmt.where_clause.get());
+    const auto cond_col_idx = single_cond ? find_column_index(schema, single_cond->column_name) : std::nullopt;
     if (single_cond != nullptr &&
         single_cond->op == sql::BinaryOp::Equal &&
         pk_idx.has_value() &&
-        single_cond->column_name == schema.columns[*pk_idx].name &&
+        cond_col_idx.has_value() &&
+        *cond_col_idx == *pk_idx &&
         std::holds_alternative<std::int64_t>(single_cond->literal_value) &&
         table->has_primary_index())
     {
@@ -618,24 +701,37 @@ QueryResult SQLExecutor::execute_delete(const sql::DeleteStatement& stmt) {
         if (*del_res) {
             rows_affected = 1;
         }
-    } else {
-        // Scan path
+    } else if (pk_idx.has_value() && table->has_primary_index()) {
+        // Scan path with primary index
         auto all_rows = table->scan();
         std::vector<std::int64_t> pks_to_delete;
         for (const auto& row : all_rows) {
             if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
-                if (!pk_idx.has_value()) {
-                    return QueryResult{
-                        .success = false,
-                        .message = "Table does not have a primary key for delete operation."
-                    };
-                }
                 pks_to_delete.push_back(std::get<std::int64_t>(row.values[*pk_idx]));
             }
         }
 
         for (std::int64_t pk : pks_to_delete) {
             auto del_res = table->delete_by_primary_key(pk);
+            if (!del_res) {
+                return QueryResult{.success = false, .message = std::string(del_res.error().message())};
+            }
+            if (*del_res) {
+                ++rows_affected;
+            }
+        }
+    } else {
+        // Scan path without primary index
+        auto all_rows = table->scan_with_ids();
+        std::vector<RecordID> rids_to_delete;
+        for (const auto& [rid, row] : all_rows) {
+            if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
+                rids_to_delete.push_back(rid);
+            }
+        }
+
+        for (RecordID rid : rids_to_delete) {
+            auto del_res = table->delete_record(rid);
             if (!del_res) {
                 return QueryResult{.success = false, .message = std::string(del_res.error().message())};
             }

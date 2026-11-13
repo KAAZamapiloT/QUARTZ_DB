@@ -926,16 +926,15 @@ namespace  qdb {
 	}
 
 
-	std::vector<Record> Table::scan()
+	std::vector<std::pair<RecordID, Record>> Table::scan_with_ids()
 	{
-
-		std::vector<Record> records;
+		std::vector<std::pair<RecordID, Record>> records;
 
 		PageID current_id = first_page_;
 
 		std::unordered_set<PageID> visited;
 
-		while (current_id!=NO_PAGE)
+		while (current_id != NO_PAGE)
 		{
 			if (!visited.insert(current_id).second) {
 				throw CorruptionFailure("Cycle in table page chain");
@@ -943,7 +942,7 @@ namespace  qdb {
 			const Page page = read_page_or_throw(pager_, current_id);
 			const PageHeader header = load_header(page);
 
-			for (uint16_t i = 0;i < header.slot_count;++i) {
+			for (uint16_t i = 0; i < header.slot_count; ++i) {
 				const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(i) * SLOT_SIZE;
 
 				const std::size_t record_offset = read_u16(page, slot_offset);
@@ -960,7 +959,7 @@ namespace  qdb {
 					throw CorruptionFailure("Corrupt record slot");
 				}
 
-				const auto decoded = RecordCodec::deserialize(page.data.data()+record_offset, record_length);
+				const auto decoded = RecordCodec::deserialize(page.data.data() + record_offset, record_length);
 
 				if (!decoded) {
 					throw CorruptionFailure(
@@ -973,12 +972,22 @@ namespace  qdb {
 						std::string(record_validation.error().message())
 					);
 				}
-				records.push_back(*decoded);
+				records.emplace_back(RecordID{ current_id, i }, *decoded);
 			}
 			current_id = header.next_page;
-
 		}
-		
+
+		return records;
+	}
+
+	std::vector<Record> Table::scan()
+	{
+		auto with_ids = scan_with_ids();
+		std::vector<Record> records;
+		records.reserve(with_ids.size());
+		for (auto& item : with_ids) {
+			records.push_back(std::move(item.second));
+		}
 		return records;
 	}
 
@@ -1139,6 +1148,32 @@ namespace  qdb {
 				StatusCode::Corruption,
 				error.what()
 				});
+		}
+	}
+
+	void Table::deallocate_all_pages() {
+		if (primary_index_) {
+			primary_index_->deallocate_all_pages();
+		}
+
+		PageID curr = first_page_;
+		std::unordered_set<PageID> visited;
+		while (curr != NO_PAGE && curr != 0) {
+			if (!visited.insert(curr).second) {
+				break;
+			}
+			Page page{};
+			PageID next = NO_PAGE;
+			if (pager_.read_page(curr, page)) {
+				try {
+					const PageHeader header = load_header(page);
+					next = header.next_page;
+				} catch (...) {
+					next = NO_PAGE;
+				}
+			}
+			(void)pager_.deallocate_page(curr);
+			curr = next;
 		}
 	}
 }

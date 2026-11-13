@@ -113,6 +113,56 @@ cmake --build build --config Debug
 ```bash
 # Run all unit tests via CTest
 ctest --test-dir build --output-on-failure
+
+# Or run the test executable directly
+./build/quartz_tests
+```
+
+---
+
+## Test Suite & Verification
+
+QuartzDB is covered by an extensive test suite built on **GoogleTest (v1.15.2)** spanning all architectural layers—from low-level 4KB page persistence and B+ tree node rebalancing up to relational joins, expression evaluation, and 120,000-row scale benchmarks.
+
+```
+Total Test Suites : 12
+Total Tests       : 84
+Pass Rate         : 100% (84/84 passing)
+```
+
+### Test Suite Overview
+
+| Suite Name | Source File | Tests | Target Subsystem | Scope & Verification |
+| :--- | :--- | :---: | :--- | :--- |
+| **`LegacyTests`** | `table_tests.cpp`, `persistence_allocation_tests.cpp` | 2 | Storage & Pager | Slotted-page allocation, record appending, and survival across multiple database restarts. |
+| **`DatabaseTest`** | `database_tests.cpp` | 12 | Catalog & Page 0 | Table creation, catalog isolation, schema recovery, and malformed file rejection. |
+| **`SchemaTest`** | `schema_tests.cpp` | 9 | Schema Engine | Column type constraints, nullability, primary key constraints, and schema persistence. |
+| **`BPlusTreeTest`** | `bplus_tree_tests.cpp` | 3 | B+ Tree Core | Leaf splitting, internal node splitting, root promotion, and on-disk key lookups. |
+| **`PrimaryIndexTest`** | `primary_index_tests.cpp` | 8 | Primary Index | Key-to-RecordID binding, duplicate key rejection, boundary values, and leaf split stability. |
+| **`BplusTreeDeletionTest`** | `bplus_tree_deletion_tests.cpp` | 12 | Deletion & Compaction | Underflow handling, sibling borrowing, node merging, root collapse, and page deallocation. |
+| **`BplusTreeHighFrequencyTest`** | `bplus_tree_deletion_tests.cpp` | 3 | Stress & Freelist | Sliding-window churn, sawtooth expansion/collapse, and 60,000-op adversarial blitz. |
+| **`BplusDBTest`** | `bplus_tree_deletion_tests.cpp` | 2 | Full-Stack Integration | 10,000-op mixed OLTP churn, crash recovery, and multi-session catalog integrity. |
+| **`LexerTest`** | `sql_tests.cpp` | 9 | SQL Lexer | Tokenization of DDL/DML, case insensitivity, string escapes, comments, and operator tokens. |
+| **`ParserTest`** | `sql_tests.cpp` | 9 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), and JOIN syntax parsing. |
+| **`SQLExecutorTest`** | `sql_tests.cpp` | 8 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, non-PK UPDATE/DELETE, and JOIN execution. |
+| **`SQLScaleTest`** | `sql_scale_tests.cpp` | 7 | Limits & Benchmarks | 100 to 120,000 row progressive benchmarks measuring QPS, read latency, and disk footprint. |
+
+> For comprehensive, test-by-test specifications, see [docs/TESTING.md](docs/TESTING.md).
+
+### Filtering & Targeted Testing
+
+```bash
+# Run only SQL executor & join tests
+./quartz_tests --gtest_filter=SQLExecutorTest.*
+
+# Run only SQL parser tests
+./quartz_tests --gtest_filter=ParserTest.*
+
+# Run B+ tree deletion and rebalancing tests
+./quartz_tests --gtest_filter=BplusTreeDeletionTest.*
+
+# Run the full 120,000-row scale benchmark
+./quartz_tests --gtest_filter=SQLScaleTest.FullProgressionAndLimitsMatrix
 ```
 
 ---

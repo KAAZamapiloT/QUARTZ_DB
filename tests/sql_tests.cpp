@@ -506,6 +506,62 @@ TEST_F(SQLExecutorTest, DuplicatePrimaryKeyIsRejected) {
     ASSERT_FALSE(dup.success);
 }
 
+TEST_F(SQLExecutorTest, DropTableLifecycleAndPersistence) {
+    // Session 1: Create, insert, verify, and drop
+    {
+        qdb::Database db(db_path_);
+        qdb::SQLExecutor executor(db);
+
+        ASSERT_TRUE(executor.execute("CREATE TABLE sample (id INT PRIMARY KEY, name TEXT);").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO sample VALUES (1, 'Mechanical Keyboard');").success);
+
+        // Verify table exists and row is queryable
+        auto sel1 = executor.execute("SELECT * FROM sample;");
+        ASSERT_TRUE(sel1.success);
+        ASSERT_EQ(sel1.rows.size(), 1U);
+        EXPECT_EQ(db.table_count(), 1U);
+        EXPECT_NE(db.find_table("sample"), nullptr);
+
+        // Drop table
+        auto drop_res = executor.execute("DROP TABLE sample;");
+        ASSERT_TRUE(drop_res.success) << drop_res.message;
+        EXPECT_EQ(drop_res.message, "Table 'sample' dropped.");
+
+        // Verify table is no longer in catalog
+        EXPECT_EQ(db.table_count(), 0U);
+        EXPECT_EQ(db.find_table("sample"), nullptr);
+        EXPECT_TRUE(db.list_tables().empty());
+
+        // SELECT on dropped table fails
+        auto sel_after = executor.execute("SELECT * FROM sample;");
+        ASSERT_FALSE(sel_after.success);
+
+        // Second DROP TABLE fails
+        auto drop_again = executor.execute("DROP TABLE sample;");
+        ASSERT_FALSE(drop_again.success);
+    }
+
+    // Session 2: Reopen from disk and verify dropped table remains deleted
+    {
+        qdb::Database db(db_path_);
+        qdb::SQLExecutor executor(db);
+
+        EXPECT_EQ(db.table_count(), 0U);
+        EXPECT_EQ(db.find_table("sample"), nullptr);
+
+        auto sel = executor.execute("SELECT * FROM sample;");
+        ASSERT_FALSE(sel.success);
+
+        // Can recreate table with same name cleanly
+        ASSERT_TRUE(executor.execute("CREATE TABLE sample (id INT PRIMARY KEY, name TEXT);").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO sample VALUES (2, 'New Keyboard');").success);
+        auto sel_new = executor.execute("SELECT * FROM sample;");
+        ASSERT_TRUE(sel_new.success);
+        ASSERT_EQ(sel_new.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(sel_new.rows[0].values[0]), 2);
+    }
+}
+
 TEST(ParserTest, ParseCompoundWhereWithAndOr) {
     // 1. Simple AND
     {
@@ -738,5 +794,102 @@ TEST_F(SQLExecutorTest, JoinTwoTables) {
             }
         }
         EXPECT_TRUE(found_charlie);
+    }
+
+    // 6. Table wildcard projection in JOIN (users.*)
+    {
+        auto res = executor.execute("SELECT users.*, orders.product FROM users JOIN orders ON users.id = orders.user_id;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 3U);
+        EXPECT_EQ(res.column_names.size(), 3U); // users.id, users.name, orders.product
+        EXPECT_EQ(res.column_names[0], "users.id");
+        EXPECT_EQ(res.column_names[1], "users.name");
+        EXPECT_EQ(res.column_names[2], "orders.product");
+    }
+
+    // 7. Qualified column names in single table query
+    {
+        auto res = executor.execute("SELECT users.name FROM users WHERE users.id = 2;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "Bob");
+    }
+}
+
+TEST_F(SQLExecutorTest, NonPrimaryKeyUpdateAndDelete) {
+    {
+        qdb::Database db(db_path_);
+        qdb::SQLExecutor executor(db);
+
+        // 1. Create table without a primary key
+        auto create_res = executor.execute("CREATE TABLE audit_logs (service TEXT NOT NULL, message TEXT, severity TEXT);");
+        ASSERT_TRUE(create_res.success) << create_res.message;
+
+        // 2. Insert records
+        ASSERT_TRUE(executor.execute("INSERT INTO audit_logs VALUES ('auth', 'login success', 'INFO');").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO audit_logs VALUES ('auth', 'bad password attempt', 'WARN');").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO audit_logs VALUES ('billing', 'card charged', 'INFO');").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO audit_logs VALUES ('billing', 'charge declined', 'WARN');").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO audit_logs VALUES ('infra', 'high cpu utilization detected', 'WARN');").success);
+
+        auto sel_all = executor.execute("SELECT * FROM audit_logs;");
+        ASSERT_TRUE(sel_all.success);
+        EXPECT_EQ(sel_all.rows.size(), 5U);
+
+        // 3. Update multiple non-PK rows matching WHERE clause
+        auto upd_res = executor.execute("UPDATE audit_logs SET severity = 'ALERT' WHERE severity = 'WARN';");
+        ASSERT_TRUE(upd_res.success) << upd_res.message;
+        EXPECT_EQ(upd_res.rows_affected, 3U);
+
+        auto check_alerts = executor.execute("SELECT * FROM audit_logs WHERE severity = 'ALERT';");
+        ASSERT_TRUE(check_alerts.success);
+        EXPECT_EQ(check_alerts.rows.size(), 3U);
+
+        // 4. Update with larger string payload (tests page capacity and in-place/rebuild handling)
+        auto upd_large = executor.execute("UPDATE audit_logs SET message = 'expanded message with substantial additional explanatory detail for the incident report' WHERE service = 'infra';");
+        ASSERT_TRUE(upd_large.success) << upd_large.message;
+        EXPECT_EQ(upd_large.rows_affected, 1U);
+
+        auto check_infra = executor.execute("SELECT message FROM audit_logs WHERE service = 'infra';");
+        ASSERT_TRUE(check_infra.success);
+        ASSERT_EQ(check_infra.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::string>(check_infra.rows[0].values[0]),
+                  "expanded message with substantial additional explanatory detail for the incident report");
+
+        // 5. Delete specific non-PK rows
+        auto del_res = executor.execute("DELETE FROM audit_logs WHERE severity = 'INFO';");
+        ASSERT_TRUE(del_res.success) << del_res.message;
+        EXPECT_EQ(del_res.rows_affected, 2U);
+
+        auto check_remaining = executor.execute("SELECT * FROM audit_logs;");
+        ASSERT_TRUE(check_remaining.success);
+        EXPECT_EQ(check_remaining.rows.size(), 3U);
+
+        // 6. Delete all remaining rows unconditionally
+        auto del_all = executor.execute("DELETE FROM audit_logs;");
+        ASSERT_TRUE(del_all.success) << del_all.message;
+        EXPECT_EQ(del_all.rows_affected, 3U);
+
+        auto check_empty = executor.execute("SELECT * FROM audit_logs;");
+        ASSERT_TRUE(check_empty.success);
+        EXPECT_EQ(check_empty.rows.size(), 0U);
+    }
+
+    // 7. Verify persistence across database reopen
+    {
+        qdb::Database db(db_path_);
+        qdb::SQLExecutor executor(db);
+
+        auto check_after_reopen = executor.execute("SELECT * FROM audit_logs;");
+        ASSERT_TRUE(check_after_reopen.success);
+        EXPECT_EQ(check_after_reopen.rows.size(), 0U);
+
+        // Insert new record into reopened non-PK table
+        auto ins_reopen = executor.execute("INSERT INTO audit_logs VALUES ('kernel', 'boot complete', 'NOTICE');");
+        ASSERT_TRUE(ins_reopen.success);
+
+        auto final_sel = executor.execute("SELECT * FROM audit_logs;");
+        ASSERT_TRUE(final_sel.success);
+        EXPECT_EQ(final_sel.rows.size(), 1U);
     }
 }

@@ -379,4 +379,16 @@ namespace qdb {
         return it == tables_.end() ? nullptr : it->second.get();
     }
 
+    bool Database::drop_table(const std::string& name) {
+        auto it = tables_.find(name);
+        if (it == tables_.end()) {
+            return false;
+        }
+
+        it->second->deallocate_all_pages();
+        tables_.erase(it);
+        persist_catalog();
+        return true;
+    }
+
 } // namespace qdb

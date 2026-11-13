@@ -839,6 +839,42 @@ namespace qdb {
         write_metadata_page(pager_, metadata_page_, root_page_);
 	}
 
+    void BplusTree::deallocate_all_pages()
+    {
+        std::vector<PageID> to_free;
+        std::vector<PageID> stack = { root_page_ };
+        std::unordered_set<PageID> visited;
+
+        while (!stack.empty()) {
+            PageID pid = stack.back();
+            stack.pop_back();
+
+            if (pid == 0 || pid == NO_PAGE) continue;
+            if (!visited.insert(pid).second) continue;
+
+            to_free.push_back(pid);
+            try {
+                BplusTree_Node node = read_node(pid);
+                if (!node.is_leaf) {
+                    for (PageID child : node.children) {
+                        if (child != 0 && child != NO_PAGE) {
+                            stack.push_back(child);
+                        }
+                    }
+                }
+            } catch (...) {
+                // Ignore read errors during drop cleanup
+            }
+        }
+
+        for (PageID pid : to_free) {
+            (void)pager_.deallocate_page(pid);
+        }
+        if (metadata_page_ != 0 && metadata_page_ != NO_PAGE) {
+            (void)pager_.deallocate_page(metadata_page_);
+        }
+    }
+
 	
   
 

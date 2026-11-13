@@ -1096,7 +1096,7 @@ TEST_F(BplusDBTest, FullStackHighFrequencyReadWriteUpdateDeleteAndLazyCompaction
         }
 
         EXPECT_TRUE(table.scan().empty());
-        ASSERT_TRUE(index_validator.validate());
+        ASSERT_TRUE(BplusTree(storage, index_meta_page).validate());
     }
 }
 

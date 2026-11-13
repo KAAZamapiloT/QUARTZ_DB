@@ -24,6 +24,8 @@ namespace qdb {
         [[nodiscard]]
         Table& create_table(const std::string& name, Schema schema = default_schema());
 
+        bool drop_table(const std::string& name);
+
         [[nodiscard]]
         Table* find_table(const std::string& name);
 

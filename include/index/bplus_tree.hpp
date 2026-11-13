@@ -54,6 +54,7 @@ namespace qdb {
 		[[nodiscard]]
 		bool erase(std::int64_t key);
 
+		void deallocate_all_pages();
 
 		bool validate() const;
 

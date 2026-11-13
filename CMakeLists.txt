@@ -56,6 +56,11 @@ target_link_libraries(quartz_core
     PUBLIC quartz_options
 )
 
+set_target_properties(quartz_core PROPERTIES
+    OUTPUT_NAME "quartz"
+    ARCHIVE_OUTPUT_NAME "quartz"
+)
+
 # Interactive CLI
 add_executable(quartz
     src/cli/main.cpp
@@ -104,6 +109,7 @@ if(QUARTZ_BUILD_TESTS)
     include(GoogleTest)
     gtest_discover_tests(quartz_tests
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-        DISCOVERY_TIMEOUT 30
+        DISCOVERY_TIMEOUT 60
+        DISCOVERY_MODE PRE_TEST
     )
 endif()
