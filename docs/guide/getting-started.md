@@ -1,5 +1,8 @@
 # Getting Started & Building 🚀
 
+> [!TIP] Fast-Path Quickstart
+> For the 30-second Quickstart and embedding tutorial, see the canonical [Getting Started Guide](/getting-started/).
+
 This guide walks you through compiling QuartzDB from source and launching the interactive CLI terminal.
 
 ---
@@ -44,7 +47,7 @@ Build the database library, the test suite, and the CLI binary:
 cmake --build build --config Release
 ```
 
-On completion, the executables will be placed in the build output directory (e.g. `build/bin/Release/quartz.exe` or `build/bin/quartz`).
+On completion, the executables will be placed in the build output directory (`build/quartz.exe` or `build/Release/quartz.exe` on Windows, and `build/quartz` on Linux/macOS).
 
 ---
 

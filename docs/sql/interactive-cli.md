@@ -1,5 +1,8 @@
 # Interactive REPL CLI 💻
 
+> [!TIP] Canonical Reference
+> The active CLI documentation is maintained at [Interactive REPL (`quartz.exe`)](/tools/cli).
+
 QuartzDB includes an interactive terminal shell (`quartz.exe`) for database creation, query testing, schema inspection, and data visualization.
 
 ---
@@ -50,13 +53,11 @@ Dot Commands:
 
 ```sql
 quartz> .schema users
-+-------------+---------+----------+-------------+
-| Column      | Type    | Nullable | Primary Key |
-+-------------+---------+----------+-------------+
-| id          | INT64   | NO       | YES         |
-| name        | STRING  | NO       | NO          |
-| email       | STRING  | YES      | NO          |
-+-------------+---------+----------+-------------+
+TABLE users (
+    id INT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT
+);
 ```
 
 ---

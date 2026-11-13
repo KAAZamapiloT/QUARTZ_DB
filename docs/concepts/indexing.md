@@ -4,6 +4,14 @@ QuartzDB implements an on-disk, self-balancing **B+ Tree Index** (`include/index
 
 ---
 
+## Interactive B+ Tree Visualizer & Simulator
+
+Type integer keys below (e.g. `10`, `25`, `50`, `120`) to watch the B+ Tree visually insert keys, balance, split at node capacity, promote separator keys to the parent, and chain leaves horizontally:
+
+<BTreeVisualizer />
+
+---
+
 ## Topology & Node Fan-Out
 
 ```mermaid

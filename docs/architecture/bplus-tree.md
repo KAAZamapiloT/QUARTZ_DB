@@ -1,5 +1,8 @@
 # Disk-Backed B+ Tree Index 🌲
 
+> [!TIP] Canonical Indexing Concept
+> Explore the live interactive B+ Tree simulator and node-splitting canvas at [Disk-Backed B+ Tree Indexing](/concepts/indexing).
+
 QuartzDB implements an on-disk, self-balancing **B+ Tree Index** (`include/index/bplus_tree.hpp`, `src/index/bplus_tree.cpp`).
 
 Every node in the tree is persisted directly into a dedicated **4096-byte database page**.
@@ -32,6 +35,14 @@ graph TD
 
 - **Horizontal Leaf Chaining (`next_leaf`)**: All leaf pages form a singly-linked list, allowing fast range scans (`BETWEEN X AND Y`) without backtracking to internal nodes.
 - **Deep Branching Factor**: With `MAX_KEYS = 128`, a 3-level tree indexes up to **$128^3 \approx 2,097,152$ records** with at most 3 disk page reads!
+
+---
+
+## Interactive B+ Tree Visualizer & Simulator
+
+Type integer keys below (e.g. `10`, `25`, `50`, `120`) to watch the B+ Tree visually insert keys, balance, split at node capacity, promote separator keys to the parent, and chain leaves horizontally:
+
+<BTreeVisualizer />
 
 ---
 

@@ -23,6 +23,14 @@ A slotted page is a spatial memory structure, not a sequential stream. Each 4096
 
 ---
 
+## Interactive 4KB Page Hex & Structure Inspector
+
+Inspect the raw 4096-byte memory dump and decoded structure in real-time. Hover over **Slot 0** to trace the exact 4 directory bytes to the record payload at byte 4020:
+
+<HexInspector />
+
+---
+
 ## The RecordID Pointer
 
 Records are addressed by a stable logical tuple:

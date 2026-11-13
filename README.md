@@ -1,4 +1,23 @@
-# QuartzDB 💎
+<p align="center">
+  <a href="https://github.com/KAAZamapiloT/QUARTZ_DB">
+    <img src="docs/public/q-logo.svg" alt="QuartzDB Logo" width="96" height="96" />
+  </a>
+</p>
+
+<h1 align="center">QuartzDB</h1>
+
+<p align="center">
+  <strong>A Modern C++23 Embedded Relational Database Engine</strong><br>
+  <em>Slotted-Page Disk Storage • On-Disk B+ Tree Indexing • Strict Schema Enforcement • Interactive SQL REPL</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/KAAZamapiloT/QUARTZ_DB/actions"><img src="https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat-square&logo=c%2B%2B" alt="C++23" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" /></a>
+  <a href="https://github.com/KAAZamapiloT/QUARTZ_DB/stargazers"><img src="https://img.shields.io/github/stars/KAAZamapiloT/QUARTZ_DB?style=flat-square" alt="Stars" /></a>
+</p>
+
+---
 
 QuartzDB is a lightweight, embedded relational database engine written in modern C++23 from scratch. Designed for educational depth and high clarity, it features a slotted-page disk storage engine, a disk-backed B+ tree index, strict schema enforcement, and a modular architecture paving the way toward a full embedded SQL engine.
 

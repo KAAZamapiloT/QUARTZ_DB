@@ -1,5 +1,8 @@
 # Architecture Overview 🏗️
 
+> [!TIP] Canonical Architecture Reference
+> For the interactive pipeline diagram and subsystem mapping, see [Architecture & Query Pipeline](/concepts/architecture).
+
 QuartzDB is an embedded relational database engine architected around **strict layering**, **page-oriented disk storage**, and **zero external runtime dependencies**.
 
 Every subsystem in QuartzDB corresponds directly to concrete C++23 classes and namespaces in the codebase.

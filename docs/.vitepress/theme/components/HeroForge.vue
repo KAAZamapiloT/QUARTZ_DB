@@ -85,7 +85,7 @@
 
           <div class="schedule-list">
             <!-- Ch 1 (Published - Full row link) -->
-            <a href="/concepts/storage" class="schedule-row-link">
+            <a href="/architecture/pager" class="schedule-row-link">
               <span class="item-date">Ch. 1</span>
               <span class="item-desc">4KB Block Pager (I/O)</span>
               <span class="badge-status read">READ →</span>

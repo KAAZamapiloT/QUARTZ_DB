@@ -1,34 +1,42 @@
-# Operations & Compaction Runbooks ⚙️
+# Operations & Maintenance Guide ⚙️
 
 Operational procedures for administering, backing up, compacting, and maintaining QuartzDB database files in production.
 
+For detailed runbooks and scripts, see [Backup & Recovery Runbooks](/operations/backup-recovery).
+
 ---
 
-## 1. Backup Procedures
+## 1. Single-File Storage Overview
 
-Because QuartzDB stores all tables, catalog definitions, and B+ tree index nodes in a **single `.db` file**, backups are simple and robust.
+QuartzDB stores all tables, catalog definitions, and B+ Tree index nodes in a **single `.db` file**:
+- **Fixed 4KB Pages**: All reads and writes operate on strict 4096-byte boundaries.
+- **Catalog Page 0**: Houses root pointers, schema registries, and table metadata.
+- **Atomic Operations**: Pager writes ensure single-file consistency across operating system crashes.
 
-### 1.1 Cold / Offline Backups
-If the application process can be momentarily stopped:
+---
+
+## 2. Backup Procedures
+
+### Cold / Offline Backups
 ```bash
-# 1. Stop host application service
+# 1. Pause host service
 systemctl stop my_service
 
 # 2. Copy the database file
-cp /var/data/quartz/prod_orders.db /backup/quartz/prod_orders_$(date +%Y%m%d).db
+cp /var/data/quartz/prod_orders.db /backups/quartz/prod_orders_$(date +%Y%m%d).db
 
-# 3. Restart host application service
+# 3. Restart host service
 systemctl start my_service
 ```
 
-### 1.2 Snapshotting with Lock
-For 24/7 workloads, perform atomic file-system volume snapshots (e.g., LVM snapshot, ZFS snapshot, or AWS EBS volume snapshot).
+### Snapshotting with Filesystem Locks
+For 24/7 continuous workloads, execute copy-on-write volume snapshots (e.g., LVM snapshots, ZFS snapshots, or AWS EBS volume snapshots).
 
 ---
 
-## 2. Storage Compaction Runbook
+## 3. Storage Compaction Runbook
 
-When records are updated or deleted, slotted pages accumulate `fragmented_bytes`. While QuartzDB automatically compacts individual pages during insertions when space is tight, administrators can also review page efficiency:
+When records are updated or deleted, slotted pages accumulate `fragmented_bytes`:
 
 ```mermaid
 flowchart TD
@@ -47,7 +55,7 @@ Inside `src/storage/table.cpp`:
 
 ---
 
-## 3. Database Disaster Recovery & Verification
+## 4. Disaster Recovery & Health Verification
 
 If a database file experiences an unexpected power loss:
 

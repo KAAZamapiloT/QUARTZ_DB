@@ -11,6 +11,9 @@ import ConfigTable from './components/ConfigTable.vue'
 import ErrorExplorer from './components/ErrorExplorer.vue'
 import SyntaxRailroad from './components/SyntaxRailroad.vue'
 import MemoryMap from './components/MemoryMap.vue'
+import BTreeVisualizer from './components/BTreeVisualizer.vue'
+import QueryPlanVisualizer from './components/QueryPlanVisualizer.vue'
+import HexInspector from './components/HexInspector.vue'
 
 export default {
   extends: DefaultTheme,
@@ -25,5 +28,8 @@ export default {
     app.component('ErrorExplorer', ErrorExplorer)
     app.component('SyntaxRailroad', SyntaxRailroad)
     app.component('MemoryMap', MemoryMap)
+    app.component('BTreeVisualizer', BTreeVisualizer)
+    app.component('QueryPlanVisualizer', QueryPlanVisualizer)
+    app.component('HexInspector', HexInspector)
   }
 }

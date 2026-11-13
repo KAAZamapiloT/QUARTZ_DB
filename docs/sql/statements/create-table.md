@@ -45,15 +45,20 @@ The `CREATE TABLE` statement defines a new relational table, registers its schem
 
 ```mermaid
 sequenceDiagram
-    participant SQL as CREATE TABLE query
-    participant Cat as Catalog (Page 0)
-    participant Pager as qdb::pager
-    participant Bpt as qdb::BplusTree
+    autonumber
+    participant SQL as DDL Query
+    participant Cat as Catalog Page 0
+    participant Pager as Pager (4KB)
+    participant Bpt as Disk B+ Tree
 
-    SQL->>Pager: allocate_page() -> Returns first_page_ (e.g. Page 1)
-    SQL->>Pager: allocate_page() -> Returns index_metadata_page (e.g. Page 2)
-    SQL->>Bpt: BplusTree::Create() -> Allocates Root Node (Page 3)
-    SQL->>Cat: Serialize table name, schema, first_page, and index_meta_page
+    SQL->>Pager: allocate_page()
+    Pager-->>SQL: Page 1 (Table Data Root)
+    SQL->>Pager: allocate_page()
+    Pager-->>SQL: Page 2 (Index Metadata)
+    SQL->>Bpt: Create(Page 2)
+    Bpt->>Pager: allocate_page() [Page 3 Root]
+    Bpt-->>SQL: Index Ready
+    SQL->>Cat: Serialize Table Metadata
     Cat->>Pager: write_page(0, catalog_buffer)
 ```
 

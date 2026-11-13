@@ -21,11 +21,13 @@ cmake --build build --config Release
 ### 2. Launch the Interactive REPL
 
 ```bash
-# Windows
-.\build\src\cli\Release\quartz.exe
+# Windows (Release build)
+.\build\quartz.exe
+# or for Visual Studio multi-config:
+.\build\Release\quartz.exe
 
 # Linux / macOS
-./build/src/cli/quartz
+./build/quartz
 ```
 
 ### 3. Run Your First SQL Queries

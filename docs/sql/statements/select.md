@@ -104,16 +104,9 @@ WHERE id > 100 AND (role = 'admin' OR email != '');
 
 ## Execution Routing: Fast-Path vs Table Scan {#fast-path-index}
 
-When the query planner evaluates `qdb::SelectStatement`, it determines the physical scan strategy:
+When the query planner evaluates `qdb::SelectStatement`, it inspects filter clauses to route primary-key point queries to the $O(\log N)$ B+ Tree fast-path or execute a linear slotted-page scan:
 
-```mermaid
-graph TD
-    AST["AST SelectStatement"] --> CheckPK{"Filter is simple<br>equality on Primary Key?<br>(WHERE id = 42)"}
-    
-    CheckPK -- "YES" --> FastPath["<b>B+ Tree Fast-Path: O(log N)</b><br>1. Direct find() in PrimaryIndex<br>2. Fetches single RecordID {page_id, slot}<br>3. Returns in ~100 μs"]
-    
-    CheckPK -- "NO" --> ScanPath["<b>Slotted Page Table Scan: O(N)</b><br>1. Traverses first_page linked list<br>2. Unpacks slot arrays across pages<br>3. Evaluates predicate in-memory"]
-```
+<QueryPlanVisualizer />
 
 ---
 

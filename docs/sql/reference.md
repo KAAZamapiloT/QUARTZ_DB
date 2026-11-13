@@ -1,5 +1,8 @@
 # SQL Syntax Reference 📜
 
+> [!TIP] Canonical SQL Reference
+> Explore the full statement index and interactive syntax railroad diagrams at [SQL Reference](/sql/).
+
 QuartzDB implements an intuitive, relational SQL subset covering DDL (schema management) and DML (data manipulation).
 
 ---

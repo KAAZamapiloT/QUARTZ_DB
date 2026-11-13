@@ -1,5 +1,8 @@
 # What is QuartzDB? 💎
 
+> [!TIP] Architecture & Overview
+> For an interactive architectural pipeline walkthrough, see [Architecture & Query Pipeline](/concepts/architecture) and [Database Overview](/overview).
+
 **QuartzDB** is a lightweight, embedded relational database engine written from scratch in modern **C++23**. 
 
 It is designed with two core objectives:

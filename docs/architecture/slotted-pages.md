@@ -1,5 +1,8 @@
 # Slotted-Page Storage 📦
 
+> [!TIP] Canonical Storage Concept
+> Explore the interactive 4KB Hex Inspector and spatial memory maps at [Slotted-Page Storage](/concepts/storage).
+
 QuartzDB uses the **Slotted-Page Architecture** (`include/storage/table.hpp`, `src/storage/table.cpp`) for storing records within 4096-byte data pages.
 
 ---
@@ -35,6 +38,14 @@ The header occupies byte offsets 0 through 23 of every table data page:
 | `12 .. 19` | `next_page` | `uint64_t` | Singly-linked list pointer to the next table data page (`NO_PAGE` if last). |
 | `20 .. 21` | `fragmented_bytes` | `uint16_t` | Gap bytes freed by updates or deletions pending compaction. |
 | `22 .. 23` | `reserved` | `uint16_t` | Word alignment padding. |
+
+---
+
+## Interactive 4KB Page Hex & Structure Inspector
+
+Inspect the raw 4096-byte memory dump and decoded structure in real-time. Hover over **Slot 0** to trace the exact 4 directory bytes to the record payload at byte 4020, or simulate insertions, deletions, and page compaction:
+
+<HexInspector />
 
 ---
 

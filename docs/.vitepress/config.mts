@@ -41,6 +41,7 @@ export default withMermaid(
         {
           text: 'Docs',
           items: [
+            { text: 'Database Overview', link: '/overview' },
             { text: 'Getting Started', link: '/getting-started/' },
             { text: 'Architecture & Pipeline', link: '/concepts/architecture' },
             { text: 'Slotted-Page Storage', link: '/concepts/storage' },
@@ -63,6 +64,8 @@ export default withMermaid(
         {
           text: 'v1.0',
           items: [
+            { text: 'Business Rules & Constraints', link: '/rules' },
+            { text: 'Security, Roles & PII Map', link: '/security' },
             { text: 'All Tables Index', link: '/tables' },
             { text: 'Documentation History', link: '/changelog' },
             { text: 'GitHub Repository', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB' },
@@ -75,7 +78,10 @@ export default withMermaid(
         {
           text: 'Getting Started',
           items: [
-            { text: 'Quickstart & Building', link: '/getting-started/' }
+            { text: 'Database Overview', link: '/overview' },
+            { text: 'Quickstart & Building', link: '/getting-started/' },
+            { text: 'C++ Embedding Guide', link: '/guide/cpp-integration' },
+            { text: 'Test Suite & Verification', link: '/TESTING' }
           ]
         },
         {
@@ -83,7 +89,8 @@ export default withMermaid(
           items: [
             { text: 'Architecture & Pipeline', link: '/concepts/architecture' },
             { text: 'Slotted-Page Storage', link: '/concepts/storage' },
-            { text: 'Disk-Backed B+ Tree', link: '/concepts/indexing' }
+            { text: 'Disk-Backed B+ Tree', link: '/concepts/indexing' },
+            { text: 'Pager & Block Allocation', link: '/architecture/pager' }
           ]
         },
         {
@@ -116,12 +123,14 @@ export default withMermaid(
           ]
         },
         {
-          text: 'Catalog & Schema',
-          collapsed: true,
+          text: 'Catalog, Schema & Rules',
+          collapsed: false,
           items: [
             { text: 'Interactive Relational ERD', link: '/diagrams' },
             { text: 'Global Data Dictionary', link: '/data-dictionary' },
-            { text: 'All Tables Index', link: '/tables' }
+            { text: 'All Tables Index', link: '/tables' },
+            { text: 'Business Rules & Constraints', link: '/rules' },
+            { text: 'Security, Roles & PII Map', link: '/security' }
           ]
         }
       ],
