@@ -43,6 +43,11 @@ std::string_view token_type_name(TokenType type) noexcept {
         case TokenType::KeywordOffset:        return "OFFSET";
         case TokenType::KeywordAsc:           return "ASC";
         case TokenType::KeywordDesc:          return "DESC";
+        case TokenType::KeywordCount:         return "COUNT";
+        case TokenType::KeywordSum:           return "SUM";
+        case TokenType::KeywordAvg:           return "AVG";
+        case TokenType::KeywordMin:           return "MIN";
+        case TokenType::KeywordMax:           return "MAX";
         case TokenType::IntegerLiteral:       return "IntegerLiteral";
         case TokenType::FloatLiteral:         return "FloatLiteral";
         case TokenType::StringLiteral:        return "StringLiteral";
@@ -125,6 +130,11 @@ const std::unordered_map<std::string, TokenType>& keyword_map() {
         {"OFFSET",   TokenType::KeywordOffset},
         {"ASC",      TokenType::KeywordAsc},
         {"DESC",     TokenType::KeywordDesc},
+        {"COUNT",    TokenType::KeywordCount},
+        {"SUM",      TokenType::KeywordSum},
+        {"AVG",      TokenType::KeywordAvg},
+        {"MIN",      TokenType::KeywordMin},
+        {"MAX",      TokenType::KeywordMax},
         {"TRUE",     TokenType::BooleanLiteral},
         {"FALSE",    TokenType::BooleanLiteral}
     };

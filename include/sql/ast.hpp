@@ -120,6 +120,20 @@ struct OrderByClause {
     OrderDirection direction{OrderDirection::Ascending};
 };
 
+enum class AggregateType {
+    Count,
+    Sum,
+    Avg,
+    Min,
+    Max
+};
+
+struct AggregateCall {
+    AggregateType type;
+    std::string   column_name;
+    bool          is_star{false};
+};
+
 struct CreateTableStatement {
     std::string         table_name;
     std::vector<Column> columns;
@@ -138,6 +152,7 @@ struct InsertStatement {
 struct SelectStatement {
     std::string                  table_name;
     std::vector<std::string>     columns;      // Empty means "*" (all columns)
+    std::vector<AggregateCall>   aggregates;   // Aggregate function calls
     std::vector<JoinClause>      joins;        // Zero or more JOIN clauses
     std::unique_ptr<Expr>        where_clause; // nullptr = no WHERE
     std::optional<OrderByClause> order_by;     // std::nullopt = no ORDER BY

@@ -10,6 +10,7 @@ import InteractiveErd from './components/InteractiveErd.vue'
 import ConfigTable from './components/ConfigTable.vue'
 import ErrorExplorer from './components/ErrorExplorer.vue'
 import SyntaxRailroad from './components/SyntaxRailroad.vue'
+import MemoryMap from './components/MemoryMap.vue'
 
 export default {
   extends: DefaultTheme,
@@ -23,5 +24,6 @@ export default {
     app.component('ConfigTable', ConfigTable)
     app.component('ErrorExplorer', ErrorExplorer)
     app.component('SyntaxRailroad', SyntaxRailroad)
+    app.component('MemoryMap', MemoryMap)
   }
 }

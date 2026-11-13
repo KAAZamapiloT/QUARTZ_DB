@@ -12,17 +12,17 @@ graph TB
         SQL["SQL Query Text"]
     end
 
-    subgraph Compiler ["1. Query Compiler (qdb::Lexer & qdb::Parser)"]
+    subgraph Compiler ["1. Query Compiler Engine"]
         LEX["Lexer Scanner"] --> TOK["Token Stream"]
-        TOK --> PARSE["Recursive-Descent Parser"]
-        PARSE --> AST["Statement AST Nodes"]
+        TOK --> PARSE["AST Parser"]
+        PARSE --> AST["Statement AST Node"]
     end
 
-    subgraph Runtime ["2. Execution & Catalog Engine"]
-        EXEC["Executor (qdb::Executor)"]
-        CATALOG["Database Catalog (Page 0)"]
-        TABLE["Table Manager (qdb::Table)"]
-        INDEX["Primary Index (qdb::PrimaryIndex)"]
+    subgraph Runtime ["2. Execution & Catalog"]
+        EXEC["Query Executor"]
+        CATALOG["Catalog Page 0"]
+        TABLE["Table Manager"]
+        INDEX["Primary Index"]
 
         AST --> EXEC
         EXEC --> CATALOG
@@ -32,9 +32,9 @@ graph TB
     end
 
     subgraph Physical ["3. Physical Storage Engine"]
-        SLOT["Slotted-Page Data Blocks (4KB)"]
-        BPT["Disk-Backed B+ Tree Index Nodes (4KB)"]
-        PAGER["Block Pager (qdb::pager)"]
+        SLOT["Slotted Data Pages"]
+        BPT["Disk B+ Tree"]
+        PAGER["Block Pager (4KB)"]
         DISK[("Physical .db File")]
 
         TABLE --> SLOT

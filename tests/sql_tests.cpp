@@ -462,6 +462,85 @@ TEST(ParserTest, ParseOrderByAndLimit) {
     }
 }
 
+TEST(ParserTest, ParseAggregateFunctions) {
+    // 1. COUNT(*)
+    {
+        Parser parser("SELECT COUNT(*) FROM users;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        EXPECT_EQ(stmt.table_name, "users");
+        EXPECT_TRUE(stmt.columns.empty());
+        ASSERT_EQ(stmt.aggregates.size(), 1U);
+        EXPECT_EQ(stmt.aggregates[0].type, AggregateType::Count);
+        EXPECT_TRUE(stmt.aggregates[0].is_star);
+        EXPECT_EQ(stmt.aggregates[0].column_name, "*");
+    }
+
+    // 2. Multiple aggregates: COUNT(id), SUM(score), AVG(score), MIN(score), MAX(score)
+    {
+        Parser parser("SELECT COUNT(id), SUM(score), AVG(score), MIN(score), MAX(score) FROM scores;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_EQ(stmt.aggregates.size(), 5U);
+        EXPECT_EQ(stmt.aggregates[0].type, AggregateType::Count);
+        EXPECT_FALSE(stmt.aggregates[0].is_star);
+        EXPECT_EQ(stmt.aggregates[0].column_name, "id");
+        EXPECT_EQ(stmt.aggregates[1].type, AggregateType::Sum);
+        EXPECT_EQ(stmt.aggregates[1].column_name, "score");
+        EXPECT_EQ(stmt.aggregates[2].type, AggregateType::Avg);
+        EXPECT_EQ(stmt.aggregates[2].column_name, "score");
+        EXPECT_EQ(stmt.aggregates[3].type, AggregateType::Min);
+        EXPECT_EQ(stmt.aggregates[3].column_name, "score");
+        EXPECT_EQ(stmt.aggregates[4].type, AggregateType::Max);
+        EXPECT_EQ(stmt.aggregates[4].column_name, "score");
+    }
+
+    // 3. MIN and MAX on text column
+    {
+        Parser parser("SELECT MIN(player), MAX(player) FROM scores;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value());
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_EQ(stmt.aggregates.size(), 2U);
+        EXPECT_EQ(stmt.aggregates[0].type, AggregateType::Min);
+        EXPECT_EQ(stmt.aggregates[0].column_name, "player");
+        EXPECT_EQ(stmt.aggregates[1].type, AggregateType::Max);
+        EXPECT_EQ(stmt.aggregates[1].column_name, "player");
+    }
+
+    // 4. Reject '*' in non-COUNT aggregates
+    {
+        Parser p1("SELECT SUM(*) FROM scores;");
+        auto r1 = p1.parse();
+        ASSERT_FALSE(r1.has_value());
+
+        Parser p2("SELECT AVG(*) FROM scores;");
+        auto r2 = p2.parse();
+        ASSERT_FALSE(r2.has_value());
+
+        Parser p3("SELECT MIN(*) FROM scores;");
+        auto r3 = p3.parse();
+        ASSERT_FALSE(r3.has_value());
+
+        Parser p4("SELECT MAX(*) FROM scores;");
+        auto r4 = p4.parse();
+        ASSERT_FALSE(r4.has_value());
+    }
+
+    // 5. Reject mixing plain columns with aggregates without GROUP BY
+    {
+        Parser p1("SELECT id, COUNT(*) FROM scores;");
+        auto r1 = p1.parse();
+        ASSERT_FALSE(r1.has_value());
+
+        Parser p2("SELECT COUNT(*), id FROM scores;");
+        auto r2 = p2.parse();
+        ASSERT_FALSE(r2.has_value());
+    }
+}
+
 // ============================================================================
 // EXECUTOR TESTS (END-TO-END SQL)
 // ============================================================================
@@ -1091,5 +1170,125 @@ TEST_F(SQLExecutorTest, OrderByAndLimitPagination) {
     {
         auto res = executor.execute("SELECT * FROM scores ORDER BY imaginary_col;");
         ASSERT_FALSE(res.success);
+    }
+}
+
+TEST_F(SQLExecutorTest, AggregateFunctions) {
+    qdb::Database db(db_path_);
+    qdb::SQLExecutor executor(db);
+
+    // Setup: scores table with various scores and NULL notes
+    ASSERT_TRUE(executor.execute(
+        "CREATE TABLE scores (id INT PRIMARY KEY, player TEXT NOT NULL, score INT, note TEXT);"
+    ).success);
+
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (1, 'Alice', 100, 'first');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (2, 'Bob', 200, 'second');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (3, 'Charlie', 300, NULL);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (4, 'David', 400, 'fourth');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (5, 'Eve', NULL, NULL);").success);
+
+    // 1. COUNT(*) vs COUNT(column) with NULLs
+    {
+        auto res = executor.execute("SELECT COUNT(*), COUNT(score), COUNT(note) FROM scores;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        ASSERT_EQ(res.column_names.size(), 3U);
+        EXPECT_EQ(res.column_names[0], "COUNT(*)");
+        EXPECT_EQ(res.column_names[1], "COUNT(score)");
+        EXPECT_EQ(res.column_names[2], "COUNT(note)");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 5);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 4);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[2]), 3);
+    }
+
+    // 2. SUM and AVG (skips NULLs)
+    {
+        // Scores are 100, 200, 300, 400 (Eve is NULL). Sum = 1000, Count = 4, Avg = 250
+        auto res = executor.execute("SELECT SUM(score), AVG(score) FROM scores;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 1000);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 250);
+    }
+
+    // 3. MIN and MAX on integer column
+    {
+        auto res = executor.execute("SELECT MIN(score), MAX(score) FROM scores;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 100);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 400);
+    }
+
+    // 4. MIN and MAX on text column
+    {
+        auto res = executor.execute("SELECT MIN(player), MAX(player) FROM scores;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "Alice");
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[1]), "Eve");
+    }
+
+    // 5. Aggregates with WHERE clause
+    {
+        auto res = executor.execute("SELECT COUNT(*), SUM(score), AVG(score) FROM scores WHERE score >= 200;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 3); // 200, 300, 400
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 900);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[2]), 300);
+    }
+
+    // 6. Aggregates on empty result set (COUNT returns 0, SUM/AVG/MIN/MAX return NULL)
+    {
+        auto res = executor.execute("SELECT COUNT(*), COUNT(score), SUM(score), AVG(score), MIN(score), MAX(score) FROM scores WHERE score > 9999;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 0);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 0);
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res.rows[0].values[2]));
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res.rows[0].values[3]));
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res.rows[0].values[4]));
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res.rows[0].values[5]));
+    }
+
+    // 7. Type safety: SUM / AVG on non-integer columns fail
+    {
+        auto res_sum = executor.execute("SELECT SUM(player) FROM scores;");
+        ASSERT_FALSE(res_sum.success);
+
+        auto res_avg = executor.execute("SELECT AVG(player) FROM scores;");
+        ASSERT_FALSE(res_avg.success);
+    }
+
+    // 8. Aggregates with LIMIT 0 / LIMIT 1
+    {
+        auto res_zero = executor.execute("SELECT COUNT(*) FROM scores LIMIT 0;");
+        ASSERT_TRUE(res_zero.success);
+        EXPECT_EQ(res_zero.rows.size(), 0U);
+
+        auto res_one = executor.execute("SELECT COUNT(*) FROM scores LIMIT 1;");
+        ASSERT_TRUE(res_one.success);
+        ASSERT_EQ(res_one.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res_one.rows[0].values[0]), 5);
+    }
+
+    // 9. Aggregates over JOIN
+    {
+        ASSERT_TRUE(executor.execute(
+            "CREATE TABLE teams (team_id INT PRIMARY KEY, player_id INT, division TEXT);"
+        ).success);
+        ASSERT_TRUE(executor.execute("INSERT INTO teams VALUES (1, 1, 'West');").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO teams VALUES (2, 2, 'West');").success);
+        ASSERT_TRUE(executor.execute("INSERT INTO teams VALUES (3, 3, 'East');").success);
+
+        auto res = executor.execute(
+            "SELECT COUNT(*), SUM(scores.score) FROM scores JOIN teams ON scores.id = teams.player_id WHERE teams.division = 'West';"
+        );
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 1U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[0]), 2); // Alice and Bob
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 300); // 100 + 200
     }
 }

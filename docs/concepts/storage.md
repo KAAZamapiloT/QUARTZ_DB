@@ -4,31 +4,22 @@ QuartzDB uses the **Slotted-Page Architecture** inside fixed 4096-byte blocks to
 
 ---
 
-## 4KB Slotted-Page Memory Layout
+## Memory Layout
 
-Each data page utilizes a two-way growth pattern:
+A slotted page is a spatial memory structure, not a sequential stream. Each 4096-byte page divides space between a forward-growing slot directory and backward-growing record payloads:
 
-```mermaid
-graph TD
-    subgraph PageBlock ["4096-Byte Slotted Page"]
-        direction TB
-        H["Page Header (24 Bytes)<br>Magic: QPG1 | Slot Count | Free Start | Free End | Version | Next Page"]
-        
-        subgraph Slots ["Slot Array (Grows Downward ↓)"]
-            S0["Slot 0: { offset: 4020, length: 76 }"]
-            S1["Slot 1: { offset: 3950, length: 70 }"]
-        end
-        
-        FREE["Unallocated Free Space (free_start .. free_end)"]
-        
-        subgraph Payloads ["Record Payloads (Grows Upward ↑)"]
-            R1["Record 1 Payload (3950 .. 4019)"]
-            R0["Record 0 Payload (4020 .. 4095)"]
-        end
-
-        H --> S0 --> S1 --> FREE --> R1 --> R0
-    end
-```
+<MemoryMap
+  title="4KB Slotted-Page Physical Spatial Map"
+  subheader="PageID: 1 · Fixed 4096-Byte Block Allocation"
+  :totalBytes="4096"
+  footerNote="Slots grow downward from header offset 24; dynamic record payloads grow upward from byte 4096. Compaction reclaims gaps."
+  :segments="[
+    { id: 'hdr', kind: 'header', bytes: 24, label: 'Page Header (24B)', sublabel: 'QPG1 · slot_count · free_start · free_end · version · next_page' },
+    { id: 'slots', kind: 'slot', bytes: 8, label: 'Slot Array (2 slots · 8B)', sublabel: 'Slot 0 {offset: 4020, len: 76} · Slot 1 {offset: 3950, len: 70}', growth: 'down' },
+    { id: 'free', kind: 'free', bytes: 3918, label: 'Unallocated Free Space (3,918B)', sublabel: 'free_start (0x0020) .. free_end (0x0F6E)' },
+    { id: 'records', kind: 'record', bytes: 146, label: 'Record Payloads (146B)', sublabel: 'Record 1 @3950 (len: 70B) · Record 0 @4020 (len: 76B)', growth: 'up' }
+  ]"
+/>
 
 ---
 
@@ -44,3 +35,19 @@ struct RecordID {
 ```
 
 Because B+ tree leaf nodes reference `RecordID` rather than physical byte offsets, pages can defragment and relocate records via `compact_page()` without breaking index pointers.
+
+---
+
+## Insert Path & Two-Way Growth
+
+When a new tuple is inserted:
+1. `RecordCodec::serialize()` packs values into a compact byte slice.
+2. Contiguous free space is checked: `free_end - free_start >= required_bytes`.
+3. The slot at offset `free_start` is allocated and grows **downward**.
+4. The record payload is placed at offset `free_end - len` and grows **upward**.
+
+---
+
+## Page Fill & Compaction
+
+When records are deleted or updated with smaller values, empty gaps are recorded as `fragmented_bytes`. When space runs short, `compact_page()` shifts active records contiguous to byte 4096, resetting `fragmented_bytes = 0`.

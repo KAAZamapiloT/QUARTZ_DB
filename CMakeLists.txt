@@ -43,6 +43,7 @@ add_library(quartz_core STATIC
     src/quartz/database.cpp
     src/index/bplus_tree.cpp
     src/index/primary_index.cpp
+    src/capi/quartz_c.cpp
 )
 
 target_include_directories(quartz_core
@@ -98,6 +99,7 @@ if(QUARTZ_BUILD_TESTS)
         tests/bplus_tree_deletion_tests.cpp
         tests/sql_tests.cpp
         tests/sql_scale_tests.cpp
+        tests/c_api_tests.cpp
     )
 
     target_link_libraries(quartz_tests
@@ -113,3 +115,17 @@ if(QUARTZ_BUILD_TESTS)
         DISCOVERY_MODE PRE_TEST
     )
 endif()
+
+# Installation targets for embedded library and CLI
+install(TARGETS quartz_core quartz
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(FILES
+    include/quartz.h
+    include/quartz/quartz.h
+    DESTINATION include
+)
+

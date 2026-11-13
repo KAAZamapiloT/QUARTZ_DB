@@ -9,43 +9,66 @@ export default withMermaid(
     lastUpdated: true,
 
     head: [
-      ['link', { rel: 'icon', href: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💎</text></svg>' }]
+      ['link', { rel: 'icon', href: '/q-logo.svg' }]
     ],
 
     mermaid: {
       theme: 'base',
       themeVariables: {
-        primaryColor: '#9e2a2b',
-        primaryTextColor: '#ffffff',
-        primaryBorderColor: '#7d2021',
-        lineColor: '#64748b',
-        secondaryColor: '#f4f0e6',
-        tertiaryColor: '#e3ded2',
-        fontFamily: 'Inter, system-ui, sans-serif'
+        fontFamily: "'JetBrains Mono', monospace",
+        primaryColor: '#1e1e24',
+        primaryTextColor: '#f7f3e9',
+        primaryBorderColor: '#e05a47',
+        lineColor: '#94a3b8',
+        secondaryColor: '#282830',
+        tertiaryColor: '#16161a',
+        edgeLabelBackground: '#1e1e24'
+      },
+      flowchart: {
+        htmlLabels: true,
+        nodeSpacing: 50,
+        rankSpacing: 60,
+        padding: 12
       }
     },
 
     themeConfig: {
-      siteTitle: 'QuartzDB 💎',
-      logo: {
-        text: '💎'
-      },
+      siteTitle: 'QuartzDB',
+      logo: '/q-logo.svg',
 
+      // Target ≤ 5 top-level nav items (Docs, Reference, Benchmarks, v1.0)
       nav: [
-        { text: 'Getting Started', link: '/getting-started/' },
-        { text: 'Concepts', link: '/concepts/architecture' },
-        { text: 'SQL Reference', link: '/sql/' },
-        { text: 'Configuration', link: '/configuration/' },
-        { text: 'Error Explorer', link: '/errors/' },
-        { text: 'Operations', link: '/operations/backup-recovery' },
+        {
+          text: 'Docs',
+          items: [
+            { text: 'Getting Started', link: '/getting-started/' },
+            { text: 'Architecture & Pipeline', link: '/concepts/architecture' },
+            { text: 'Slotted-Page Storage', link: '/concepts/storage' },
+            { text: 'Disk-Backed B+ Tree', link: '/concepts/indexing' },
+            { text: 'Backup & Recovery Runbooks', link: '/operations/backup-recovery' }
+          ]
+        },
+        {
+          text: 'Reference',
+          items: [
+            { text: 'SQL Syntax Reference', link: '/sql/' },
+            { text: 'Configuration Reference', link: '/configuration/' },
+            { text: 'Error Code Explorer', link: '/errors/' },
+            { text: 'Interactive REPL (quartz.exe)', link: '/tools/cli' },
+            { text: 'Global Data Dictionary', link: '/data-dictionary' },
+            { text: 'Interactive Schema ERD', link: '/diagrams' }
+          ]
+        },
         { text: 'Benchmarks', link: '/benchmarks/performance' },
-        { text: 'v1.0', items: [
-          { text: 'CLI Reference', link: '/tools/cli' },
-          { text: 'Interactive ERD', link: '/diagrams' },
-          { text: 'Data Dictionary', link: '/data-dictionary' },
-          { text: 'Changelog', link: '/changelog' },
-          { text: 'GitHub Repository', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB' }
-        ]}
+        {
+          text: 'v1.0',
+          items: [
+            { text: 'All Tables Index', link: '/tables' },
+            { text: 'Documentation History', link: '/changelog' },
+            { text: 'GitHub Repository', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB' },
+            { text: 'Report Issue', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB/issues' }
+          ]
+        }
       ],
 
       sidebar: [
@@ -112,7 +135,7 @@ export default withMermaid(
       ],
 
       footer: {
-        message: 'Released under the MIT License. Modern C++23 Embedded Relational Engine.',
+        message: 'A serial publication for systems & database engineers. Released under the MIT License.',
         copyright: 'Copyright © 2026 QuartzDB Engineering Team'
       },
 

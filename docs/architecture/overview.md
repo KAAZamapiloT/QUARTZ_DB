@@ -13,16 +13,16 @@ The following diagram maps the entire pipeline from raw SQL query text down to p
 ```mermaid
 graph TB
     subgraph Client ["Client Interface Layer"]
-        CLI["Interactive CLI REPL<br><code>src/cli/main.cpp</code>"]
-        CPP["C++ Embedding API<br><code>qdb::Database</code>"]
+        CLI["CLI REPL Shell"]
+        CPP["C++ Embedding API"]
     end
 
-    subgraph Compiler ["1. Query Compilation Engine (include/sql/)"]
+    subgraph Compiler ["1. Query Compiler Engine"]
         SQL["SQL Query String"]
-        LEX["Lexer Scanner<br><code>qdb::Lexer</code>"]
-        TOK["Token Stream<br><code>std::vector&lt;qdb::Token&gt;</code>"]
-        PARSE["Recursive-Descent Parser<br><code>qdb::Parser</code>"]
-        AST["Abstract Syntax Tree<br><code>qdb::Statement</code><br>(Select / Insert / Create / Update / Delete)"]
+        LEX["Lexer Scanner"]
+        TOK["Token Stream"]
+        PARSE["AST Parser"]
+        AST["Statement AST Node"]
         
         SQL --> LEX
         LEX --> TOK
@@ -30,11 +30,11 @@ graph TB
         PARSE --> AST
     end
 
-    subgraph Runtime ["2. Execution & Catalog Engine"]
-        EXEC["Query Executor<br><code>qdb::Executor</code>"]
-        CATALOG["Database Catalog<br><code>qdb::Database</code><br>Page 0 Metadata Registry"]
-        TABLE["Table Engine<br><code>qdb::Table</code>"]
-        INDEX["Primary Key Index<br><code>qdb::PrimaryIndex</code>"]
+    subgraph Runtime ["2. Execution & Catalog"]
+        EXEC["Query Executor"]
+        CATALOG["Catalog Page 0"]
+        TABLE["Table Manager"]
+        INDEX["Primary Index"]
         
         AST --> EXEC
         EXEC --> CATALOG
@@ -43,10 +43,10 @@ graph TB
         TABLE <--> INDEX
     end
 
-    subgraph Storage ["3. Storage & Indexing Subsystem"]
-        SLOT["Slotted Data Pages<br>Two-Way Growth (Slots & Payloads)<br><code>qdb::RecordCodec</code>"]
-        BPT["Disk-Backed B+ Tree<br>Internal & Leaf Node Pages<br><code>qdb::BplusTree</code>"]
-        PAGER["Block Pager<br>Fixed 4KB Blocks & Free-List<br><code>qdb::pager</code>"]
+    subgraph Storage ["3. Storage & Index Subsystem"]
+        SLOT["Slotted Data Pages"]
+        BPT["Disk B+ Tree"]
+        PAGER["Block Pager (4KB)"]
         
         TABLE --> SLOT
         INDEX --> BPT
@@ -54,8 +54,8 @@ graph TB
         BPT --> PAGER
     end
 
-    subgraph DiskLayer ["4. Operating System File Layer"]
-        DISK[("Database File (*.db)<br>Aligned 4096-Byte Page Segments")]
+    subgraph DiskLayer ["4. File Layer"]
+        DISK[("Disk File (*.db)")]
         PAGER <--> DISK
     end
 
@@ -72,43 +72,39 @@ QuartzDB dynamically selects between an **$O(\log N)$ Index Fast Path** and a **
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Client / CLI
-    participant Ex as qdb::Executor
-    participant Tab as qdb::Table
-    participant Idx as qdb::PrimaryIndex
-    participant Bpt as qdb::BplusTree
-    participant Pager as qdb::pager
-    participant Disk as Disk File (*.db)
+    actor User as Client
+    participant Ex as Executor
+    participant Tab as Table
+    participant Idx as PrimaryIndex
+    participant Bpt as B+ Tree
+    participant Pager as Pager
+    participant Disk as Disk File
 
     Note over User, Disk: Path A: Point Query on Primary Key (WHERE id = 42)
-    User->>Ex: execute("SELECT * FROM users WHERE id = 42;")
-    Ex->>Ex: Inspect AST: Filter matches Primary Key column
+    User->>Ex: execute("SELECT ... WHERE id = 42;")
+    Ex->>Ex: Inspect AST filter
     Ex->>Tab: find_by_primary_key(42)
     Tab->>Idx: find_by_primary_key(42)
     Idx->>Bpt: find(42)
     Bpt->>Pager: read_node(root_page_)
     Pager->>Disk: read 4KB block
-    Note over Bpt: Traverse internal nodes down to leaf page
-    Bpt-->>Idx: returns RecordID { page_id: 1, slot_index: 2 }
+    Bpt-->>Idx: RecordID {page, slot}
     Idx-->>Tab: RecordID
-    Tab->>Pager: read_page(page_id: 1)
-    Pager->>Disk: read 4KB data page
-    Note over Tab: Unpack slot 2 payload directly
-    Tab-->>Ex: Record { values: [42, "Alice", "alice@example.com"] }
-    Ex-->>User: Tabular result in ~100 μs
+    Tab->>Pager: read_page(page_id)
+    Pager->>Disk: read 4KB page
+    Tab-->>Ex: Record tuple
+    Ex-->>User: Tabular result (~100 μs)
 
     Note over User, Disk: Path B: Filter on Non-Indexed Attribute (WHERE name = 'Bob')
-    User->>Ex: execute("SELECT * FROM users WHERE name = 'Bob';")
-    Ex->>Ex: Inspect AST: No index on 'name'
+    User->>Ex: execute("SELECT ... WHERE name = 'Bob';")
     Ex->>Tab: scan()
     Tab->>Pager: read_page(first_page_)
-    loop For each 4KB data page in linked chain
+    loop For each 4KB data page
         Pager->>Disk: read 4KB block
-        Tab->>Tab: Iterate slot array (0 .. slot_count - 1)
-        Tab->>Tab: RecordCodec::deserialize(slot payload)
-        Tab->>Tab: Follow header.next_page pointer
+        Tab->>Tab: Iterate slot array
+        Tab->>Tab: RecordCodec::deserialize()
     end
-    Ex->>Ex: Evaluate predicate: row["name"] == 'Bob'
+    Ex->>Ex: Evaluate predicate filter
     Ex-->>User: Tabular filtered result
 ```
 

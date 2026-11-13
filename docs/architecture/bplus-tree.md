@@ -12,37 +12,22 @@ The tree separates metadata tracking, internal routing nodes, and data-pointing 
 
 ```mermaid
 graph TD
-    subgraph MetaBlock ["B+ Tree Metadata"]
-        META["<b>Metadata Page (Page 2)</b><br>Magic: BPM1 | Version: 1<br>Points to Root Page ID: 3"]
+    Meta["Metadata Page (BPM1)"] -.->|Root Pointer| Root
+
+    subgraph InternalNodes ["Routing Layer (Internal Nodes)"]
+        Root["Root (Page 3)"] -->|key &lt; 100| IntL["Internal (Page 5)"]
+        Root -->|key &gt;= 100| IntR["Internal (Page 6)"]
+        IntL -->|key &lt; 50| L1["Leaf 10"]
+        IntL -->|key &gt;= 50| L2["Leaf 11"]
+        IntR -->|key &lt; 150| L3["Leaf 12"]
+        IntR -->|key &gt;= 150| L4["Leaf 13"]
     end
 
-    subgraph InternalNodes ["Routing Layer (Internal Nodes - Type 2)"]
-        ROOT["<b>Root Page 3 (Internal)</b><br>Keys: [100]<br>Children: [Page 5, Page 6]"]
-        INT1["<b>Page 5 (Internal)</b><br>Keys: [50]<br>Children: [Page 10, Page 11]"]
-        INT2["<b>Page 6 (Internal)</b><br>Keys: [150]<br>Children: [Page 12, Page 13]"]
+    subgraph LeafChain ["Storage Layer (Singly-Linked Leaves)"]
+        L1 ==>|next_leaf| L2
+        L2 ==>|next_leaf| L3
+        L3 ==>|next_leaf| L4
     end
-
-    subgraph LeafNodes ["Storage Layer (Leaf Nodes - Type 1)"]
-        L1["<b>Leaf Page 10</b><br>Keys: 10 .. 49<br>Values: RecordID[]"]
-        L2["<b>Leaf Page 11</b><br>Keys: 50 .. 99<br>Values: RecordID[]"]
-        L3["<b>Leaf Page 12</b><br>Keys: 100 .. 149<br>Values: RecordID[]"]
-        L4["<b>Leaf Page 13</b><br>Keys: 150 .. 200<br>Values: RecordID[]"]
-    end
-
-    META -.->|Persists Root Pointer| ROOT
-    ROOT -->|key &lt; 100| INT1
-    ROOT -->|key &gt;= 100| INT2
-
-    INT1 -->|key &lt; 50| L1
-    INT1 -->|key &gt;= 50| L2
-
-    INT2 -->|key &lt; 150| L3
-    INT2 -->|key &gt;= 150| L4
-
-    L1 ==>|next_leaf: 11| L2
-    L2 ==>|next_leaf: 12| L3
-    L3 ==>|next_leaf: 13| L4
-    L4 ==>|next_leaf: NO_PAGE| END[End of Chain]
 ```
 
 - **Horizontal Leaf Chaining (`next_leaf`)**: All leaf pages form a singly-linked list, allowing fast range scans (`BETWEEN X AND Y`) without backtracking to internal nodes.
@@ -50,106 +35,97 @@ graph TD
 
 ---
 
-## On-Disk Node Binary Layouts
+## Leaf Node Spatial Memory Map
 
-Every B+ tree node is serialized into a single 4096-byte page with a 24-byte header:
+Leaf nodes store primary key values paired directly with their physical `RecordID`:
 
-```mermaid
-classDiagram
-    class NodeHeader {
-        +00..03: uint32 NODE_MAGIC = 0x31545042 ("BPT1")
-        +04..05: uint16 FORMAT_VERSION = 1
-        +06: uint8 node_type (1: LEAF, 2: INTERNAL)
-        +07: uint8 reserved_padding
-        +08..09: uint16 key_count
-        +10..15: uint8 reserved[6]
-        +16..23: uint64 next_leaf (Leaf: PageID, Internal: NO_PAGE)
-    }
-
-    class LeafNodePayload {
-        +offset 24..4095: LeafEntry entries[]
-    }
-
-    class LeafEntry {
-        +00..07: int64 key (8 Bytes)
-        +08..15: uint64 page_id (8 Bytes)
-        +16..17: uint16 slot_index (2 Bytes)
-        Note: Total 18 Bytes per entry
-    }
-
-    class InternalNodePayload {
-        +00..07: uint64 first_child_page_id (8 Bytes)
-        +offset 32..4095: InternalPair pairs[]
-    }
-
-    class InternalPair {
-        +00..07: int64 separator_key (8 Bytes)
-        +08..15: uint64 child_page_id (8 Bytes)
-        Note: Total 16 Bytes per pair
-    }
-
-    NodeHeader <|-- LeafNodePayload
-    NodeHeader <|-- InternalNodePayload
-    LeafNodePayload *-- LeafEntry
-    InternalNodePayload *-- InternalPair
-```
+<MemoryMap
+  title="B+ Tree Leaf Node (4096-Byte Page)"
+  subheader="PageID: 10 · Node Type: LEAF (1) · Fixed 4KB Block"
+  :totalBytes="4096"
+  :showGrowthSidebar="false"
+  footerNote="18-byte leaf entries are packed contiguously in sorted order. Leaves link horizontally via next_leaf."
+  :segments="[
+    { id: 'hdr', kind: 'header', bytes: 24, label: 'Node Header (24B)', sublabel: 'BPT1 (0x31545042) · version (1) · type: LEAF · key_count · next_leaf PageID' },
+    { id: 'entries', kind: 'slot', bytes: 2304, label: 'Leaf Entries Array (128 × 18B = 2,304B)', sublabel: 'Sorted tuples: { int64_t key (8B), PageID page_id (8B), uint16_t slot_index (2B) }' },
+    { id: 'free', kind: 'free', bytes: 1768, label: 'Unused Page Capacity (1,768B)', sublabel: 'Available expansion space up to 4096-byte block boundary' }
+  ]"
+/>
 
 ---
 
-## $O(\log N)$ Point Lookup Traversal (`find`)
+## Internal Routing Node Spatial Memory Map
 
-When searching for a primary key (e.g. `WHERE id = 75`):
+Internal nodes store separator keys and child page pointers to direct tree searches:
+
+<MemoryMap
+  title="B+ Tree Internal Node (4096-Byte Page)"
+  subheader="PageID: 5 · Node Type: INTERNAL (2) · Fixed 4KB Block"
+  :totalBytes="4096"
+  :showGrowthSidebar="false"
+  footerNote="Internal nodes maintain fan-out with child pointers (PageID) interleaved with separator keys."
+  :segments="[
+    { id: 'hdr', kind: 'header', bytes: 24, label: 'Node Header (24B)', sublabel: 'BPT1 · version (1) · type: INTERNAL · key_count · next_leaf: NO_PAGE' },
+    { id: 'first_child', kind: 'slot', bytes: 8, label: 'First Child Pointer (8B)', sublabel: 'PageID child_0 (leftmost subtree)' },
+    { id: 'pairs', kind: 'slot', bytes: 2048, label: 'Separator Pairs (128 × 16B = 2,048B)', sublabel: 'Array of { int64_t separator_key (8B), PageID child_page_id (8B) }' },
+    { id: 'free', kind: 'free', bytes: 2016, label: 'Unused Page Capacity (2,016B)', sublabel: 'Available capacity up to 4096 bytes' }
+  ]"
+/>
+
+---
+
+## Point Lookup Traversal (`find`)
+
+When searching for a primary key (e.g. `WHERE id = 75`), traversal runs in $O(\log N)$:
 
 ```mermaid
 flowchart TD
-    Start["Call BplusTree::find(key)"] --> ReadRoot["Read root_page_ via pager"]
+    Start["Call find(key)"] --> ReadRoot["Read root_page_"]
+    ReadRoot --> CheckType{"Is Leaf Node?"}
     
-    CheckType{"Is current node a Leaf?"}
+    CheckType -- "No (Internal)" --> SearchInt["Binary Search Keys"]
+    SearchInt --> FetchChild["Read Child Page"]
+    FetchChild --> CheckType
     
-    CheckType -- "No (Internal Node)" --> BinSearchInt["Binary search (std::upper_bound)<br>Find child_index for key"]
-    BinSearchInt --> NextPage["current_page = node.children[child_index]<br>Read child node from pager"]
-    NextPage --> CheckType
-    
-    CheckType -- "Yes (Leaf Node)" --> BinSearchLeaf["Binary search (std::lower_bound)<br>Search for exact key"]
-    
-    BinSearchLeaf --> Found{"Key exists in leaf?"}
-    Found -- Yes --> ReturnRID["Return node.values[index]<br>(RecordID {page_id, slot_index})"]
-    Found -- No --> ReturnNull["Return std::nullopt (Not Found)"]
+    CheckType -- "Yes (Leaf)" --> SearchLeaf["Binary Search Leaf"]
+    SearchLeaf --> Found{"Key Exists?"}
+    Found -- "Yes" --> ReturnRID["Return RecordID"]
+    Found -- "No" --> ReturnNull["Return Not Found"]
 ```
 
 ---
 
-## Node Splitting & Root Promotion (`InsertResult`)
+## Node Splitting & Promotion (`InsertResult`)
 
 When inserting a key into a node that exceeds `MAX_KEYS = 128`:
 
 ```mermaid
 sequenceDiagram
-    participant Leaf as Left Leaf Node (Page A)
+    autonumber
+    participant Leaf as Left Leaf (Page A)
     participant Right as New Right Leaf (Page B)
     participant Parent as Parent Internal Node
     participant Pager as qdb::pager
 
-    Note over Leaf: Leaf has 129 keys (Exceeds MAX_KEYS: 128)
+    Note over Leaf: Leaf has 129 keys (Exceeds MAX_KEYS)
     Leaf->>Pager: allocate_page(Page B)
     Pager-->>Right: Returns Page B
-    Note over Leaf, Right: Split at middle (index 64):<br>Right receives keys 64 .. 128 and values 64 .. 128
+    Note over Leaf, Right: Split at middle (index 64)
     Leaf->>Right: Right.next_leaf = Leaf.next_leaf
     Leaf->>Leaf: Leaf.next_leaf = Page B
-    Leaf->>Parent: Return Split { separator: Right.keys.front(), rightPage: Page B }
-    Note over Parent: Insert separator key and child pointer into Parent
-    alt Parent also exceeds MAX_KEYS
-        Note over Parent: Recursively split Parent Internal Node
-    else Parent is Root and splits
-        Note over Parent: Allocate New Root Page with 2 child pointers<br>Update Metadata Page
+    Leaf->>Parent: Push Separator Key & Page B
+    alt Parent exceeds MAX_KEYS
+        Note over Parent: Recursively split Parent
+    else Root splits
+        Note over Parent: Allocate New Root Page
     end
 ```
 
 ---
 
-## Underflow Rebalancing & Merging (`EraseResult`)
+## Underflow Rebalancing (`EraseResult`)
 
 When a key is deleted via `BplusTree::erase(key)` and occupancy drops below `MIN_KEYS = 64`:
-1. **Borrow from Left/Right Sibling**: If a neighboring node has more than `MIN_KEYS` entries, borrow one entry and adjust the parent separator key.
+1. **Borrow from Sibling**: If a neighboring node has more than `MIN_KEYS` entries, borrow one entry and adjust the parent separator key.
 2. **Node Merge**: If neighboring siblings are also at `MIN_KEYS`, merge the node into its sibling and free the empty page through `pager::deallocate_page()`.
 3. **Root Collapse**: When the root internal node is reduced to 0 keys with a single child, the child becomes the new root, decreasing tree height by 1.

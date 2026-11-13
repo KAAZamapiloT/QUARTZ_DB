@@ -61,6 +61,12 @@ flowchart TD
 - **Executor**: Executes plans with expression evaluation, filtering, column projections, and $O(\log N)$ fast-path B+ tree index lookups.
 - **Interactive CLI**: Production REPL shell (`quartz.exe`) with multi-line query accumulation, dynamic database creation/switching (`CREATE DATABASE`, `USE`, `.open`), schema inspection (`.schema`, `.tables`), and pretty-printed tabular output.
 
+### 6. Embedded C API & Static Library (`include/quartz/quartz.h`, `include/quartz.h`, `libquartz.a` / `quartz.lib`)
+- **Clean C ABI**: Pure `extern "C"` interface callable from C, C++, Python (ctypes/cffi), Rust, Go, Zig, and C#.
+- **Lifecycle & Execution**: `qdb_open()`, `qdb_close()`, `qdb_execute()`, and `qdb_errmsg()`.
+- **Typed Result Inspection**: `qdb_column_type()`, `qdb_column_int()`, `qdb_column_text()`, and `qdb_column_is_null()`.
+- **SQLite-Style Callback**: `qdb_exec()` for stream-based query execution with callback accumulators.
+
 ---
 
 ## Benchmarks
@@ -125,9 +131,9 @@ ctest --test-dir build --output-on-failure
 QuartzDB is covered by an extensive test suite built on **GoogleTest (v1.15.2)** spanning all architectural layers—from low-level 4KB page persistence and B+ tree node rebalancing up to relational joins, expression evaluation, and 120,000-row scale benchmarks.
 
 ```
-Total Test Suites : 12
-Total Tests       : 86
-Pass Rate         : 100% (86/86 passing)
+Total Test Suites : 13
+Total Tests       : 95
+Pass Rate         : 100% (95/95 passing)
 ```
 
 ### Test Suite Overview
@@ -143,9 +149,10 @@ Pass Rate         : 100% (86/86 passing)
 | **`BplusTreeHighFrequencyTest`** | `bplus_tree_deletion_tests.cpp` | 3 | Stress & Freelist | Sliding-window churn, sawtooth expansion/collapse, and 60,000-op adversarial blitz. |
 | **`BplusDBTest`** | `bplus_tree_deletion_tests.cpp` | 2 | Full-Stack Integration | 10,000-op mixed OLTP churn, crash recovery, and multi-session catalog integrity. |
 | **`LexerTest`** | `sql_tests.cpp` | 9 | SQL Lexer | Tokenization of DDL/DML, case insensitivity, string escapes, comments, and operator tokens. |
-| **`ParserTest`** | `sql_tests.cpp` | 10 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), JOIN, and ORDER BY / LIMIT parsing. |
-| **`SQLExecutorTest`** | `sql_tests.cpp` | 9 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, non-PK UPDATE/DELETE, ORDER BY / LIMIT, and JOIN execution. |
+| **`ParserTest`** | `sql_tests.cpp` | 11 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), JOIN, ORDER BY / LIMIT, and aggregate functions (COUNT, SUM, AVG, MIN, MAX). |
+| **`SQLExecutorTest`** | `sql_tests.cpp` | 10 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, non-PK UPDATE/DELETE, ORDER BY / LIMIT, JOIN, and aggregate execution. |
 | **`SQLScaleTest`** | `sql_scale_tests.cpp` | 7 | Limits & Benchmarks | 100 to 120,000 row progressive benchmarks measuring QPS, read latency, and disk footprint. |
+| **`CAPITest`** | `c_api_tests.cpp` | 7 | Embedded C API (`libquartz`) | Handle lifecycle, typed result inspection, error propagation, callback iteration, memory safety, and cross-language FFI compatibility. |
 
 > For comprehensive, test-by-test specifications, see [docs/TESTING.md](docs/TESTING.md).
 

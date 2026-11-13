@@ -1,6 +1,7 @@
 /* ==========================================================================
    QuartzDB Editorial & Systems Documentation Theme
-   Visual: Clean, light-default with DIM mode, serif prose, monospace code
+   Visual: Clean, signature print light mode (cream paper) + terminal dim mode
+   Prose serif, code monospace, brand tokens (--qd-*)
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&family=Inter:wght@400;500;600;700&display=swap');
@@ -11,7 +12,21 @@
   --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
   --vp-font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  /* Editorial Warm Cream Light Palette */
+  /* Signature Editorial Print Tokens (Light Mode: Cream Paper) */
+  --qd-paper: #f7f3e9;
+  --qd-paper-alt: #eee9dc;
+  --qd-paper-surface: #ffffff;
+  --qd-ink: #181716;
+  --qd-ink-muted: #5e5a54;
+  --qd-ink-faint: #8e8a82;
+  --qd-border: #ded8cb;
+  --qd-border-subtle: #eae4d8;
+  --qd-accent: #b33927;                 /* Coral / Vermilion ink */
+  --qd-accent-soft: rgba(179, 57, 39, 0.08);
+  --qd-accent-border: rgba(179, 57, 39, 0.25);
+  --qd-hatch: rgba(142, 138, 130, 0.16);
+
+  /* Standard VitePress Doc Body Tokens */
   --vp-c-bg: #f9f7f2;
   --vp-c-bg-alt: #f1ede4;
   --vp-c-bg-elv: #ffffff;
@@ -24,18 +39,12 @@
   --vp-c-border: #e3ded2;
   --vp-c-divider: #e8e3d8;
 
-  /* Accents */
-  --vp-c-brand-1: #9e2a2b;       /* Editorial Deep Rust/Vermilion */
-  --vp-c-brand-2: #bd3a41;
-  --vp-c-brand-3: #7d2021;
-  --vp-c-brand-soft: rgba(158, 42, 43, 0.08);
+  --vp-c-brand-1: #b33927;
+  --vp-c-brand-2: #c44230;
+  --vp-c-brand-3: #8f291b;
+  --vp-c-brand-soft: rgba(179, 57, 39, 0.08);
 
-  --qdb-teal: #0d9488;
-  --qdb-violet: #7c3aed;
-  --qdb-amber: #d97706;
-  --qdb-red: #dc2626;
-
-  /* Badges & Tables */
+  /* Badges */
   --badge-pk-bg: #fef3c7;
   --badge-pk-text: #92400e;
   --badge-fk-bg: #e0f2fe;
@@ -45,13 +54,26 @@
   --badge-null-bg: #f3f4f6;
   --badge-null-text: #4b5563;
 
-  /* Shadows */
   --vp-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.05);
   --vp-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Dim Mode (Dark Mode) */
+/* Dim Mode ("Terminal") */
 .dark {
+  /* Signature Editorial Print Tokens (Dark Mode: Midnight Terminal) */
+  --qd-paper: #141416;
+  --qd-paper-alt: #1a1a1d;
+  --qd-paper-surface: #1e1e23;
+  --qd-ink: #f4f4f5;
+  --qd-ink-muted: #a1a1aa;
+  --qd-ink-faint: #71717a;
+  --qd-border: #2e2e34;
+  --qd-border-subtle: #27272a;
+  --qd-accent: #e05a47;                 /* Glowing coral accent */
+  --qd-accent-soft: rgba(224, 90, 71, 0.15);
+  --qd-accent-border: rgba(224, 90, 71, 0.35);
+  --qd-hatch: rgba(113, 113, 122, 0.22);
+
   --vp-c-bg: #141416;
   --vp-c-bg-alt: #1a1a1d;
   --vp-c-bg-elv: #202024;
@@ -96,6 +118,19 @@ h1, h2, h3, h4, h5, h6 {
 code, kbd, samp, pre {
   font-family: var(--vp-font-family-mono);
   font-size: 0.9em;
+}
+
+/* ==========================================================================
+   Breakout Class for Diagrams (.diagram-full)
+   Spans wider than the standard text column (max-width ~920px centered)
+   ========================================================================== */
+.diagram-full {
+  width: 100%;
+  max-width: 920px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 
 /* Badges */
@@ -152,7 +187,7 @@ code, kbd, samp, pre {
   border: 1px solid rgba(75, 85, 99, 0.2);
 }
 
-/* Tables Styling */
+/* Tables */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -189,7 +224,6 @@ tr:nth-child(even) td {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
-/* Click to copy text helper */
 .click-copy {
   cursor: pointer;
   padding: 2px 6px;
@@ -204,7 +238,7 @@ tr:nth-child(even) td {
   color: var(--vp-c-brand-1);
 }
 
-/* Stat Box Cards */
+/* Stat Cards */
 .stat-card-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -234,4 +268,16 @@ tr:nth-child(even) td {
   font-size: 20px;
   font-weight: 700;
   color: var(--vp-c-text-1);
+}
+
+/* Mermaid Wrapper Override */
+.mermaid {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  background: var(--qd-paper, #f7f3e9);
+  border: 1px solid var(--qd-border, #ded8cb);
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  overflow-x: auto;
 }

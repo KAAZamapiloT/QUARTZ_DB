@@ -5,9 +5,9 @@ QuartzDB maintains a comprehensive, production-grade test suite covering every l
 The test suite is built on **GoogleTest (v1.15.2)** and integrates with CMake CTest.
 
 ```
-Total Test Suites : 12
-Total Tests       : 86
-Pass Rate         : 100% (86/86 passing)
+Total Test Suites : 13
+Total Tests       : 95
+Pass Rate         : 100% (95/95 passing)
 ```
 
 ---
@@ -25,9 +25,10 @@ Pass Rate         : 100% (86/86 passing)
 | **`BplusTreeHighFrequencyTest`** | `tests/bplus_tree_deletion_tests.cpp` | 3 | B+ Tree Stress & Freelist | Sliding-window churn, sawtooth expansion/collapse, and 60,000-op adversarial blitz. |
 | **`BplusDBTest`** | `tests/bplus_tree_deletion_tests.cpp` | 2 | Full-Stack Storage Integration | 10,000-operation mixed OLTP churn, crash recovery, and multi-session catalog integrity. |
 | **`LexerTest`** | `tests/sql_tests.cpp` | 9 | SQL Lexer | Tokenization of DDL/DML, case insensitivity, string escapes, comments, and operator tokens. |
-| **`ParserTest`** | `tests/sql_tests.cpp` | 10 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), JOIN, and ORDER BY / LIMIT parsing. |
-| **`SQLExecutorTest`** | `tests/sql_tests.cpp` | 9 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, ORDER BY / LIMIT / OFFSET, and JOIN execution. |
+| **`ParserTest`** | `tests/sql_tests.cpp` | 11 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), JOIN, ORDER BY / LIMIT, and aggregate function parsing. |
+| **`SQLExecutorTest`** | `tests/sql_tests.cpp` | 10 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, ORDER BY / LIMIT / OFFSET, JOIN, and aggregate functions (COUNT, SUM, AVG, MIN, MAX). |
 | **`SQLScaleTest`** | `tests/sql_scale_tests.cpp` | 7 | Limits & Scale Benchmarks | 100 to 120,000 row progressive benchmarks measuring QPS, read latency, and disk footprint. |
+| **`CAPITest`** | `tests/c_api_tests.cpp` | 7 | Embedded C API (`libquartz`) | Handle lifecycle, typed result inspection, error propagation, callback iteration, memory safety, and cross-language FFI compatibility. |
 
 ---
 
@@ -109,19 +110,21 @@ Tests the hand-written SQL lexer (`src/sql/lexer.cpp`).
 - **`CommentsSkipped`**: Ensures single-line SQL comments (`-- comment`) are skipped without polluting the token stream.
 - **`SyntaxErrorOnUnterminatedString`**: Tests robust error reporting on unclosed string literals.
 
-### 10. `ParserTest` (9 Tests)
+### 10. `ParserTest` (11 Tests)
 Tests the recursive-descent AST parser (`src/sql/parser.cpp`).
 - **`ParseCreateTable`**, **`ParseDropTable`**, **`ParseInsertWithAndWithoutColumns`**, **`ParseSelectStarAndColumns`**, **`ParseUpdateStatement`**, **`ParseDeleteStatement`**: AST generation for all statements.
 - **`SyntaxErrorHandling`**: Verifies informative error messages when encountering invalid SQL syntax.
 - **`ParseCompoundWhereWithAndOr`**: Verifies expression tree construction with operator precedence (`AND` binds tighter than `OR`) and parenthesized expressions (`(a OR b) AND c`).
 - **`ParseJoinStatements`**: Verifies parsing of `INNER JOIN` and `LEFT JOIN` with `ON` predicates and table-qualified columns (`users.id = orders.user_id`).
 - **`ParseOrderByAndLimit`**: Verifies parsing of `ORDER BY <col> [ASC|DESC]`, `LIMIT <n>`, and `OFFSET <m>`.
+- **`ParseAggregateFunctions`**: Verifies parsing of `COUNT(*)`, `COUNT(col)`, `SUM(col)`, `AVG(col)`, `MIN(col)`, `MAX(col)`, and enforces syntax constraints (rejecting `*` in non-COUNT aggregates, rejecting mixing plain columns with aggregates without `GROUP BY`).
 
-### 11. `SQLExecutorTest` (9 Tests)
+### 11. `SQLExecutorTest` (10 Tests)
 Validates query planning, execution, and relational algebra (`src/execution/executor.cpp`).
 - **`EndToEndCreateTableInsertSelect`**: Complete DDL and DML query pipeline.
 - **`EndToEndUpdateAndDelete`**: Modifies and deletes rows using filtered WHERE clauses.
 - **`OrderByAndLimitPagination`**: Validates `ORDER BY` (ASC/DESC, integers, strings, NULL placement, unprojected columns) and pagination with `LIMIT` and `OFFSET`.
+- **`AggregateFunctions`**: Validates execution of aggregate functions `COUNT(*)` vs `COUNT(col)` skipping NULLs, `SUM` and `AVG` arithmetic with NULL exclusion, `MIN` and `MAX` across integer and text domains, post-aggregation WHERE filtering, empty-set aggregation semantics (`COUNT` = 0, `SUM`/`AVG`/`MIN`/`MAX` = NULL), non-integer type checking, `LIMIT 0`/`1` behavior, and aggregations across relational JOINs.
 - **`NonPrimaryKeyUpdateAndDelete`**: Validates multi-row updates and deletes on tables without primary keys, larger payload resizing, unconditional delete, and persistence across database restart.
 - **`DuplicatePrimaryKeyIsRejected`**: Ensures SQL inserts fail gracefully when primary keys collide.
 - **`DropTableLifecycleAndPersistence`**: Validates dropping tables, verifying in-memory and on-disk catalog deletion, page deallocation, subsequent query/drop rejections, and clean table recreation across restarts.
@@ -140,6 +143,16 @@ Validates query planning, execution, and relational algebra (`src/execution/exec
 End-to-end performance and scalability suite scaling up to 120,000 records.
 - **`Scale_100`** to **`Scale_120000`**: Measures write throughput (QPS), read throughput (QPS), read latency ($\mu\text{s}$), and file footprint at scale milestones (100, 1K, 10K, 50K, 100K, 120K).
 - **`FullProgressionAndLimitsMatrix`**: Executes the comprehensive scale matrix and verifies 100% data integrity across all 120,000 records.
+
+### 13. `CAPITest` (7 Tests)
+Validates the embedded C API (`include/quartz/quartz.h`, `include/quartz.h`, `src/capi/quartz_c.cpp`).
+- **`LifecycleOpenClose`**: Tests database handle creation (`qdb_open`), shutdown (`qdb_close`), and null pointer safety guards.
+- **`TableCreationAndInsertion`**: Validates executing DDL and DML statements and inspecting rows affected (`qdb_result_rows_affected`).
+- **`SelectAndTypedColumnAccess`**: Verifies typed cell access (`qdb_column_type`, `qdb_column_int`, `qdb_column_text`, `qdb_column_is_null`), column metadata, and out-of-bounds guards.
+- **`AggregateQueries`**: Validates aggregate functions evaluated through the C API (`COUNT(*)`, `COUNT(col)`, `SUM`, `AVG`, `MIN`, `MAX`).
+- **`ErrorHandling`**: Verifies error code propagation (`QDB_ERROR`), error messages via `qdb_errmsg()` and `qdb_result_message()`.
+- **`CallbackExecAPI`**: Tests SQLite-compatible callback execution (`qdb_exec`), user data passing, row iteration, and early abort logic.
+- **`VersionInfo`**: Validates version reporting via `qdb_version()`.
 
 ---
 

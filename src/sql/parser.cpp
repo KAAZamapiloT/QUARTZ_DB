@@ -249,18 +249,86 @@ Result<SelectStatement> Parser::parse_select() {
     if (!sel_tok) return std::unexpected(sel_tok.error());
 
     std::vector<std::string> columns;
+    std::vector<AggregateCall> aggregates;
+
     if (match(TokenType::Star)) {
         columns.clear(); // Empty means all columns
     } else {
         while (!check(TokenType::KeywordFrom) && !is_at_end()) {
-            auto col = parse_column_reference();
-            if (!col) return std::unexpected(col.error());
-            columns.push_back(std::move(*col));
+            if (match(TokenType::KeywordCount)) {
+                auto lparen = consume(TokenType::LeftParen, "Expected '(' after 'COUNT'");
+                if (!lparen) return std::unexpected(lparen.error());
+
+                if (match(TokenType::Star)) {
+                    auto rparen = consume(TokenType::RightParen, "Expected ')' after '*'");
+                    if (!rparen) return std::unexpected(rparen.error());
+                    aggregates.push_back(AggregateCall{
+                        .type = AggregateType::Count,
+                        .column_name = "*",
+                        .is_star = true
+                    });
+                } else {
+                    auto col = parse_column_reference();
+                    if (!col) return std::unexpected(col.error());
+                    auto rparen = consume(TokenType::RightParen, "Expected ')' after column in COUNT");
+                    if (!rparen) return std::unexpected(rparen.error());
+                    aggregates.push_back(AggregateCall{
+                        .type = AggregateType::Count,
+                        .column_name = std::move(*col),
+                        .is_star = false
+                    });
+                }
+            } else if (match(TokenType::KeywordSum) || match(TokenType::KeywordAvg) ||
+                       match(TokenType::KeywordMin) || match(TokenType::KeywordMax)) {
+                const TokenType func_type = previous().type;
+                AggregateType agg_type = AggregateType::Sum;
+                std::string func_name = "SUM";
+                if (func_type == TokenType::KeywordAvg) {
+                    agg_type = AggregateType::Avg;
+                    func_name = "AVG";
+                } else if (func_type == TokenType::KeywordMin) {
+                    agg_type = AggregateType::Min;
+                    func_name = "MIN";
+                } else if (func_type == TokenType::KeywordMax) {
+                    agg_type = AggregateType::Max;
+                    func_name = "MAX";
+                }
+
+                auto lparen = consume(TokenType::LeftParen, "Expected '(' after '" + func_name + "'");
+                if (!lparen) return std::unexpected(lparen.error());
+
+                if (check(TokenType::Star)) {
+                    return std::unexpected(syntax_error("'*' is not allowed in " + func_name + "()", peek()));
+                }
+
+                auto col = parse_column_reference();
+                if (!col) return std::unexpected(col.error());
+
+                auto rparen = consume(TokenType::RightParen, "Expected ')' after column in " + func_name);
+                if (!rparen) return std::unexpected(rparen.error());
+
+                aggregates.push_back(AggregateCall{
+                    .type = agg_type,
+                    .column_name = std::move(*col),
+                    .is_star = false
+                });
+            } else {
+                auto col = parse_column_reference();
+                if (!col) return std::unexpected(col.error());
+                columns.push_back(std::move(*col));
+            }
 
             if (match(TokenType::Comma)) {
                 continue;
             }
             break;
+        }
+
+        if (!columns.empty() && !aggregates.empty()) {
+            return std::unexpected(syntax_error(
+                "Mixing aggregate functions and non-aggregate columns is not allowed without GROUP BY",
+                peek()
+            ));
         }
     }
 
@@ -383,6 +451,7 @@ Result<SelectStatement> Parser::parse_select() {
     return SelectStatement{
         .table_name = name_tok->text,
         .columns = std::move(columns),
+        .aggregates = std::move(aggregates),
         .joins = std::move(joins),
         .where_clause = std::move(where_clause),
         .order_by = std::move(order_by),

@@ -11,6 +11,8 @@ using sql::JoinType;
 using sql::BinaryOp;
 using sql::LogicalOp;
 using sql::OrderDirection;
+using sql::AggregateType;
+using sql::AggregateCall;
 
 namespace {
 
@@ -98,6 +100,142 @@ bool order_by_compare(const Value& a, const Value& b, OrderDirection dir) {
     }
 
     return (dir == OrderDirection::Ascending) ? (a.index() < b.index()) : (a.index() > b.index());
+}
+
+QueryResult evaluate_aggregates(
+    const std::vector<AggregateCall>& aggregates,
+    const Schema& schema,
+    const std::vector<Record>& rows,
+    const std::optional<std::size_t>& limit
+) {
+    if (limit.has_value() && *limit == 0) {
+        std::vector<std::string> names;
+        names.reserve(aggregates.size());
+        for (const auto& agg : aggregates) {
+            std::string header;
+            switch (agg.type) {
+                case AggregateType::Count: header = agg.is_star ? "COUNT(*)" : ("COUNT(" + agg.column_name + ")"); break;
+                case AggregateType::Sum:   header = "SUM(" + agg.column_name + ")"; break;
+                case AggregateType::Avg:   header = "AVG(" + agg.column_name + ")"; break;
+                case AggregateType::Min:   header = "MIN(" + agg.column_name + ")"; break;
+                case AggregateType::Max:   header = "MAX(" + agg.column_name + ")"; break;
+            }
+            names.push_back(std::move(header));
+        }
+        return QueryResult{
+            .success = true,
+            .message = "0 row(s) selected.",
+            .column_names = std::move(names),
+            .rows = {},
+            .rows_affected = 0
+        };
+    }
+
+    std::vector<std::string> names;
+    names.reserve(aggregates.size());
+    Record agg_row;
+    agg_row.values.reserve(aggregates.size());
+
+    for (const auto& agg : aggregates) {
+        std::string header;
+        switch (agg.type) {
+            case AggregateType::Count: header = agg.is_star ? "COUNT(*)" : ("COUNT(" + agg.column_name + ")"); break;
+            case AggregateType::Sum:   header = "SUM(" + agg.column_name + ")"; break;
+            case AggregateType::Avg:   header = "AVG(" + agg.column_name + ")"; break;
+            case AggregateType::Min:   header = "MIN(" + agg.column_name + ")"; break;
+            case AggregateType::Max:   header = "MAX(" + agg.column_name + ")"; break;
+        }
+        names.push_back(std::move(header));
+
+        if (agg.type == AggregateType::Count && agg.is_star) {
+            agg_row.values.push_back(static_cast<std::int64_t>(rows.size()));
+            continue;
+        }
+
+        auto col_idx = find_column_index(schema, agg.column_name);
+        if (!col_idx) {
+            return QueryResult{
+                .success = false,
+                .message = "Column '" + agg.column_name + "' does not exist in table schema."
+            };
+        }
+        const std::size_t idx = *col_idx;
+
+        if (agg.type == AggregateType::Count) {
+            std::int64_t count = 0;
+            for (const auto& row : rows) {
+                if (idx < row.values.size() && !std::holds_alternative<std::monostate>(row.values[idx])) {
+                    ++count;
+                }
+            }
+            agg_row.values.push_back(count);
+        } else if (agg.type == AggregateType::Sum || agg.type == AggregateType::Avg) {
+            if (idx >= schema.columns.size() || schema.columns[idx].type != DataType::Integer) {
+                return QueryResult{
+                    .success = false,
+                    .message = "Aggregate function requires an integer column: '" + agg.column_name + "'."
+                };
+            }
+
+            std::int64_t sum = 0;
+            std::int64_t count = 0;
+            for (const auto& row : rows) {
+                if (idx < row.values.size() && std::holds_alternative<std::int64_t>(row.values[idx])) {
+                    sum += std::get<std::int64_t>(row.values[idx]);
+                    ++count;
+                }
+            }
+
+            if (count == 0) {
+                agg_row.values.push_back(std::monostate{});
+            } else if (agg.type == AggregateType::Sum) {
+                agg_row.values.push_back(sum);
+            } else {
+                agg_row.values.push_back(sum / count);
+            }
+        } else if (agg.type == AggregateType::Min) {
+            std::optional<Value> min_val;
+            for (const auto& row : rows) {
+                if (idx < row.values.size() && !std::holds_alternative<std::monostate>(row.values[idx])) {
+                    const auto& v = row.values[idx];
+                    if (!min_val.has_value() || order_by_compare(v, *min_val, OrderDirection::Ascending)) {
+                        min_val = v;
+                    }
+                }
+            }
+            if (min_val.has_value()) {
+                agg_row.values.push_back(std::move(*min_val));
+            } else {
+                agg_row.values.push_back(std::monostate{});
+            }
+        } else if (agg.type == AggregateType::Max) {
+            std::optional<Value> max_val;
+            for (const auto& row : rows) {
+                if (idx < row.values.size() && !std::holds_alternative<std::monostate>(row.values[idx])) {
+                    const auto& v = row.values[idx];
+                    if (!max_val.has_value() || order_by_compare(v, *max_val, OrderDirection::Descending)) {
+                        max_val = v;
+                    }
+                }
+            }
+            if (max_val.has_value()) {
+                agg_row.values.push_back(std::move(*max_val));
+            } else {
+                agg_row.values.push_back(std::monostate{});
+            }
+        }
+    }
+
+    std::vector<Record> result_rows;
+    result_rows.push_back(std::move(agg_row));
+
+    return QueryResult{
+        .success = true,
+        .message = "1 row(s) selected.",
+        .column_names = std::move(names),
+        .rows = std::move(result_rows),
+        .rows_affected = 0
+    };
 }
 
 bool evaluate_condition(const sql::BinaryExpression& expr, const Schema& schema, const Record& record) {
@@ -400,6 +538,10 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
         }
     }
 
+    if (!stmt.aggregates.empty()) {
+        return evaluate_aggregates(stmt.aggregates, schema, matched_rows, stmt.limit);
+    }
+
     // 1. ORDER BY
     if (stmt.order_by.has_value()) {
         auto sort_col_idx = find_column_index(schema, stmt.order_by->column_name);
@@ -611,6 +753,10 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
                 }
             }
         }
+    }
+
+    if (!stmt.aggregates.empty()) {
+        return evaluate_aggregates(stmt.aggregates, joined_schema, joined_rows, stmt.limit);
     }
 
     // 1. ORDER BY

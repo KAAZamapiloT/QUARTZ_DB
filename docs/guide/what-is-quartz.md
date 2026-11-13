@@ -15,27 +15,27 @@ QuartzDB is structured into clear abstraction layers separating query evaluation
 ```mermaid
 graph TB
     subgraph Frontend ["1. Query Processing Layer"]
-        SQL["SQL Query String"] --> Lexer["Lexer Scanner<br>(qdb::Lexer)"]
-        Lexer --> Parser["Recursive-Descent Parser<br>(qdb::Parser)"]
-        Parser --> AST["Abstract Syntax Tree<br>(qdb::Statement)"]
-        AST --> Executor["Execution Engine<br>(qdb::Executor)"]
+        SQL["SQL Query String"] --> Lexer["Lexer Scanner"]
+        Lexer --> Parser["AST Parser"]
+        Parser --> AST["Statement AST Node"]
+        AST --> Executor["Query Executor"]
     end
     
     subgraph CatalogLayer ["2. Catalog & Table Manager"]
-        Executor --> Database["Database & Catalog<br>(qdb::Database)<br>Persisted on Page 0"]
-        Database --> Table["Table Manager<br>(qdb::Table)"]
-        Database --> PrimaryIndex["Primary Key Index<br>(qdb::PrimaryIndex)"]
+        Executor --> Database["Database Catalog"]
+        Database --> Table["Table Manager"]
+        Database --> PrimaryIndex["Primary Key Index"]
         Table <--> PrimaryIndex
     end
 
-    subgraph StorageSubsystem ["3. Physical Storage & Indexing Engine"]
-        PrimaryIndex <--> BPlusTree["Disk-Backed B+ Tree<br>(qdb::BplusTree)"]
-        Table <--> Record["Slotted Data Pages<br>(Slot Arrays & Payloads)"]
-        BPlusTree <--> Pager["Block Pager (qdb::pager)<br>4096-Byte Block I/O"]
+    subgraph StorageSubsystem ["3. Physical Storage Engine"]
+        PrimaryIndex <--> BPlusTree["Disk B+ Tree"]
+        Table <--> Record["Slotted Data Pages"]
+        BPlusTree <--> Pager["Block Pager (4KB)"]
         Record <--> Pager
     end
 
-    Pager <--> Disk[("Single Database File (*.db)<br>Aligned 4KB Page Segments")]
+    Pager <--> Disk[("Database File (*.db)")]
 ```
 
 ---

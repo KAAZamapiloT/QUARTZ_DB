@@ -47,6 +47,11 @@ enum class TokenType : std::uint16_t {
     KeywordOffset,
     KeywordAsc,
     KeywordDesc,
+    KeywordCount,
+    KeywordSum,
+    KeywordAvg,
+    KeywordMin,
+    KeywordMax,
 
     // Literals
     IntegerLiteral,
@@ -90,7 +95,7 @@ struct Token {
     }
 
     [[nodiscard]] constexpr bool is_keyword() const noexcept {
-        return type >= TokenType::KeywordCreate && type <= TokenType::KeywordDesc;
+        return type >= TokenType::KeywordCreate && type <= TokenType::KeywordMax;
     }
 
     [[nodiscard]] constexpr bool is_literal() const noexcept {
