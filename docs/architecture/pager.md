@@ -1,43 +1,119 @@
 # Page & Pager Engine 📄
 
-The **Pager** (`include/storage/pager.hpp`, `src/storage/pager.cpp`) is the lowest layer of QuartzDB's storage engine. It abstracts raw operating system file I/O into a clean, block-oriented storage interface.
+The **Pager** (`include/storage/pager.hpp`, `src/storage/pager.cpp`) manages the physical file layout and low-level block I/O operations for QuartzDB.
+
+Every database in QuartzDB is stored in a single binary file divided into contiguous, uniform **4096-byte (4KB)** pages.
 
 ---
 
-## Fixed 4KB Page Boundaries
+## Physical File Partitioning
 
-Every file handled by QuartzDB is partitioned into contiguous, uniform **4096-byte (4KB)** pages:
+The database file consists of sequential 4KB blocks addressed by a 64-bit `PageID` ($0, 1, 2, \dots$):
 
+```mermaid
+graph LR
+    subgraph SingleFile ["Physical File (*.db) - Aligned 4096-Byte Blocks"]
+        direction LR
+        P0["Page 0<br><b>Database Catalog</b><br>Magic: QDB1<br>Schema & Tables"]
+        P1["Page 1<br><b>Table Data Page</b><br>Magic: QPG1<br>Slotted Records"]
+        P2["Page 2<br><b>B+ Tree Metadata</b><br>Magic: BPM1<br>Root Pointer"]
+        P3["Page 3<br><b>B+ Tree Root Node</b><br>Magic: BPT1<br>Internal/Leaf"]
+        P4["Page 4<br><b>Next Data Page</b><br>Linked from Page 1"]
+        PN["Page N<br><b>Recycled Page</b><br>On Free List"]
+        
+        P0 --> P1 --> P2 --> P3 --> P4 --> PN
+    end
 ```
-+---------------------------------------------------------------+
-|  Page 0 (Catalog & Meta) |  Page 1 (Data)   |  Page 2 (Index) | ...
-|        4096 Bytes        |    4096 Bytes    |   4096 Bytes    |
-+---------------------------------------------------------------+
-0                        4096               8192             12288
+
+Every page read and write computes the exact file seek offset:
+$$\text{File Offset} = \text{PageID} \times 4096$$
+
+---
+
+## Page 0: The Catalog Architecture
+
+Page 0 is permanently reserved for the global database catalog. It tracks all tables, schema definitions, and root pages across database sessions:
+
+```mermaid
+classDiagram
+    class Page0_Catalog {
+        +00..03: uint32 DB_MAGIC = 0x31424451 ("QDB1")
+        +04..05: uint16 DB_VERSION = 1
+        +06..07: uint16 table_count
+        +08..11: uint32 page_size = 4096
+        +12..4095: Table_Catalog_Entries[]
+    }
+
+    class Table_Catalog_Entry {
+        +uint16 name_length
+        +uint64 first_page_id
+        +bytes table_name (UTF-8)
+        +uint16 column_count
+        +Column_Spec columns[]
+        +uint8 has_primary_index (0 or 1)
+        +uint64 index_metadata_page_id (optional)
+    }
+
+    class Column_Spec {
+        +uint16 column_name_length
+        +bytes column_name (UTF-8)
+        +uint8 data_type (1: INT64, 2: Text)
+        +uint8 is_nullable (0 or 1)
+        +uint8 is_primary_key (0 or 1)
+    }
+
+    Page0_Catalog *-- Table_Catalog_Entry : contains 0..N
+    Table_Catalog_Entry *-- Column_Spec : contains 1..N
 ```
 
-- **Alignment**: Every page begins at an exact multiple of 4096 bytes ($offset = PageID \times 4096$).
-- **Atomic Read/Write**: Operations are performed on full 4KB page buffers, matching modern OS virtual memory page boundaries and file system block sizes.
+### Binary Layout Details
+
+```text
++-----------------------------------------------------------------------+
+| BYTES 0..3   | DB_MAGIC: 0x31424451 ("QDB1" in Little-Endian)         |
+| BYTES 4..5   | DB_VERSION: 1                                          |
+| BYTES 6..7   | TABLE COUNT: Number of registered tables in catalog    |
+| BYTES 8..11  | PAGE_SIZE: 4096 bytes                                  |
++-----------------------------------------------------------------------+
+| BYTES 12..N  | Table Entry 0:                                         |
+|              |   - name_length (uint16) + first_page (uint64)         |
+|              |   - name bytes                                         |
+|              |   - col_count (uint16) + column specs                  |
+|              |   - has_index (uint8) + index_meta_page (uint64)       |
++-----------------------------------------------------------------------+
+|              | Table Entry 1 ...                                      |
++-----------------------------------------------------------------------+
+|              | [ UNALLOCATED FREE SPACE IN PAGE 0 ]                   |
++-----------------------------------------------------------------------+
+```
 
 ---
 
-## Dynamic Allocation & Page Recycling
+## Page Allocation & Recycling Workflow
 
-When a table or index requires additional storage:
-1. `pager::allocate_page()` is invoked.
-2. The pager checks its free list for recycled pages freed by dropped objects or page merges.
-3. If no free page exists, it expands the database file by 4KB and assigns a new monotonically increasing `PageID`.
+The pager maintains an in-memory `free_pages` list to recycle blocks freed by `DROP TABLE` or B+ tree rebalancing:
+
+```mermaid
+flowchart TD
+    Start["Call pager::allocate_page(out_id)"] --> CheckFree{"Is free_pages<br>vector non-empty?"}
+    
+    CheckFree -- "Yes (Page Recycled)" --> PopFree["Pop PageID from free_pages<br>Reuse existing file block"]
+    CheckFree -- "No (File Expansion)" --> CheckBounds["Get current page_count<br>num_pages"]
+    
+    CheckBounds --> NewID["out_id = num_pages<br>num_pages++"]
+    PopFree --> InitZero["Write blank 4096-byte page<br>to out_id offset"]
+    NewID --> InitZero
+    
+    InitZero --> Success["Return true with valid PageID"]
+
+    Dealloc["Call pager::deallocate_page(id)"] --> Validate{"id &gt; 0 and<br>id &lt; num_pages?"}
+    Validate -- Yes --> PushFree["Push id into free_pages vector<br>Available for next allocation"]
+    Validate -- No --> Fail["Return false"]
+```
 
 ---
 
-## Reserved Page 0: The Catalog
+## Memory Safety & Block Alignment
 
-**Page 0** is permanently reserved for database metadata:
-- **Magic Bytes & Engine Version**: Validates file integrity and ensures format compatibility.
-- **Table Registry**: Serialized list of all registered tables in the database.
-- **Root Pointers**:
-  - `root_data_page`: The first slotted data page for each table.
-  - `root_index_page`: The root node page ID of each table's B+ Tree.
-- **Free-List Head**: Offset tracking recycled, unallocated pages.
-
-When `qdb::Database` is instantiated with a `.db` path, Page 0 is immediately read to reconstruct the catalog without scanning data blocks.
+- **Static Size Enforcement**: `static_assert(sizeof(Page) == PAGE_SIZE, "Page size is not 4096 bytes");` guarantees strict boundary alignment at compile time.
+- **Zero In-Memory Buffering Spills**: Full 4KB `std::array<std::byte, 4096>` structs prevent buffer overruns and align with standard CPU cache line and OS memory page architectures.

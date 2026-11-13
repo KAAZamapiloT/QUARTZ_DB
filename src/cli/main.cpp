@@ -86,12 +86,14 @@ void print_help() {
               << "===================================================================\n"
               << "Database Selection & Creation:\n"
               << "  CREATE DATABASE <name>;  Create and switch to a new database file\n"
+              << "  DROP DATABASE <name>;    Delete a database file (e.g. DROP DATABASE test;)\n"
               << "  USE <name>;              Switch active database (e.g. USE shop;)\n"
               << "  SHOW DATABASES;          List all database files in the directory\n"
               << "  SHOW TABLES;             List all tables in the current database\n"
               << "  SELECT DATABASE();       Display currently active database\n\n"
               << "Dot Commands:\n"
               << "  .open <path>       Open or create a database file (e.g. .open mydb.db)\n"
+              << "  .drop <name>       Drop/delete a database file\n"
               << "  .db                Show current database file and location\n"
               << "  .tables            List all tables in the current database\n"
               << "  .schema [table]    Show column definitions for a table (or all tables)\n"
@@ -218,6 +220,36 @@ int main(int argc, char* argv[]) {
                 } else {
                     open_database(new_path);
                 }
+            } else if (cmd == ".drop") {
+                std::string target;
+                iss >> target;
+                std::string db_file = clean_db_name(target);
+                if (db_file.empty()) {
+                    std::cout << "Usage: .drop <name>\n";
+                } else if (!std::filesystem::exists(db_file)) {
+                    std::cout << "Database '" << db_file << "' does not exist.\n";
+                } else {
+                    std::error_code ec;
+                    const bool is_current = std::filesystem::equivalent(current_db_path, db_file, ec);
+                    ec.clear();
+                    if (is_current) {
+                        db.reset();
+                        executor.reset();
+                        if (!std::filesystem::remove(db_file, ec)) {
+                            std::cout << "Failed to drop active database '" << db_file << "': " << ec.message() << "\n";
+                            open_database(db_file);
+                        } else {
+                            std::cout << "Active database '" << db_file << "' dropped.\n";
+                            open_database("quartz.db");
+                        }
+                    } else {
+                        if (!std::filesystem::remove(db_file, ec)) {
+                            std::cout << "Failed to drop database '" << db_file << "': " << ec.message() << "\n";
+                        } else {
+                            std::cout << "Database '" << db_file << "' dropped.\n";
+                        }
+                    }
+                }
             } else if (cmd == ".tables") {
                 auto tables = db->list_tables();
                 if (tables.empty()) {
@@ -310,7 +342,58 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            // 2. USE <db>
+            // 2. DROP DATABASE / DROP SCHEMA
+            if (iequals_prefix(query_to_run, "DROP DATABASE ") || iequals_prefix(query_to_run, "DROP SCHEMA ")) {
+                const auto first_space = query_to_run.find(' ');
+                const std::string after_first = query_to_run.substr(first_space + 1);
+                const auto second_space = after_first.find(' ');
+                std::string raw_name = after_first.substr(second_space + 1);
+
+                bool if_exists = false;
+                if (iequals_prefix(raw_name, "IF EXISTS ")) {
+                    if_exists = true;
+                    raw_name = raw_name.substr(10);
+                }
+
+                const std::string db_file = clean_db_name(raw_name);
+                if (db_file.empty()) {
+                    std::cout << "Error: Database name required. Usage: DROP DATABASE [IF EXISTS] <name>;\n\n";
+                } else if (!std::filesystem::exists(db_file)) {
+                    if (if_exists) {
+                        std::cout << "Database '" << db_file << "' does not exist (skipped).\n\n";
+                    } else {
+                        std::cout << "Error: Database '" << db_file << "' does not exist.\n\n";
+                    }
+                } else {
+                    std::error_code ec;
+                    const bool is_current = std::filesystem::equivalent(current_db_path, db_file, ec);
+                    ec.clear();
+
+                    if (is_current) {
+                        db.reset();
+                        executor.reset();
+
+                        if (!std::filesystem::remove(db_file, ec)) {
+                            std::cout << "Error: Failed to drop active database '" << db_file << "': "
+                                      << ec.message() << "\n\n";
+                            open_database(db_file);
+                        } else {
+                            std::cout << "Active database '" << db_file << "' dropped.\n";
+                            open_database("quartz.db");
+                        }
+                    } else {
+                        if (!std::filesystem::remove(db_file, ec)) {
+                            std::cout << "Error: Failed to drop database '" << db_file << "': "
+                                      << ec.message() << "\n\n";
+                        } else {
+                            std::cout << "Database '" << db_file << "' dropped successfully.\n\n";
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // 3. USE <db>
             if (iequals_prefix(query_to_run, "USE ")) {
                 const std::string raw_name = query_to_run.substr(4);
                 const std::string db_file = clean_db_name(raw_name);
@@ -328,7 +411,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            // 3. SHOW DATABASES / SHOW SCHEMAS
+            // 4. SHOW DATABASES / SHOW SCHEMAS
             if (iequals_prefix(query_to_run, "SHOW DATABASES") || iequals_prefix(query_to_run, "SHOW SCHEMAS")) {
                 std::vector<std::string> db_names;
                 try {
@@ -354,7 +437,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            // 4. SHOW TABLES
+            // 5. SHOW TABLES
             if (iequals_prefix(query_to_run, "SHOW TABLES")) {
                 auto tables = db->list_tables();
                 std::vector<qdb::Record> rows;
@@ -369,7 +452,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            // 5. SELECT DATABASE()
+            // 6. SELECT DATABASE()
             if (iequals_prefix(query_to_run, "SELECT DATABASE()") || iequals_prefix(query_to_run, "SELECT DATABASE ()")) {
                 qdb::Record rec;
                 rec.values.push_back(current_db_path.filename().string());

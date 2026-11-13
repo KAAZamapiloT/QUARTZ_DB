@@ -23,6 +23,7 @@ Switch and manage database files seamlessly without exiting the shell:
 | Command | Description |
 | :--- | :--- |
 | `CREATE DATABASE <name>;` | Initializes a new `.db` file and switches active connection to it. |
+| `DROP DATABASE [IF EXISTS] <name>;` | Deletes a database file from disk (falls back to default `quartz.db` if active). |
 | `USE <name>;` | Switches current active database context. |
 | `SHOW DATABASES;` | Lists all `.db` files found in the current working directory. |
 | `SHOW TABLES;` | Lists all registered tables in the currently active database. |
@@ -37,6 +38,7 @@ Dot commands provide administrative utilities outside standard SQL:
 ```text
 Dot Commands:
   .open <path>       Open or create a database file (e.g. .open mydb.db)
+  .drop <name>       Drop/delete a database file from disk
   .db                Show current database file and location
   .tables            List all tables in the current database
   .schema [table]    Show column definitions for a table (or all tables)
