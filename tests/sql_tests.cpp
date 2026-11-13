@@ -407,6 +407,61 @@ TEST(ParserTest, SyntaxErrorHandling) {
     }
 }
 
+TEST(ParserTest, ParseOrderByAndLimit) {
+    // 1. ORDER BY default ASC
+    {
+        Parser parser("SELECT * FROM users ORDER BY age;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value()) << res.error().message();
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_TRUE(stmt.order_by.has_value());
+        EXPECT_EQ(stmt.order_by->column_name, "age");
+        EXPECT_EQ(stmt.order_by->direction, OrderDirection::Ascending);
+        EXPECT_FALSE(stmt.limit.has_value());
+        EXPECT_FALSE(stmt.offset.has_value());
+    }
+
+    // 2. ORDER BY DESC
+    {
+        Parser parser("SELECT id, name FROM users ORDER BY score DESC;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value());
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_TRUE(stmt.order_by.has_value());
+        EXPECT_EQ(stmt.order_by->column_name, "score");
+        EXPECT_EQ(stmt.order_by->direction, OrderDirection::Descending);
+    }
+
+    // 3. LIMIT with OFFSET
+    {
+        Parser parser("SELECT * FROM users LIMIT 15 OFFSET 30;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value());
+        const auto& stmt = std::get<SelectStatement>(*res);
+        EXPECT_FALSE(stmt.order_by.has_value());
+        ASSERT_TRUE(stmt.limit.has_value());
+        EXPECT_EQ(*stmt.limit, 15U);
+        ASSERT_TRUE(stmt.offset.has_value());
+        EXPECT_EQ(*stmt.offset, 30U);
+    }
+
+    // 4. Combined WHERE, ORDER BY, LIMIT, and OFFSET
+    {
+        Parser parser("SELECT id FROM users WHERE active = 1 ORDER BY created_at DESC LIMIT 5 OFFSET 10;");
+        auto res = parser.parse();
+        ASSERT_TRUE(res.has_value());
+        const auto& stmt = std::get<SelectStatement>(*res);
+        ASSERT_NE(stmt.where_clause, nullptr);
+        ASSERT_TRUE(stmt.order_by.has_value());
+        EXPECT_EQ(stmt.order_by->column_name, "created_at");
+        EXPECT_EQ(stmt.order_by->direction, OrderDirection::Descending);
+        ASSERT_TRUE(stmt.limit.has_value());
+        EXPECT_EQ(*stmt.limit, 5U);
+        ASSERT_TRUE(stmt.offset.has_value());
+        EXPECT_EQ(*stmt.offset, 10U);
+    }
+}
+
 // ============================================================================
 // EXECUTOR TESTS (END-TO-END SQL)
 // ============================================================================
@@ -891,5 +946,150 @@ TEST_F(SQLExecutorTest, NonPrimaryKeyUpdateAndDelete) {
         auto final_sel = executor.execute("SELECT * FROM audit_logs;");
         ASSERT_TRUE(final_sel.success);
         EXPECT_EQ(final_sel.rows.size(), 1U);
+    }
+}
+
+TEST_F(SQLExecutorTest, OrderByAndLimitPagination) {
+    qdb::Database db(db_path_);
+    qdb::SQLExecutor executor(db);
+
+    // 1. Create table and insert test dataset
+    ASSERT_TRUE(executor.execute("CREATE TABLE scores (id INT PRIMARY KEY, player TEXT NOT NULL, score INT, note TEXT);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (1, 'Alice', 450, 'pro');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (2, 'Bob', 120, NULL);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (3, 'Charlie', 890, 'expert');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (4, 'David', 300, NULL);").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (5, 'Eve', 750, 'champion');").success);
+    ASSERT_TRUE(executor.execute("INSERT INTO scores VALUES (6, 'Frank', 120, 'rookie');").success);
+
+    // 2. ORDER BY score ASC (integer ascending)
+    {
+        auto res = executor.execute("SELECT player, score FROM scores ORDER BY score ASC;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 6U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 120);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[1].values[1]), 120);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[2].values[1]), 300);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[3].values[1]), 450);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[4].values[1]), 750);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[5].values[1]), 890);
+    }
+
+    // 3. ORDER BY score DESC (integer descending)
+    {
+        auto res = executor.execute("SELECT player, score FROM scores ORDER BY score DESC;");
+        ASSERT_TRUE(res.success) << res.message;
+        ASSERT_EQ(res.rows.size(), 6U);
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 890);
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "Charlie");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[1].values[1]), 750);
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[0]), "Eve");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[2].values[1]), 450);
+        EXPECT_EQ(std::get<std::string>(res.rows[2].values[0]), "Alice");
+    }
+
+    // 4. ORDER BY player ASC / DESC (text column)
+    {
+        auto res_asc = executor.execute("SELECT player FROM scores ORDER BY player ASC;");
+        ASSERT_TRUE(res_asc.success);
+        ASSERT_EQ(res_asc.rows.size(), 6U);
+        EXPECT_EQ(std::get<std::string>(res_asc.rows[0].values[0]), "Alice");
+        EXPECT_EQ(std::get<std::string>(res_asc.rows[5].values[0]), "Frank");
+
+        auto res_desc = executor.execute("SELECT player FROM scores ORDER BY player DESC;");
+        ASSERT_TRUE(res_desc.success);
+        ASSERT_EQ(res_desc.rows.size(), 6U);
+        EXPECT_EQ(std::get<std::string>(res_desc.rows[0].values[0]), "Frank");
+        EXPECT_EQ(std::get<std::string>(res_desc.rows[5].values[0]), "Alice");
+    }
+
+    // 5. ORDER BY with NULL values (NULLs sort first in ASC, last in DESC)
+    {
+        auto res_null_asc = executor.execute("SELECT player, note FROM scores ORDER BY note ASC;");
+        ASSERT_TRUE(res_null_asc.success);
+        ASSERT_EQ(res_null_asc.rows.size(), 6U);
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res_null_asc.rows[0].values[1]));
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res_null_asc.rows[1].values[1]));
+
+        auto res_null_desc = executor.execute("SELECT player, note FROM scores ORDER BY note DESC;");
+        ASSERT_TRUE(res_null_desc.success);
+        ASSERT_EQ(res_null_desc.rows.size(), 6U);
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res_null_desc.rows[4].values[1]));
+        EXPECT_TRUE(std::holds_alternative<std::monostate>(res_null_desc.rows[5].values[1]));
+    }
+
+    // 6. ORDER BY unprojected column
+    {
+        auto res = executor.execute("SELECT player FROM scores ORDER BY score DESC;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 6U);
+        ASSERT_EQ(res.column_names.size(), 1U);
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "Charlie");
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[0]), "Eve");
+    }
+
+    // 7. LIMIT alone
+    {
+        auto res = executor.execute("SELECT * FROM scores LIMIT 3;");
+        ASSERT_TRUE(res.success);
+        EXPECT_EQ(res.rows.size(), 3U);
+    }
+
+    // 8. ORDER BY with LIMIT (Top-N query)
+    {
+        auto res = executor.execute("SELECT player, score FROM scores ORDER BY score DESC LIMIT 3;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 3U);
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "Charlie");
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[0]), "Eve");
+        EXPECT_EQ(std::get<std::string>(res.rows[2].values[0]), "Alice");
+    }
+
+    // 9. LIMIT with OFFSET (Pagination)
+    {
+        // Page 1: 2 items
+        auto page1 = executor.execute("SELECT player, score FROM scores ORDER BY score DESC LIMIT 2 OFFSET 0;");
+        ASSERT_TRUE(page1.success);
+        ASSERT_EQ(page1.rows.size(), 2U);
+        EXPECT_EQ(std::get<std::string>(page1.rows[0].values[0]), "Charlie");
+        EXPECT_EQ(std::get<std::string>(page1.rows[1].values[0]), "Eve");
+
+        // Page 2: 2 items (offset 2)
+        auto page2 = executor.execute("SELECT player, score FROM scores ORDER BY score DESC LIMIT 2 OFFSET 2;");
+        ASSERT_TRUE(page2.success);
+        ASSERT_EQ(page2.rows.size(), 2U);
+        EXPECT_EQ(std::get<std::string>(page2.rows[0].values[0]), "Alice");
+        EXPECT_EQ(std::get<std::string>(page2.rows[1].values[0]), "David");
+
+        // Page 3: 2 items (offset 4)
+        auto page3 = executor.execute("SELECT player, score FROM scores ORDER BY score DESC LIMIT 2 OFFSET 4;");
+        ASSERT_TRUE(page3.success);
+        ASSERT_EQ(page3.rows.size(), 2U);
+        EXPECT_EQ(std::get<std::int64_t>(page3.rows[0].values[1]), 120);
+        EXPECT_EQ(std::get<std::int64_t>(page3.rows[1].values[1]), 120);
+    }
+
+    // 10. OFFSET exceeding row count
+    {
+        auto res = executor.execute("SELECT * FROM scores LIMIT 10 OFFSET 50;");
+        ASSERT_TRUE(res.success);
+        EXPECT_EQ(res.rows.size(), 0U);
+    }
+
+    // 11. Combined WHERE, ORDER BY, and LIMIT
+    {
+        auto res = executor.execute("SELECT player, score FROM scores WHERE score > 200 ORDER BY score ASC LIMIT 2;");
+        ASSERT_TRUE(res.success);
+        ASSERT_EQ(res.rows.size(), 2U);
+        EXPECT_EQ(std::get<std::string>(res.rows[0].values[0]), "David");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[0].values[1]), 300);
+        EXPECT_EQ(std::get<std::string>(res.rows[1].values[0]), "Alice");
+        EXPECT_EQ(std::get<std::int64_t>(res.rows[1].values[1]), 450);
+    }
+
+    // 12. Non-existent column in ORDER BY returns error
+    {
+        auto res = executor.execute("SELECT * FROM scores ORDER BY imaginary_col;");
+        ASSERT_FALSE(res.success);
     }
 }

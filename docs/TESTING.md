@@ -6,8 +6,8 @@ The test suite is built on **GoogleTest (v1.15.2)** and integrates with CMake CT
 
 ```
 Total Test Suites : 12
-Total Tests       : 84
-Pass Rate         : 100% (84/84 passing)
+Total Tests       : 86
+Pass Rate         : 100% (86/86 passing)
 ```
 
 ---
@@ -25,8 +25,8 @@ Pass Rate         : 100% (84/84 passing)
 | **`BplusTreeHighFrequencyTest`** | `tests/bplus_tree_deletion_tests.cpp` | 3 | B+ Tree Stress & Freelist | Sliding-window churn, sawtooth expansion/collapse, and 60,000-op adversarial blitz. |
 | **`BplusDBTest`** | `tests/bplus_tree_deletion_tests.cpp` | 2 | Full-Stack Storage Integration | 10,000-operation mixed OLTP churn, crash recovery, and multi-session catalog integrity. |
 | **`LexerTest`** | `tests/sql_tests.cpp` | 9 | SQL Lexer | Tokenization of DDL/DML, case insensitivity, string escapes, comments, and operator tokens. |
-| **`ParserTest`** | `tests/sql_tests.cpp` | 9 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), and JOIN syntax parsing. |
-| **`SQLExecutorTest`** | `tests/sql_tests.cpp` | 8 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, non-PK UPDATE/DELETE, and JOIN execution. |
+| **`ParserTest`** | `tests/sql_tests.cpp` | 10 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), JOIN, and ORDER BY / LIMIT parsing. |
+| **`SQLExecutorTest`** | `tests/sql_tests.cpp` | 9 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, ORDER BY / LIMIT / OFFSET, and JOIN execution. |
 | **`SQLScaleTest`** | `tests/sql_scale_tests.cpp` | 7 | Limits & Scale Benchmarks | 100 to 120,000 row progressive benchmarks measuring QPS, read latency, and disk footprint. |
 
 ---
@@ -115,11 +115,13 @@ Tests the recursive-descent AST parser (`src/sql/parser.cpp`).
 - **`SyntaxErrorHandling`**: Verifies informative error messages when encountering invalid SQL syntax.
 - **`ParseCompoundWhereWithAndOr`**: Verifies expression tree construction with operator precedence (`AND` binds tighter than `OR`) and parenthesized expressions (`(a OR b) AND c`).
 - **`ParseJoinStatements`**: Verifies parsing of `INNER JOIN` and `LEFT JOIN` with `ON` predicates and table-qualified columns (`users.id = orders.user_id`).
+- **`ParseOrderByAndLimit`**: Verifies parsing of `ORDER BY <col> [ASC|DESC]`, `LIMIT <n>`, and `OFFSET <m>`.
 
-### 11. `SQLExecutorTest` (8 Tests)
+### 11. `SQLExecutorTest` (9 Tests)
 Validates query planning, execution, and relational algebra (`src/execution/executor.cpp`).
 - **`EndToEndCreateTableInsertSelect`**: Complete DDL and DML query pipeline.
 - **`EndToEndUpdateAndDelete`**: Modifies and deletes rows using filtered WHERE clauses.
+- **`OrderByAndLimitPagination`**: Validates `ORDER BY` (ASC/DESC, integers, strings, NULL placement, unprojected columns) and pagination with `LIMIT` and `OFFSET`.
 - **`NonPrimaryKeyUpdateAndDelete`**: Validates multi-row updates and deletes on tables without primary keys, larger payload resizing, unconditional delete, and persistence across database restart.
 - **`DuplicatePrimaryKeyIsRejected`**: Ensures SQL inserts fail gracefully when primary keys collide.
 - **`DropTableLifecycleAndPersistence`**: Validates dropping tables, verifying in-memory and on-disk catalog deletion, page deallocation, subsequent query/drop rejections, and clean table recreation across restarts.

@@ -126,8 +126,8 @@ QuartzDB is covered by an extensive test suite built on **GoogleTest (v1.15.2)**
 
 ```
 Total Test Suites : 12
-Total Tests       : 84
-Pass Rate         : 100% (84/84 passing)
+Total Tests       : 86
+Pass Rate         : 100% (86/86 passing)
 ```
 
 ### Test Suite Overview
@@ -143,8 +143,8 @@ Pass Rate         : 100% (84/84 passing)
 | **`BplusTreeHighFrequencyTest`** | `bplus_tree_deletion_tests.cpp` | 3 | Stress & Freelist | Sliding-window churn, sawtooth expansion/collapse, and 60,000-op adversarial blitz. |
 | **`BplusDBTest`** | `bplus_tree_deletion_tests.cpp` | 2 | Full-Stack Integration | 10,000-op mixed OLTP churn, crash recovery, and multi-session catalog integrity. |
 | **`LexerTest`** | `sql_tests.cpp` | 9 | SQL Lexer | Tokenization of DDL/DML, case insensitivity, string escapes, comments, and operator tokens. |
-| **`ParserTest`** | `sql_tests.cpp` | 9 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), and JOIN syntax parsing. |
-| **`SQLExecutorTest`** | `sql_tests.cpp` | 8 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, non-PK UPDATE/DELETE, and JOIN execution. |
+| **`ParserTest`** | `sql_tests.cpp` | 10 | SQL AST Parser | Recursive-descent AST construction, precedence parsing (AND > OR), JOIN, and ORDER BY / LIMIT parsing. |
+| **`SQLExecutorTest`** | `sql_tests.cpp` | 9 | SQL Query Engine | End-to-end CRUD, B+ tree fast path, compound WHERE filters, DROP TABLE, non-PK UPDATE/DELETE, ORDER BY / LIMIT, and JOIN execution. |
 | **`SQLScaleTest`** | `sql_scale_tests.cpp` | 7 | Limits & Benchmarks | 100 to 120,000 row progressive benchmarks measuring QPS, read latency, and disk footprint. |
 
 > For comprehensive, test-by-test specifications, see [docs/TESTING.md](docs/TESTING.md).

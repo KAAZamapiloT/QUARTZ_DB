@@ -314,11 +314,80 @@ Result<SelectStatement> Parser::parse_select() {
         where_clause = std::move(*where_res);
     }
 
+    std::optional<OrderByClause> order_by;
+    if (match(TokenType::KeywordOrder)) {
+        auto by_tok = consume(TokenType::KeywordBy, "Expected 'BY' after 'ORDER'");
+        if (!by_tok) return std::unexpected(by_tok.error());
+
+        auto col_res = parse_column_reference();
+        if (!col_res) return std::unexpected(col_res.error());
+
+        OrderDirection dir = OrderDirection::Ascending;
+        if (match(TokenType::KeywordDesc)) {
+            dir = OrderDirection::Descending;
+        } else if (match(TokenType::KeywordAsc)) {
+            dir = OrderDirection::Ascending;
+        }
+
+        order_by = OrderByClause{
+            .column_name = std::move(*col_res),
+            .direction = dir
+        };
+    }
+
+    std::optional<std::size_t> limit;
+    std::optional<std::size_t> offset;
+    if (match(TokenType::KeywordLimit)) {
+        auto lim_tok = consume(TokenType::IntegerLiteral, "Expected integer count after 'LIMIT'");
+        if (!lim_tok) return std::unexpected(lim_tok.error());
+
+        try {
+            long long val = std::stoll(lim_tok->text);
+            if (val < 0) {
+                return std::unexpected(syntax_error("LIMIT count cannot be negative", *lim_tok));
+            }
+            limit = static_cast<std::size_t>(val);
+        } catch (...) {
+            return std::unexpected(syntax_error("Invalid integer in LIMIT", *lim_tok));
+        }
+
+        if (match(TokenType::KeywordOffset)) {
+            auto off_tok = consume(TokenType::IntegerLiteral, "Expected integer count after 'OFFSET'");
+            if (!off_tok) return std::unexpected(off_tok.error());
+
+            try {
+                long long oval = std::stoll(off_tok->text);
+                if (oval < 0) {
+                    return std::unexpected(syntax_error("OFFSET count cannot be negative", *off_tok));
+                }
+                offset = static_cast<std::size_t>(oval);
+            } catch (...) {
+                return std::unexpected(syntax_error("Invalid integer in OFFSET", *off_tok));
+            }
+        }
+    } else if (match(TokenType::KeywordOffset)) {
+        auto off_tok = consume(TokenType::IntegerLiteral, "Expected integer count after 'OFFSET'");
+        if (!off_tok) return std::unexpected(off_tok.error());
+
+        try {
+            long long oval = std::stoll(off_tok->text);
+            if (oval < 0) {
+                return std::unexpected(syntax_error("OFFSET count cannot be negative", *off_tok));
+            }
+            offset = static_cast<std::size_t>(oval);
+        } catch (...) {
+            return std::unexpected(syntax_error("Invalid integer in OFFSET", *off_tok));
+        }
+    }
+
     return SelectStatement{
         .table_name = name_tok->text,
         .columns = std::move(columns),
         .joins = std::move(joins),
-        .where_clause = std::move(where_clause)
+        .where_clause = std::move(where_clause),
+        .order_by = std::move(order_by),
+        .limit = limit,
+        .offset = offset
     };
 }
 

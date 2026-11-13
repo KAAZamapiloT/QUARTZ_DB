@@ -10,6 +10,7 @@ namespace qdb {
 using sql::JoinType;
 using sql::BinaryOp;
 using sql::LogicalOp;
+using sql::OrderDirection;
 
 namespace {
 
@@ -81,6 +82,22 @@ int compare_values(const Value& a, const Value& b) {
         return 0;
     }
     return -2; // Incomparable or NULL
+}
+
+bool order_by_compare(const Value& a, const Value& b, OrderDirection dir) {
+    const bool a_null = std::holds_alternative<std::monostate>(a);
+    const bool b_null = std::holds_alternative<std::monostate>(b);
+
+    if (a_null && b_null) return false;
+    if (a_null) return dir == OrderDirection::Ascending;
+    if (b_null) return dir != OrderDirection::Ascending;
+
+    const int cmp = compare_values(a, b);
+    if (cmp != -2) {
+        return (dir == OrderDirection::Ascending) ? (cmp < 0) : (cmp > 0);
+    }
+
+    return (dir == OrderDirection::Ascending) ? (a.index() < b.index()) : (a.index() > b.index());
 }
 
 bool evaluate_condition(const sql::BinaryExpression& expr, const Schema& schema, const Record& record) {
@@ -348,7 +365,7 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
         }
     }
 
-    std::vector<Record> result_rows;
+    std::vector<Record> matched_rows;
     const auto pk_idx = find_primary_key_column(schema);
 
     // Fast-path: O(log N) point lookup via B+ tree primary index
@@ -371,16 +388,54 @@ QueryResult SQLExecutor::execute_select(const sql::SelectStatement& stmt) {
             };
         }
         if (find_res->has_value()) {
-            result_rows.push_back(project_record(**find_res, proj_indices));
+            matched_rows.push_back(std::move(**find_res));
         }
     } else {
         // General table scan path
         auto all_rows = table->scan();
-        for (const auto& row : all_rows) {
+        for (auto& row : all_rows) {
             if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), schema, row)) {
-                result_rows.push_back(project_record(row, proj_indices));
+                matched_rows.push_back(std::move(row));
             }
         }
+    }
+
+    // 1. ORDER BY
+    if (stmt.order_by.has_value()) {
+        auto sort_col_idx = find_column_index(schema, stmt.order_by->column_name);
+        if (!sort_col_idx) {
+            return QueryResult{
+                .success = false,
+                .message = "Column '" + stmt.order_by->column_name + "' for ORDER BY does not exist in table '" + stmt.table_name + "'."
+            };
+        }
+        const std::size_t s_idx = *sort_col_idx;
+        const OrderDirection dir = stmt.order_by->direction;
+        std::stable_sort(matched_rows.begin(), matched_rows.end(),
+            [s_idx, dir](const Record& r1, const Record& r2) {
+                const auto& v1 = (s_idx < r1.values.size()) ? r1.values[s_idx] : Value{std::monostate{}};
+                const auto& v2 = (s_idx < r2.values.size()) ? r2.values[s_idx] : Value{std::monostate{}};
+                return order_by_compare(v1, v2, dir);
+            });
+    }
+
+    // 2. OFFSET
+    std::size_t start_idx = 0;
+    if (stmt.offset.has_value()) {
+        start_idx = std::min(*stmt.offset, matched_rows.size());
+    }
+
+    // 3. LIMIT
+    std::size_t end_idx = matched_rows.size();
+    if (stmt.limit.has_value()) {
+        end_idx = std::min(start_idx + *stmt.limit, matched_rows.size());
+    }
+
+    // 4. Project slice
+    std::vector<Record> result_rows;
+    result_rows.reserve(end_idx > start_idx ? end_idx - start_idx : 0);
+    for (std::size_t i = start_idx; i < end_idx; ++i) {
+        result_rows.push_back(project_record(matched_rows[i], proj_indices));
     }
 
     return QueryResult{
@@ -499,7 +554,7 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
         }
     }
 
-    std::vector<Record> result_rows;
+    std::vector<Record> joined_rows;
     const auto left_rows = left_table->scan();
 
     if (can_use_right_index) {
@@ -515,7 +570,7 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
                     matched = true;
                     Record joined_rec = build_joined_record(lrow, &(**find_res), left_schema.columns.size(), joined_schema.columns.size());
                     if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
-                        result_rows.push_back(project_record(joined_rec, proj_indices));
+                        joined_rows.push_back(std::move(joined_rec));
                     }
                 }
             }
@@ -523,7 +578,7 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
             if (!matched && join.join_type == sql::JoinType::Left) {
                 Record joined_rec = build_joined_record(lrow, nullptr, left_schema.columns.size(), joined_schema.columns.size());
                 if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
-                    result_rows.push_back(project_record(joined_rec, proj_indices));
+                    joined_rows.push_back(std::move(joined_rec));
                 }
             }
         }
@@ -543,7 +598,7 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
                         matched = true;
                         Record joined_rec = build_joined_record(lrow, &rrow, left_schema.columns.size(), joined_schema.columns.size());
                         if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
-                            result_rows.push_back(project_record(joined_rec, proj_indices));
+                            joined_rows.push_back(std::move(joined_rec));
                         }
                     }
                 }
@@ -552,10 +607,48 @@ QueryResult SQLExecutor::execute_select_join(const sql::SelectStatement& stmt) {
             if (!matched && join.join_type == sql::JoinType::Left) {
                 Record joined_rec = build_joined_record(lrow, nullptr, left_schema.columns.size(), joined_schema.columns.size());
                 if (!stmt.where_clause || evaluate_expr(stmt.where_clause.get(), joined_schema, joined_rec)) {
-                    result_rows.push_back(project_record(joined_rec, proj_indices));
+                    joined_rows.push_back(std::move(joined_rec));
                 }
             }
         }
+    }
+
+    // 1. ORDER BY
+    if (stmt.order_by.has_value()) {
+        auto sort_col_idx = find_column_index(joined_schema, stmt.order_by->column_name);
+        if (!sort_col_idx) {
+            return QueryResult{
+                .success = false,
+                .message = "Column '" + stmt.order_by->column_name + "' for ORDER BY does not exist in joined tables."
+            };
+        }
+        const std::size_t s_idx = *sort_col_idx;
+        const OrderDirection dir = stmt.order_by->direction;
+        std::stable_sort(joined_rows.begin(), joined_rows.end(),
+            [s_idx, dir](const Record& r1, const Record& r2) {
+                const auto& v1 = (s_idx < r1.values.size()) ? r1.values[s_idx] : Value{std::monostate{}};
+                const auto& v2 = (s_idx < r2.values.size()) ? r2.values[s_idx] : Value{std::monostate{}};
+                return order_by_compare(v1, v2, dir);
+            });
+    }
+
+    // 2. OFFSET
+    std::size_t start_idx = 0;
+    if (stmt.offset.has_value()) {
+        start_idx = std::min(*stmt.offset, joined_rows.size());
+    }
+
+    // 3. LIMIT
+    std::size_t end_idx = joined_rows.size();
+    if (stmt.limit.has_value()) {
+        end_idx = std::min(start_idx + *stmt.limit, joined_rows.size());
+    }
+
+    // 4. Project slice
+    std::vector<Record> result_rows;
+    result_rows.reserve(end_idx > start_idx ? end_idx - start_idx : 0);
+    for (std::size_t i = start_idx; i < end_idx; ++i) {
+        result_rows.push_back(project_record(joined_rows[i], proj_indices));
     }
 
     return QueryResult{

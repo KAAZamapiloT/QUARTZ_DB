@@ -7,6 +7,9 @@ import CodeDiff from './components/CodeDiff.vue'
 import PrerequisiteGraph from './components/PrerequisiteGraph.vue'
 import DataDictionary from './components/DataDictionary.vue'
 import InteractiveErd from './components/InteractiveErd.vue'
+import ConfigTable from './components/ConfigTable.vue'
+import ErrorExplorer from './components/ErrorExplorer.vue'
+import SyntaxRailroad from './components/SyntaxRailroad.vue'
 
 export default {
   extends: DefaultTheme,
@@ -17,5 +20,8 @@ export default {
     app.component('PrerequisiteGraph', PrerequisiteGraph)
     app.component('DataDictionary', DataDictionary)
     app.component('InteractiveErd', InteractiveErd)
+    app.component('ConfigTable', ConfigTable)
+    app.component('ErrorExplorer', ErrorExplorer)
+    app.component('SyntaxRailroad', SyntaxRailroad)
   }
 }
