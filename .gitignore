@@ -2,7 +2,6 @@
 *.db
 *.obj
 *.yaml
-*.json
 *.xml
 *.tcl
 bin
@@ -12,4 +11,8 @@ build
 *.vsidx
 *.ipch
 .vs
-.gitignore
+
+# Node / VitePress documentation
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

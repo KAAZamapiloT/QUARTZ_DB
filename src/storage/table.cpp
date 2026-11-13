@@ -157,7 +157,7 @@ namespace  qdb {
 				const std::size_t slot_offset = HEADER_SIZE + static_cast<std::size_t>(i) * SLOT_SIZE;
 				const std::uint16_t record_offset = read_u16(page, slot_offset);
 
-				const std::size_t record_length = read_u16(page, slot_offset + 2);
+				const auto record_length = read_u16(page, slot_offset + 2);
 
 				if (record_length == 0) {
 					write_u16(rebuilt, slot_offset, 0);
@@ -947,7 +947,7 @@ namespace  qdb {
 
 				const std::size_t record_offset = read_u16(page, slot_offset);
 
-				const std::size_t record_length = read_u16(page, slot_offset + 2);
+				const auto record_length = read_u16(page, slot_offset + 2);
 
 				if (record_length == 0) {
 					continue;
