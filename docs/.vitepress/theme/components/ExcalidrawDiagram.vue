@@ -17,7 +17,7 @@
           <span>⤢</span> Zoom
         </button>
         <a 
-          :href="`/diagrams/${name}.svg`" 
+          :href="withBase(`/diagrams/${name}.svg`)" 
           target="_blank" 
           class="action-btn download-btn" 
           title="Open raw SVG vector in new tab"
@@ -39,14 +39,14 @@
     <div class="diagram-body" @click="openModal" title="Click to expand / inspect full resolution">
       <div class="svg-wrapper">
         <img 
-          :src="`/diagrams/${name}.svg`" 
+          :src="withBase(`/diagrams/${name}.svg`)" 
           :alt="alt || title" 
           class="rendered-diagram-img" 
           loading="lazy"
         />
       </div>
       <div class="inspection-hint">
-        <span>Click diagram to inspect full vector resolution (⤢)</span>
+        <span>Click diagram or [⤢ Zoom] to inspect full vector resolution</span>
       </div>
     </div>
 
@@ -85,11 +85,11 @@
             >
               <div 
                 class="lightbox-canvas" 
-                :class="{ 'is-dragging': isPanning }"
+                :class="{ 'is-dragging': isPanning, 'can-pan': zoomScale > 1.0 }"
                 :style="{ transform: `translate3d(${panX}px, ${panY}px, 0px) scale(${zoomScale})` }"
               >
                 <img 
-                  :src="`/diagrams/${name}.svg`" 
+                  :src="withBase(`/diagrams/${name}.svg`)" 
                   :alt="alt || title" 
                   class="lightbox-img"
                   draggable="false"
@@ -98,8 +98,8 @@
             </div>
 
             <div class="lightbox-footer">
-              <span class="footer-hint">Mobile: Pinch to zoom &bull; Drag to pan &bull; Double-tap to 2&times; // Desktop: Scroll wheel &bull; Drag to pan</span>
-              <a :href="`/diagrams/${name}.svg`" download class="footer-download-btn">Download Vector SVG</a>
+              <span class="footer-hint">Touch: Pinch to zoom &bull; Drag to pan &bull; Double-tap 2&times; // Desktop: Scroll wheel &bull; Drag to pan (zoomed)</span>
+              <a :href="withBase(`/diagrams/${name}.svg`)" download class="footer-download-btn">Download Vector SVG</a>
             </div>
           </div>
         </div>
@@ -110,6 +110,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { withBase } from 'vitepress'
 
 const props = defineProps<{
   name: string
@@ -196,24 +197,27 @@ function onTouchStart(e: TouchEvent) {
     }
     lastTapTime = now
 
-    touchStartX = e.touches[0].clientX
-    touchStartY = e.touches[0].clientY
-    startPanX = panX.value
-    startPanY = panY.value
-    isPanning.value = true
+    if (zoomScale.value > 1.0) {
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+      startPanX = panX.value
+      startPanY = panY.value
+      isPanning.value = true
+    }
   }
 }
 
 function onTouchMove(e: TouchEvent) {
-  e.preventDefault()
   if (e.touches.length === 2 && initialPinchDist > 0) {
+    e.preventDefault()
     const dist = Math.hypot(
       e.touches[0].clientX - e.touches[1].clientX,
       e.touches[0].clientY - e.touches[1].clientY
     )
     const factor = dist / initialPinchDist
     zoomScale.value = Math.min(Math.max(initialZoom * factor, 0.5), 4.0)
-  } else if (e.touches.length === 1 && isPanning.value) {
+  } else if (e.touches.length === 1 && isPanning.value && zoomScale.value > 1.0) {
+    e.preventDefault()
     const dx = e.touches[0].clientX - touchStartX
     const dy = e.touches[0].clientY - touchStartY
     panX.value = startPanX + dx
@@ -232,6 +236,7 @@ function onTouchEnd() {
 
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0) return
+  if (zoomScale.value <= 1.0) return // Only pan when zoomed
   isPanning.value = true
   mouseStartX = e.clientX
   mouseStartY = e.clientY
@@ -240,7 +245,7 @@ function onMouseDown(e: MouseEvent) {
 }
 
 function onMouseMove(e: MouseEvent) {
-  if (!isPanning.value) return
+  if (!isPanning.value || zoomScale.value <= 1.0) return
   const dx = e.clientX - mouseStartX
   const dy = e.clientY - mouseStartY
   panX.value = startPanX + dx
@@ -510,6 +515,8 @@ onUnmounted(() => {
 
 .lightbox-viewport {
   flex: 1;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   padding: 1.5rem;
   background: var(--q-bg-canvas);
@@ -522,12 +529,17 @@ onUnmounted(() => {
 }
 
 .lightbox-canvas {
+  width: 100%;
+  height: 100%;
   transform-origin: center center;
-  transition: transform 0.05s linear;
+  transition: transform 0.08s ease-out;
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 100%;
+  cursor: default;
+}
+
+.lightbox-canvas.can-pan {
   cursor: grab;
 }
 
@@ -537,10 +549,16 @@ onUnmounted(() => {
 }
 
 .lightbox-img {
-  max-width: 100%;
-  max-height: 80vh;
+  max-width: 92%;
+  max-height: 76vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  background: var(--q-bg-panel);
+  border: 1px solid var(--q-ink-muted);
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
 

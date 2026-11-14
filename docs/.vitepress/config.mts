@@ -71,7 +71,7 @@ export default withMermaid(
             { text: 'SQL Syntax Reference', link: '/sql/' },
             { text: 'Configuration Reference', link: '/configuration/' },
             { text: 'Error Code Explorer', link: '/errors/' },
-            { text: 'C API Reference', link: '/guide/c-api' },
+            { text: 'C API & Python FFI Guide', link: '/guide/c-api' },
             { text: 'Interactive REPL (quartz.exe)', link: '/tools/cli' },
             { text: 'Global Data Dictionary', link: '/data-dictionary' },
             { text: 'Interactive Schema ERD', link: '/diagrams' }
@@ -98,7 +98,7 @@ export default withMermaid(
             { text: 'Database Overview', link: '/overview' },
             { text: 'Quickstart & Building', link: '/getting-started/' },
             { text: 'C++ Embedding Guide', link: '/guide/cpp-integration' },
-            { text: 'C API Reference', link: '/guide/c-api' },
+            { text: 'C API & Python FFI Guide', link: '/guide/c-api' },
             { text: 'Test Suite & Verification', link: '/TESTING' }
           ]
         },

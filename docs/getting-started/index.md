@@ -97,3 +97,14 @@ int main() {
     return 0;
 }
 ```
+
+---
+
+## Embedding via C API & Python FFI
+
+Need to interface with QuartzDB from pure C or call the engine directly from Python without compilation?
+
+- **Header:** `include/quartz/quartz.h` (`qdb_open`, `qdb_close`, `qdb_execute`, `qdb_exec`, `qdb_column_*`)
+- **Static Library:** `libquartz.a` / `quartz.lib`
+- **Complete Guide:** 👉 **[C API & Python FFI Guide](/guide/c-api)** — includes pure C99 handle lifecycle patterns and a copy-pasteable Python `ctypes` wrapper class.
+
