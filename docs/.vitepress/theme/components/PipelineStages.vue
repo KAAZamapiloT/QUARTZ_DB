@@ -159,9 +159,20 @@ const activeScrollStage = ref('01')
 function scrollToStage(step) {
   activeScrollStage.value = step
   if (typeof document === 'undefined') return
+  
+  if (step === '01') {
+    const card = document.querySelector('.pipeline-stages-card')
+    if (card) {
+      const navOffset = 75
+      const pos = card.getBoundingClientRect().top + window.pageYOffset - navOffset
+      window.scrollTo({ top: pos, behavior: 'smooth' })
+      return
+    }
+  }
+
   const el = document.getElementById('pipeline-stage-' + step)
   if (el) {
-    const navOffset = 90
+    const navOffset = 105
     const elementPosition = el.getBoundingClientRect().top
     const offsetPosition = elementPosition + window.pageYOffset - navOffset
     window.scrollTo({
@@ -914,7 +925,7 @@ const activeStages = computed(() => {
   align-items: center;
   gap: 0.6rem;
   flex: 1;
-  min-width: 300px;
+  min-width: 0;
 }
 
 .prompt-symbol {
@@ -1003,10 +1014,12 @@ const activeStages = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.55rem 1.75rem;
+  padding: 0.55rem 1.25rem;
   background: var(--vp-c-bg-soft);
   border-bottom: 1px solid var(--vp-c-divider);
-  flex-wrap: wrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 
 .stepper-title {
@@ -1016,6 +1029,7 @@ const activeStages = computed(() => {
   font-family: var(--vp-font-family-mono);
   font-size: 0.72rem;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .stepper-tag {
@@ -1039,7 +1053,9 @@ const activeStages = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .stepper-pill {
@@ -1055,6 +1071,8 @@ const activeStages = computed(() => {
   font-size: 0.72rem;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .stepper-pill:hover {
@@ -1086,29 +1104,34 @@ const activeStages = computed(() => {
 
 /* Stages Timeline */
 .stages-timeline {
-  padding: 1.75rem;
+  padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .stage-card {
   display: flex;
-  gap: 1.25rem;
+  gap: 1.15rem;
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .timeline-gutter {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 36px;
+  width: 34px;
   flex-shrink: 0;
 }
 
 .step-circle {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--vp-c-bg);
   border: 2px solid var(--vp-c-divider);
@@ -1116,11 +1139,12 @@ const activeStages = computed(() => {
   align-items: center;
   justify-content: center;
   font-family: var(--vp-font-family-mono);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--vp-c-text-1);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   z-index: 2;
+  flex-shrink: 0;
 }
 
 .stage-card.amber .step-circle { border-color: #f59e0b; color: #d97706; }
@@ -1148,12 +1172,16 @@ const activeStages = computed(() => {
 /* Stage Content */
 .stage-content {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
-  padding: 1.15rem 1.35rem;
+  padding: 1.15rem 1.25rem;
   background: var(--vp-c-bg);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   transition: all 0.15s ease;
+  overflow: hidden;
 }
 
 .stage-content:hover {
@@ -1168,10 +1196,17 @@ const activeStages = computed(() => {
 .stage-top-meta {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.title-group {
+  flex: 1 1 200px;
+  min-width: 0;
 }
 
 .stage-subsystem {
@@ -1189,12 +1224,15 @@ const activeStages = computed(() => {
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--vp-c-text-1);
+  line-height: 1.25;
 }
 
 .meta-badges {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .file-badge {
@@ -1203,6 +1241,7 @@ const activeStages = computed(() => {
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid var(--vp-c-divider);
+  white-space: nowrap;
 }
 
 .layer-pill {
@@ -1211,6 +1250,8 @@ const activeStages = computed(() => {
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .layer-pill.amber { background: rgba(245, 158, 11, 0.15); color: #d97706; }
@@ -1239,26 +1280,35 @@ const activeStages = computed(() => {
   font-size: 0.75rem;
   margin-bottom: 0.85rem;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .io-block {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.4rem;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .io-lbl {
   font-weight: 700;
   color: var(--vp-c-text-2);
+  flex-shrink: 0;
 }
 
 .io-val {
   color: var(--vp-c-text-1);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .io-arrow {
   font-weight: 700;
   color: #b83a24;
+  flex-shrink: 0;
 }
 
 .dark .io-arrow {
@@ -1271,6 +1321,7 @@ const activeStages = computed(() => {
   flex-direction: column;
   gap: 0.35rem;
   margin-bottom: 0.85rem;
+  min-width: 0;
 }
 
 .mechanic-item {
@@ -1280,15 +1331,22 @@ const activeStages = computed(() => {
   align-items: baseline;
   gap: 0.4rem;
   line-height: 1.4;
+  min-width: 0;
 }
 
 .mech-bullet {
   color: #b83a24;
   font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .dark .mech-bullet {
   color: #f87171;
+}
+
+.mech-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mech-text strong {
@@ -1301,6 +1359,8 @@ const activeStages = computed(() => {
   overflow: hidden;
   border: 1px solid var(--vp-c-divider);
   background: #18181b;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .code-box-header {
@@ -1323,6 +1383,8 @@ const activeStages = computed(() => {
   color: #f4f4f5;
   background: transparent;
   overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Footer Bar */
@@ -1364,5 +1426,26 @@ const activeStages = computed(() => {
 .footer-note {
   font-size: 0.78rem;
   color: var(--vp-c-text-2);
+}
+
+@media (max-width: 768px) {
+  .stages-timeline {
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+  }
+  .stage-card {
+    gap: 0.75rem;
+  }
+  .stage-content {
+    padding: 0.85rem 1rem;
+  }
+  .card-header,
+  .active-query-banner,
+  .strategy-toggle-bar,
+  .stage-stepper-bar,
+  .pipeline-footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 </style>
