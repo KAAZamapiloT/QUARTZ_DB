@@ -628,7 +628,7 @@
       "endArrowhead": null
     },
     {
-      "id": "seq_note_55_tv07b",
+      "id": "seq_note_55_lufd0",
       "type": "rectangle",
       "x": 250,
       "y": 80,
@@ -656,7 +656,7 @@
       "locked": false
     },
     {
-      "id": "seq_note_55_tv07b_txt",
+      "id": "seq_note_55_lufd0_txt",
       "type": "text",
       "x": 260,
       "y": 86,
@@ -686,12 +686,12 @@
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 12,
-      "containerId": "seq_note_55_tv07b",
+      "containerId": "seq_note_55_lufd0",
       "originalText": "Path A: Primary Key Fast-Path (WHERE id = 42)",
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_56_uyuf9",
+      "id": "seq_msg_56_4wiha",
       "type": "arrow",
       "x": 80,
       "y": 125,
@@ -734,7 +734,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_56_uyuf9_txt",
+      "id": "seq_msg_56_4wiha_txt",
       "type": "text",
       "x": 50,
       "y": 105,
@@ -769,7 +769,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_57_negck",
+      "id": "seq_msg_57_moygd",
       "type": "arrow",
       "x": 220,
       "y": 155,
@@ -812,7 +812,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_57_negck_txt",
+      "id": "seq_msg_57_moygd_txt",
       "type": "text",
       "x": 200,
       "y": 135,
@@ -847,7 +847,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_58_rl77x",
+      "id": "seq_msg_58_3xk8u",
       "type": "arrow",
       "x": 380,
       "y": 185,
@@ -890,7 +890,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_58_rl77x_txt",
+      "id": "seq_msg_58_3xk8u_txt",
       "type": "text",
       "x": 355,
       "y": 165,
@@ -925,7 +925,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_59_rvu3g",
+      "id": "seq_msg_59_ohkr1",
       "type": "arrow",
       "x": 530,
       "y": 215,
@@ -968,7 +968,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_59_rvu3g_txt",
+      "id": "seq_msg_59_ohkr1_txt",
       "type": "text",
       "x": 575,
       "y": 195,
@@ -1003,7 +1003,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_60_99dud",
+      "id": "seq_msg_60_v8cws",
       "type": "arrow",
       "x": 530,
       "y": 245,
@@ -1046,7 +1046,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_60_99dud_txt",
+      "id": "seq_msg_60_v8cws_txt",
       "type": "text",
       "x": 355,
       "y": 225,
@@ -1081,7 +1081,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_61_bglu3",
+      "id": "seq_msg_61_hzg7e",
       "type": "arrow",
       "x": 220,
       "y": 275,
@@ -1124,7 +1124,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_61_bglu3_txt",
+      "id": "seq_msg_61_hzg7e_txt",
       "type": "text",
       "x": 350,
       "y": 255,
@@ -1159,7 +1159,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_62_iiddr",
+      "id": "seq_msg_62_ap3ub",
       "type": "arrow",
       "x": 220,
       "y": 305,
@@ -1202,7 +1202,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_62_iiddr_txt",
+      "id": "seq_msg_62_ap3ub_txt",
       "type": "text",
       "x": 50,
       "y": 285,
@@ -1237,7 +1237,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_note_63_vqg9z",
+      "id": "seq_note_63_nx3d7",
       "type": "rectangle",
       "x": 250,
       "y": 345,
@@ -1265,7 +1265,7 @@
       "locked": false
     },
     {
-      "id": "seq_note_63_vqg9z_txt",
+      "id": "seq_note_63_nx3d7_txt",
       "type": "text",
       "x": 260,
       "y": 351,
@@ -1295,12 +1295,12 @@
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 12,
-      "containerId": "seq_note_63_vqg9z",
+      "containerId": "seq_note_63_nx3d7",
       "originalText": "Path B: Full Table Scan (WHERE status = \"PAID\")",
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_64_lrh9f",
+      "id": "seq_msg_64_f7x6m",
       "type": "arrow",
       "x": 80,
       "y": 390,
@@ -1343,7 +1343,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_64_lrh9f_txt",
+      "id": "seq_msg_64_f7x6m_txt",
       "type": "text",
       "x": 50,
       "y": 370,
@@ -1378,7 +1378,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_65_7l0dl",
+      "id": "seq_msg_65_a28jw",
       "type": "arrow",
       "x": 220,
       "y": 420,
@@ -1421,7 +1421,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_65_7l0dl_txt",
+      "id": "seq_msg_65_a28jw_txt",
       "type": "text",
       "x": 350,
       "y": 400,
@@ -1456,7 +1456,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_66_8386t",
+      "id": "seq_msg_66_q7n5d",
       "type": "arrow",
       "x": 680,
       "y": 450,
@@ -1499,7 +1499,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_66_8386t_txt",
+      "id": "seq_msg_66_q7n5d_txt",
       "type": "text",
       "x": 650,
       "y": 430,
@@ -1534,7 +1534,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_67_xyac8",
+      "id": "seq_msg_67_1bc26",
       "type": "arrow",
       "x": 220,
       "y": 480,
@@ -1577,7 +1577,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_67_xyac8_txt",
+      "id": "seq_msg_67_1bc26_txt",
       "type": "text",
       "x": 50,
       "y": 460,

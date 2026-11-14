@@ -1,0 +1,10 @@
+graph TD
+    subgraph Host["Host Application Process (e.g. C++ / Python / Go)"]
+        Auth["Application Auth / RBAC"]
+        Logic["Business Logic Layer"]
+        Engine["QuartzDB Engine (qdb::Database / qdb::Executor)<br/>• AST Parser & Semantic Validation<br/>• Slotted-Page & B+ Tree Storage Engine<br/>• 4KB Block Pager I/O Layer"]
+        Auth -->|Validated Queries| Engine
+        Logic -->|Validated Queries| Engine
+    end
+    DB[("Local Database File<br/>production.db (4KB pages)")]
+    Engine -->|Direct Synchronous File I/O| DB

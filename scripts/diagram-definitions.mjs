@@ -924,5 +924,50 @@ export function buildAllDiagrams() {
     builders.push(d);
   }
 
+  // =========================================================================
+  // 26. embedded-execution-model (docs/security.md)
+  // =========================================================================
+  {
+    const d = new DiagramBuilder('embedded-execution-model', 'In-Process Embedded Execution Model', 840, 520);
+
+    d.addContainer({
+      id: 'host_proc', x: 40, y: 30, w: 760, h: 320,
+      title: 'Host Application Process (e.g. C++ / Python / Go)'
+    });
+
+    d.addBox({
+      id: 'auth_node', x: 70, y: 80, w: 320, h: 65,
+      title: 'Application Auth / RBAC',
+      subtitle: 'Token Verification & User Identity',
+      type: 'entry'
+    });
+
+    d.addBox({
+      id: 'logic_node', x: 450, y: 80, w: 320, h: 65,
+      title: 'Business Logic Layer',
+      subtitle: 'Domain Services & Parameterized Queries',
+      type: 'shared'
+    });
+
+    d.addBox({
+      id: 'engine_node', x: 70, y: 200, w: 700, h: 120,
+      title: 'QuartzDB Engine (qdb::Database / qdb::Executor)',
+      subtitle: '• AST Parser & Semantic Validation   • Slotted-Page & B+ Tree Engine   • 4KB Pager I/O',
+      type: 'disk'
+    });
+
+    d.addCylinder({
+      id: 'db_file', x: 270, y: 400, w: 300, h: 85,
+      title: 'Local Database File',
+      subtitle: 'production.db (4096-Byte Blocks)'
+    });
+
+    d.addArrow({ points: [[230, 145], [230, 200]], label: '(Validated Queries)' });
+    d.addArrow({ points: [[610, 145], [610, 200]], label: '(Validated Queries)' });
+    d.addArrow({ points: [[420, 320], [420, 400]], label: 'Direct Synchronous File I/O' });
+
+    builders.push(d);
+  }
+
   return builders;
 }

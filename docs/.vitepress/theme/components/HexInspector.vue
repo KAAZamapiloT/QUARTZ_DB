@@ -4,9 +4,13 @@
     <div class="inspector-header">
       <div class="header-titles">
         <span class="inspector-tag">INTERACTIVE MEMORY INSPECTOR</span>
-        <h3 class="inspector-title">4KB Slotted-Page Raw Hex & Structure Inspector</h3>
+        <h3 class="inspector-title">
+          {{ activePageId === 0 ? 'Page 0 Catalog Header & Table Descriptor Inspector' : '4KB Slotted-Page Raw Hex & Structure Inspector' }}
+        </h3>
         <p class="inspector-sub">
-          Inspect byte-by-byte alignment of page headers, slot directories, unallocated space, and variable-length record payloads.
+          {{ activePageId === 0 
+            ? 'Inspect byte-by-byte alignment of the fixed 12-byte catalog header (magic_QDB1, version, table_count) and packed 40-byte table descriptor records.'
+            : 'Inspect byte-by-byte alignment of page headers, slot directories, unallocated space, and variable-length record payloads.' }}
         </p>
       </div>
 
@@ -26,8 +30,44 @@
       </div>
     </div>
 
+    <!-- Page Selection Toggle Bar (Page 0 Catalog vs Page 1 Slotted Data) -->
+    <div class="page-selector-bar">
+      <span class="page-selector-label">INSPECT DATABASE BLOCK:</span>
+      <div class="page-selector-buttons">
+        <button 
+          :class="['page-tab-btn', { active: activePageId === 0 }]"
+          @click="switchPage(0)"
+        >
+          <span class="tab-badge">PAGE 0</span>
+          <span class="tab-name">Database Catalog &amp; Table Registry</span>
+        </button>
+        <button 
+          :class="['page-tab-btn', { active: activePageId === 1 }]"
+          @click="switchPage(1)"
+        >
+          <span class="tab-badge">PAGE 1</span>
+          <span class="tab-name">Slotted Table Data &amp; Record Slots</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Interactive Simulation Banner -->
-    <div class="sim-actions-bar">
+    <div v-if="activePageId === 0" class="sim-actions-bar catalog-bar">
+      <div class="sim-left">
+        <span class="sim-label">Catalog Page 0 Metadata:</span>
+        <span class="cat-pill"><code>DB_MAGIC = 0x31424451 ("QDB1")</code></span>
+        <span class="cat-pill"><code>DB_VERSION = 1</code></span>
+        <span class="cat-pill"><code>table_count = 3</code></span>
+        <span class="cat-pill"><code>PAGE_SIZE = 4096</code></span>
+      </div>
+      <div class="sim-right">
+        <span class="status-indicator">
+          <span class="status-dot"></span>
+          Page 0 Catalog loaded &bull; 3 tables registered (users, orders, products)
+        </span>
+      </div>
+    </div>
+    <div v-else class="sim-actions-bar">
       <div class="sim-left">
         <span class="sim-label">Live Page Operations:</span>
         <button class="sim-btn insert" :disabled="hasSlot2" @click="simulateInsert">
@@ -58,7 +98,7 @@
         <div class="pane-header">
           <div class="pane-title">
             <span class="pane-icon">💾</span>
-            Physical Page Memory (4,096 Bytes · Offset 0x0000 - 0x0FFF)
+            Physical Page Memory (Page {{ activePageId }} · 4,096 Bytes · Offset 0x0000 - 0x0FFF)
           </div>
           <div class="view-toggle">
             <button 
@@ -141,7 +181,14 @@
         </div>
 
         <!-- Hex Legend Bar -->
-        <div class="hex-legend">
+        <div v-if="activePageId === 0" class="hex-legend">
+          <span class="legend-item"><span class="legend-box hdr"></span> 12B Catalog Header</span>
+          <span class="legend-item"><span class="legend-box slot0"></span> users (40B)</span>
+          <span class="legend-item"><span class="legend-box slot1"></span> orders (40B)</span>
+          <span class="legend-item"><span class="legend-box slot2"></span> products (40B)</span>
+          <span class="legend-item"><span class="legend-box free"></span> Free Space (0x00)</span>
+        </div>
+        <div v-else class="hex-legend">
           <span class="legend-item"><span class="legend-box hdr"></span> Header (24B)</span>
           <span class="legend-item"><span class="legend-box slot0"></span> Slot 0 (4B)</span>
           <span class="legend-item"><span class="legend-box slot1"></span> Slot 1 (4B)</span>
@@ -152,31 +199,191 @@
         </div>
       </div>
 
-      <!-- RIGHT PANE: Decoded Slotted Page Inspector -->
+      <!-- RIGHT PANE: Decoded Page Inspector -->
       <div class="pane decoded-pane">
         <div class="pane-header">
           <div class="pane-title">
             <span class="pane-icon">🔍</span>
-            Decoded Slotted-Page Structure
+            {{ activePageId === 0 ? 'Decoded Catalog Registry Structure' : 'Decoded Slotted-Page Structure' }}
           </div>
-          <div class="page-meta-badge">PageID: 1 · Fixed 4KB</div>
+          <div class="page-meta-badge">{{ activePageId === 0 ? 'PageID: 0 · Catalog' : 'PageID: 1 · Slotted Table' }}</div>
         </div>
 
         <div class="decoded-body">
-          <!-- 1. Page Header Card -->
-          <div 
-            class="struct-card header-card"
-            :class="{ active: activeHoverRegion === 'header' }"
-            @mouseenter="hoverRegion('header')"
-            @mouseleave="clearHover"
-          >
-            <div class="card-title-bar">
-              <span class="title-text">
-                <span class="color-pill hdr"></span>
-                Page Header
-              </span>
-              <span class="byte-badge">Offset 0x0000 - 0x0017 (24 Bytes)</span>
+          <!-- PAGE 0 CATALOG CARDS -->
+          <template v-if="activePageId === 0">
+            <!-- 1. Fixed 12-Byte Catalog Header Card -->
+            <div 
+              class="struct-card header-card"
+              :class="{ active: activeHoverRegion === 'cat_header' }"
+              @mouseenter="hoverRegion('cat_header')"
+              @mouseleave="clearHover"
+            >
+              <div class="card-title-bar">
+                <span class="title-text">
+                  <span class="color-pill hdr"></span>
+                  Fixed 12-Byte Database Catalog Header
+                </span>
+                <span class="byte-badge">Offset 0x0000..0x000B (12 Bytes)</span>
+              </div>
+
+              <div class="fields-grid">
+                <div class="field-item" @mouseenter.stop="hoverSubRegion('cat_magic')" @mouseleave.stop="hoverRegion('cat_header')">
+                  <span class="f-name">magic_QDB1</span>
+                  <span class="f-val">0x31424451 ("QDB1")</span>
+                  <span class="f-sub">Offset 0x0000..0x0003 (4B)</span>
+                </div>
+                <div class="field-item" @mouseenter.stop="hoverSubRegion('cat_version')" @mouseleave.stop="hoverRegion('cat_header')">
+                  <span class="f-name">version</span>
+                  <span class="f-val">1 (v1.0 Layout)</span>
+                  <span class="f-sub">Offset 0x0004..0x0005 (2B)</span>
+                </div>
+                <div class="field-item" @mouseenter.stop="hoverSubRegion('cat_count')" @mouseleave.stop="hoverRegion('cat_header')">
+                  <span class="f-name">table_count</span>
+                  <span class="f-val highlight">3 Tables</span>
+                  <span class="f-sub">Offset 0x0006..0x0007 (2B)</span>
+                </div>
+                <div class="field-item" @mouseenter.stop="hoverSubRegion('cat_pagesize')" @mouseleave.stop="hoverRegion('cat_header')">
+                  <span class="f-name">page_size</span>
+                  <span class="f-val">4096 (0x1000)</span>
+                  <span class="f-sub">Offset 0x0008..0x000B (4B)</span>
+                </div>
+              </div>
             </div>
+
+            <!-- 2. Packed 40-Byte Table Descriptors Card -->
+            <div class="struct-card slots-card">
+              <div class="card-title-bar">
+                <span class="title-text">
+                  <span class="color-pill slots"></span>
+                  Packed 40-Byte Table Descriptors
+                </span>
+                <span class="byte-badge">Offset 0x000C..0x0083 (120 Bytes)</span>
+              </div>
+
+              <div class="slots-list">
+                <!-- Entry 0: users -->
+                <div 
+                  class="slot-entry-item slot-0"
+                  :class="{ active: activeHoverRegion === 'cat_users' }"
+                  @mouseenter="hoverRegion('cat_users')"
+                  @mouseleave="clearHover"
+                >
+                  <div class="slot-head">
+                    <span class="slot-badge s0">Table 0: users</span>
+                    <span class="slot-offsets">0x000C..0x0033 (40 Bytes)</span>
+                    <span class="slot-status active">ACTIVE TABLE</span>
+                  </div>
+                  <div class="slot-details">
+                    <div class="slot-prop">
+                      <span class="p-lbl">name[32]:</span>
+                      <span class="p-val">"users" (null-padded 32B string)</span>
+                    </div>
+                    <div class="slot-prop pointer-target">
+                      <span class="p-lbl">first_page (PageID):</span>
+                      <span class="p-val-target">1 &rarr; Slotted Table Data Page 1</span>
+                    </div>
+                    <div class="slot-prop pointer-target">
+                      <span class="p-lbl">index_metadata_page (PageID):</span>
+                      <span class="p-val-target">2 &rarr; B+ Tree Meta Page 2</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Entry 1: orders -->
+                <div 
+                  class="slot-entry-item slot-1"
+                  :class="{ active: activeHoverRegion === 'cat_orders' }"
+                  @mouseenter="hoverRegion('cat_orders')"
+                  @mouseleave="clearHover"
+                >
+                  <div class="slot-head">
+                    <span class="slot-badge s1">Table 1: orders</span>
+                    <span class="slot-offsets">0x0034..0x005B (40 Bytes)</span>
+                    <span class="slot-status active">ACTIVE TABLE</span>
+                  </div>
+                  <div class="slot-details">
+                    <div class="slot-prop">
+                      <span class="p-lbl">name[32]:</span>
+                      <span class="p-val">"orders" (null-padded 32B string)</span>
+                    </div>
+                    <div class="slot-prop pointer-target">
+                      <span class="p-lbl">first_page (PageID):</span>
+                      <span class="p-val-target">4 &rarr; Slotted Table Data Page 4</span>
+                    </div>
+                    <div class="slot-prop pointer-target">
+                      <span class="p-lbl">index_metadata_page (PageID):</span>
+                      <span class="p-val-target">5 &rarr; B+ Tree Meta Page 5</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Entry 2: products -->
+                <div 
+                  class="slot-entry-item slot-2"
+                  :class="{ active: activeHoverRegion === 'cat_products' }"
+                  @mouseenter="hoverRegion('cat_products')"
+                  @mouseleave="clearHover"
+                >
+                  <div class="slot-head">
+                    <span class="slot-badge s2">Table 2: products</span>
+                    <span class="slot-offsets">0x005C..0x0083 (40 Bytes)</span>
+                    <span class="slot-status active">ACTIVE TABLE</span>
+                  </div>
+                  <div class="slot-details">
+                    <div class="slot-prop">
+                      <span class="p-lbl">name[32]:</span>
+                      <span class="p-val">"products" (null-padded 32B string)</span>
+                    </div>
+                    <div class="slot-prop pointer-target">
+                      <span class="p-lbl">first_page (PageID):</span>
+                      <span class="p-val-target">7 &rarr; Slotted Table Data Page 7</span>
+                    </div>
+                    <div class="slot-prop pointer-target">
+                      <span class="p-lbl">index_metadata_page (PageID):</span>
+                      <span class="p-val-target">8 &rarr; B+ Tree Meta Page 8</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Free Space Card for Catalog -->
+            <div 
+              class="struct-card free-space-card"
+              :class="{ active: activeHoverRegion === 'cat_free' }"
+              @mouseenter="hoverRegion('cat_free')"
+              @mouseleave="clearHover"
+            >
+              <div class="card-title-bar">
+                <span class="title-text">
+                  <span class="color-pill free"></span>
+                  Unallocated Catalog Space
+                </span>
+                <span class="byte-badge">3,964 Bytes (96.8% Available)</span>
+              </div>
+              <p class="free-desc">
+                Unallocated 0x00 bytes spanning from offset <code>0x0084</code> to <code>0x0FFF</code>. As new tables are declared via <code>CREATE TABLE</code>, new 40-byte descriptors append sequentially without altering existing offsets.
+              </p>
+            </div>
+          </template>
+
+          <!-- PAGE 1 SLOTTED TABLE CARDS -->
+          <template v-else>
+            <!-- 1. Page Header Card -->
+            <div 
+              class="struct-card header-card"
+              :class="{ active: activeHoverRegion === 'header' }"
+              @mouseenter="hoverRegion('header')"
+              @mouseleave="clearHover"
+            >
+              <div class="card-title-bar">
+                <span class="title-text">
+                  <span class="color-pill hdr"></span>
+                  Page Header
+                </span>
+                <span class="byte-badge">Offset 0x0000 - 0x0017 (24 Bytes)</span>
+              </div>
 
             <div class="fields-grid">
               <div class="field-item" @mouseenter.stop="hoverSubRegion('magic')" @mouseleave.stop="hoverRegion('header')">
@@ -416,6 +623,7 @@
               </div>
             </div>
           </div>
+          </template>
         </div>
       </div>
     </div>
@@ -427,7 +635,10 @@
         <span class="f-stat-val">{{ activeHoverDesc }}</span>
       </div>
       <div class="footer-right">
-        <span class="engine-invariant-note">
+        <span class="engine-invariant-note" v-if="activePageId === 0">
+          Catalog Invariant: Page 0 stores root pointers (<code>first_page</code> &amp; <code>index_metadata_page</code>). Validated against <code>DB_MAGIC (0x31424451)</code> on engine boot.
+        </span>
+        <span class="engine-invariant-note" v-else>
           Invariant: <code>free_start ({{ freeStart }}) &le; free_end ({{ freeEnd }})</code> &bull; Logical indirection via <code>RecordID</code> preserves index integrity.
         </span>
       </div>
@@ -437,6 +648,14 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+
+// Target Page Selection (0 = Catalog Page 0, 1 = Slotted Table Page 1)
+const activePageId = ref(0)
+
+function switchPage(id) {
+  activePageId.value = id
+  clearHover()
+}
 
 // Interactive State
 const fullDumpMode = ref(false)
@@ -471,7 +690,6 @@ const freeEnd = computed(() => {
     return slot2Offset.value
   }
   if (!slot1Active.value && fragmentedBytes.value === 0) {
-    // After compaction of deleted slot 1:
     return slot0Offset.value
   }
   return slot1Offset.value
@@ -481,13 +699,24 @@ const freeBytes = computed(() => {
   return freeEnd.value - freeStart.value
 })
 
-const jumpRegions = [
-  { id: 'header', label: 'Header (0x0000)', offset: 0 },
-  { id: 'slot0', label: 'Slot 0 (0x0018)', offset: 24 },
-  { id: 'free', label: 'Free Space (0x0020)', offset: 32 },
-  { id: 'rec1', label: 'Record 1 (0x0F6E)', offset: 3950 },
-  { id: 'rec0', label: 'Record 0 (0x0FB4)', offset: 4020 }
-]
+const jumpRegions = computed(() => {
+  if (activePageId.value === 0) {
+    return [
+      { id: 'cat_header', label: 'Header (0x0000)', offset: 0 },
+      { id: 'cat_users', label: 'users (0x000C)', offset: 12 },
+      { id: 'cat_orders', label: 'orders (0x0034)', offset: 52 },
+      { id: 'cat_products', label: 'products (0x005C)', offset: 92 },
+      { id: 'cat_free', label: 'Free (0x0084)', offset: 132 }
+    ]
+  }
+  return [
+    { id: 'header', label: 'Header (0x0000)', offset: 0 },
+    { id: 'slot0', label: 'Slot 0 (0x0018)', offset: 24 },
+    { id: 'free', label: 'Free Space (0x0020)', offset: 32 },
+    { id: 'rec1', label: 'Record 1 (0x0F6E)', offset: 3950 },
+    { id: 'rec0', label: 'Record 0 (0x0FB4)', offset: 4020 }
+  ]
+})
 
 const formatHex = (num, padding = 2) => {
   if (num === undefined || num === null) return '00'
@@ -518,7 +747,16 @@ const clearHover = () => {
 
 const onByteHover = (offset) => {
   hoveredByteOffset.value = offset
-  // Map byte to region
+  if (activePageId.value === 0) {
+    if (offset < 12) activeHoverRegion.value = 'cat_header'
+    else if (offset < 52) activeHoverRegion.value = 'cat_users'
+    else if (offset < 92) activeHoverRegion.value = 'cat_orders'
+    else if (offset < 132) activeHoverRegion.value = 'cat_products'
+    else activeHoverRegion.value = 'cat_free'
+    return
+  }
+
+  // Page 1 Slotted-Page
   if (offset < 24) {
     activeHoverRegion.value = 'header'
   } else if (offset >= 24 && offset < 28) {
@@ -548,12 +786,40 @@ const scrollToRegion = (offset) => {
 
 // Byte classification for coloring
 const getByteHighlightClass = (byteOffset) => {
-  // Check exact hovered byte
   if (hoveredByteOffset.value === byteOffset) {
     return 'byte-active-cursor'
   }
 
-  // Header (0..23)
+  if (activePageId.value === 0) {
+    // Page 0: Catalog
+    if (byteOffset < 12) {
+      if (activeHoverRegion.value === 'cat_header') return 'hl-header'
+      if (activeSubRegion.value === 'cat_magic' && byteOffset < 4) return 'hl-sub-focus'
+      if (activeSubRegion.value === 'cat_version' && byteOffset >= 4 && byteOffset < 6) return 'hl-sub-focus'
+      if (activeSubRegion.value === 'cat_count' && byteOffset >= 6 && byteOffset < 8) return 'hl-sub-focus'
+      if (activeSubRegion.value === 'cat_pagesize' && byteOffset >= 8 && byteOffset < 12) return 'hl-sub-focus'
+      return 'c-hdr'
+    }
+    if (byteOffset >= 12 && byteOffset < 52) {
+      if (activeHoverRegion.value === 'cat_users') return 'hl-slot0-focus'
+      return 'c-slot0'
+    }
+    if (byteOffset >= 52 && byteOffset < 92) {
+      if (activeHoverRegion.value === 'cat_orders') return 'hl-slot1-focus'
+      return 'c-slot1'
+    }
+    if (byteOffset >= 92 && byteOffset < 132) {
+      if (activeHoverRegion.value === 'cat_products') return 'hl-slot2-focus'
+      return 'c-slot2'
+    }
+    if (byteOffset >= 132) {
+      if (activeHoverRegion.value === 'cat_free') return 'hl-free-focus'
+      return 'c-free'
+    }
+    return ''
+  }
+
+  // Page 1: Slotted-Page (24B Header, Slots, Free Space, Payloads)
   if (byteOffset < 24) {
     if (activeHoverRegion.value === 'header') return 'hl-header'
     if (activeSubRegion.value === 'magic' && byteOffset < 4) return 'hl-sub-focus'
@@ -566,37 +832,31 @@ const getByteHighlightClass = (byteOffset) => {
     return 'c-hdr'
   }
 
-  // Slot 0 (24..27)
   if (byteOffset >= 24 && byteOffset < 28) {
     if (activeHoverRegion.value === 'slot0' || activeHoverRegion.value === 'rec0') return 'hl-slot0-focus'
     return 'c-slot0'
   }
 
-  // Slot 1 (28..31)
   if (byteOffset >= 28 && byteOffset < 32) {
     if (activeHoverRegion.value === 'slot1' || activeHoverRegion.value === 'rec1') return 'hl-slot1-focus'
     return 'c-slot1'
   }
 
-  // Slot 2 (32..35) if simulated
   if (hasSlot2.value && byteOffset >= 32 && byteOffset < 36) {
     if (activeHoverRegion.value === 'slot2' || activeHoverRegion.value === 'rec2') return 'hl-slot2-focus'
     return 'c-slot2'
   }
 
-  // Free Space
   if (byteOffset >= freeStart.value && byteOffset < freeEnd.value) {
     if (activeHoverRegion.value === 'free') return 'hl-free-focus'
     return 'c-free'
   }
 
-  // Record 2 (3882..3949) if present
   if (hasSlot2.value && byteOffset >= slot2Offset.value && byteOffset < slot2Offset.value + slot2Length.value) {
     if (activeHoverRegion.value === 'rec2' || activeHoverRegion.value === 'slot2') return 'hl-rec2-focus'
     return 'c-rec2'
   }
 
-  // Record 1 (3950..4019)
   if (byteOffset >= slot1Offset.value && byteOffset < slot0Offset.value) {
     if (!slot1Active.value) {
       if (fragmentedBytes.value > 0) return 'c-fragmented'
@@ -606,7 +866,6 @@ const getByteHighlightClass = (byteOffset) => {
     return 'c-rec1'
   }
 
-  // Record 0 (4020..4095)
   if (byteOffset >= slot0Offset.value && byteOffset < 4096) {
     if (activeHoverRegion.value === 'rec0' || activeHoverRegion.value === 'slot0') return 'hl-rec0-focus'
     return 'c-rec0'
@@ -616,6 +875,23 @@ const getByteHighlightClass = (byteOffset) => {
 }
 
 const getByteTooltip = (offset) => {
+  if (activePageId.value === 0) {
+    if (offset < 4) return `Byte 0x${formatHex(offset, 4)}: DB_MAGIC 0x31424451 ("QDB1")`
+    if (offset < 6) return `Byte 0x${formatHex(offset, 4)}: DB_VERSION (1)`
+    if (offset < 8) return `Byte 0x${formatHex(offset, 4)}: table_count (3 tables registered)`
+    if (offset < 12) return `Byte 0x${formatHex(offset, 4)}: page_size (4096 bytes)`
+    if (offset >= 12 && offset < 44) return `Byte 0x${formatHex(offset, 4)}: Table 0 name[32] ("users")`
+    if (offset >= 44 && offset < 48) return `Byte 0x${formatHex(offset, 4)}: Table 0 first_page (PageID 1)`
+    if (offset >= 48 && offset < 52) return `Byte 0x${formatHex(offset, 4)}: Table 0 index_metadata_page (PageID 2)`
+    if (offset >= 52 && offset < 84) return `Byte 0x${formatHex(offset, 4)}: Table 1 name[32] ("orders")`
+    if (offset >= 84 && offset < 88) return `Byte 0x${formatHex(offset, 4)}: Table 1 first_page (PageID 4)`
+    if (offset >= 88 && offset < 92) return `Byte 0x${formatHex(offset, 4)}: Table 1 index_metadata_page (PageID 5)`
+    if (offset >= 92 && offset < 124) return `Byte 0x${formatHex(offset, 4)}: Table 2 name[32] ("products")`
+    if (offset >= 124 && offset < 128) return `Byte 0x${formatHex(offset, 4)}: Table 2 first_page (PageID 7)`
+    if (offset >= 128 && offset < 132) return `Byte 0x${formatHex(offset, 4)}: Table 2 index_metadata_page (PageID 8)`
+    return `Byte 0x${formatHex(offset, 4)}: Unallocated catalog free space (0x00)`
+  }
+
   if (offset < 4) return `Byte 0x${formatHex(offset, 4)}: Magic Byte ('QPG1')`
   if (offset < 6) return `Byte 0x${formatHex(offset, 4)}: Header slot_count (${slotCount.value})`
   if (offset < 8) return `Byte 0x${formatHex(offset, 4)}: Header free_start (${freeStart.value})`
@@ -631,6 +907,26 @@ const activeHoverDesc = computed(() => {
   if (hoveredByteOffset.value !== null) {
     return getByteTooltip(hoveredByteOffset.value)
   }
+
+  if (activePageId.value === 0) {
+    if (activeHoverRegion.value === 'cat_header') {
+      return 'Page 0 Fixed Header (12B): Magic QDB1 (0x31424451), version (1), table_count (3), page_size (4096B)'
+    }
+    if (activeHoverRegion.value === 'cat_users') {
+      return 'Table 0 [0x000C..0x0033]: "users" (char[32]), first_page = 1 (Slotted Data), index_metadata_page = 2 (B+ Tree)'
+    }
+    if (activeHoverRegion.value === 'cat_orders') {
+      return 'Table 1 [0x0034..0x005B]: "orders" (char[32]), first_page = 4 (Slotted Data), index_metadata_page = 5 (B+ Tree)'
+    }
+    if (activeHoverRegion.value === 'cat_products') {
+      return 'Table 2 [0x005C..0x0083]: "products" (char[32]), first_page = 7 (Slotted Data), index_metadata_page = 8 (B+ Tree)'
+    }
+    if (activeHoverRegion.value === 'cat_free') {
+      return 'Unallocated Catalog Memory: 3,964 bytes available for future CREATE TABLE descriptors'
+    }
+    return 'Catalog Page 0: Hover header, descriptors, or bytes to inspect physical table catalog records.'
+  }
+
   if (activeHoverRegion.value === 'slot0' || activeHoverRegion.value === 'rec0') {
     return 'Slot 0 [0x0018..0x001B] points to Record 0 Payload at byte 4020 (0x0FB4, length 76B)'
   }
@@ -651,7 +947,41 @@ const activeHoverDesc = computed(() => {
   return 'Hover any byte, slot, or record to inspect physical memory layout and pointer references.'
 })
 
-// Build the byte representation
+// Build Catalog byte representation (Page 0)
+const generateCatalogMemoryBuffer = () => {
+  const buf = new Uint8Array(4096)
+  // 12-byte header:
+  // magic_QDB1 = 0x31424451 (51 44 42 31)
+  buf[0] = 0x51; buf[1] = 0x44; buf[2] = 0x42; buf[3] = 0x31;
+  // version = 1
+  buf[4] = 0x01; buf[5] = 0x00;
+  // table_count = 3
+  buf[6] = 0x03; buf[7] = 0x00;
+  // page_size = 4096 (0x00001000)
+  buf[8] = 0x00; buf[9] = 0x10; buf[10] = 0x00; buf[11] = 0x00;
+
+  // Entry 0: users (offset 12..51: 40 bytes)
+  const name0 = "users"
+  for (let i = 0; i < name0.length; i++) buf[12 + i] = name0.charCodeAt(i)
+  buf[44] = 0x01; buf[45] = 0x00; buf[46] = 0x00; buf[47] = 0x00; // first_page: 1
+  buf[48] = 0x02; buf[49] = 0x00; buf[50] = 0x00; buf[51] = 0x00; // index_meta: 2
+
+  // Entry 1: orders (offset 52..91: 40 bytes)
+  const name1 = "orders"
+  for (let i = 0; i < name1.length; i++) buf[52 + i] = name1.charCodeAt(i)
+  buf[84] = 0x04; buf[85] = 0x00; buf[86] = 0x00; buf[87] = 0x00; // first_page: 4
+  buf[88] = 0x05; buf[89] = 0x00; buf[90] = 0x00; buf[91] = 0x00; // index_meta: 5
+
+  // Entry 2: products (offset 92..131: 40 bytes)
+  const name2 = "products"
+  for (let i = 0; i < name2.length; i++) buf[92 + i] = name2.charCodeAt(i)
+  buf[124] = 0x07; buf[125] = 0x00; buf[126] = 0x00; buf[127] = 0x00; // first_page: 7
+  buf[128] = 0x08; buf[129] = 0x00; buf[130] = 0x00; buf[131] = 0x00; // index_meta: 8
+
+  return buf
+}
+
+// Build Slotted Table byte representation (Page 1)
 const generateMemoryBuffer = () => {
   const buf = new Uint8Array(4096)
 
@@ -689,13 +1019,12 @@ const generateMemoryBuffer = () => {
   }
 
   // Record 0 Payload at 4020..4095 (76 Bytes)
-  // Encodes: ID: 1, Name: "Ada Lovelace", Role: "Principal Arch"
   const rec0Str = "\x01\x01\x00\x00\x00\x00\x00\x00\x00\x02\x0C\x00\x00\x00Ada Lovelace\x02\x0E\x00\x00\x00Principal Arch"
   for (let i = 0; i < rec0Str.length; i++) {
     buf[slot0Offset.value + i] = rec0Str.charCodeAt(i)
   }
   for (let i = slot0Offset.value + rec0Str.length; i < 4096; i++) {
-    buf[i] = 0x7E ^ (i & 0x0F) // Fill byte signature
+    buf[i] = 0x7E ^ (i & 0x0F)
   }
 
   // Record 1 Payload at 3950..4019 (70 Bytes) if active or remaining fragmented
@@ -718,33 +1047,45 @@ const generateMemoryBuffer = () => {
 }
 
 const renderedHexRows = computed(() => {
-  const buf = generateMemoryBuffer()
+  const isCat = activePageId.value === 0
+  const buf = isCat ? generateCatalogMemoryBuffer() : generateMemoryBuffer()
   const rows = []
 
   if (!fullDumpMode.value) {
-    // Mode 1: Key Regions (Header + Slots + Gap Break + Record Payloads)
-    // 1. Header & Slots (offsets 0, 16, 32)
-    for (let offset = 0; offset <= 32; offset += 16) {
-      const slice = Array.from(buf.slice(offset, offset + 16))
-      rows.push({ offset, bytes: slice, isGapBreak: false })
-    }
-
-    // 2. Synthesized Gap Break for Unallocated Free Space
-    const gapStart = hasSlot2.value ? 48 : 32
-    const gapEnd = freeEnd.value
-    rows.push({
-      offset: gapStart,
-      isGapBreak: true,
-      startHex: formatHex(gapStart, 4),
-      endHex: formatHex(gapEnd - 1, 4),
-      gapBytes: gapEnd - gapStart
-    })
-
-    // 3. Record Payloads (rounded down to 16-byte boundary)
-    const recStartRow = Math.floor(freeEnd.value / 16) * 16
-    for (let offset = recStartRow; offset < 4096; offset += 16) {
-      const slice = Array.from(buf.slice(offset, offset + 16))
-      rows.push({ offset, bytes: slice, isGapBreak: false })
+    if (isCat) {
+      // Key Regions for Catalog: 12B Header + 3x 40B descriptors (offsets 0..128)
+      for (let offset = 0; offset <= 128; offset += 16) {
+        const slice = Array.from(buf.slice(offset, offset + 16))
+        rows.push({ offset, bytes: slice, isGapBreak: false })
+      }
+      // Synthesized Gap Break for Unallocated Free Catalog Space
+      rows.push({
+        offset: 144,
+        isGapBreak: true,
+        startHex: '0090',
+        endHex: '0FFF',
+        gapBytes: 4096 - 144
+      })
+    } else {
+      // Key Regions for Slotted Page 1
+      for (let offset = 0; offset <= 32; offset += 16) {
+        const slice = Array.from(buf.slice(offset, offset + 16))
+        rows.push({ offset, bytes: slice, isGapBreak: false })
+      }
+      const gapStart = hasSlot2.value ? 48 : 32
+      const gapEnd = freeEnd.value
+      rows.push({
+        offset: gapStart,
+        isGapBreak: true,
+        startHex: formatHex(gapStart, 4),
+        endHex: formatHex(gapEnd - 1, 4),
+        gapBytes: gapEnd - gapStart
+      })
+      const recStartRow = Math.floor(freeEnd.value / 16) * 16
+      for (let offset = recStartRow; offset < 4096; offset += 16) {
+        const slice = Array.from(buf.slice(offset, offset + 16))
+        rows.push({ offset, bytes: slice, isGapBreak: false })
+      }
     }
   } else {
     // Mode 2: Full 4096 Continuous buffer (256 rows)
@@ -883,6 +1224,100 @@ const resetPage = () => {
   border-color: #f87171;
   color: #f87171;
   background: rgba(248, 113, 113, 0.15);
+}
+
+/* Page Selector Bar (Page 0 vs Page 1) */
+.page-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 1.75rem;
+  background: var(--vp-c-bg-soft);
+  border-bottom: 2px solid var(--vp-c-divider);
+  flex-wrap: wrap;
+}
+
+.page-selector-label {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--vp-c-text-2);
+  letter-spacing: 0.05em;
+}
+
+.page-selector-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.page-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.page-tab-btn:hover {
+  border-color: #3b8ea5;
+  color: var(--vp-c-text-1);
+}
+
+.page-tab-btn.active {
+  background: #1e293b;
+  color: #38bdf8;
+  border-color: #38bdf8;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .page-tab-btn.active {
+  background: #0f172a;
+  color: #00d2b4;
+  border-color: #00d2b4;
+}
+
+.tab-badge {
+  font-weight: 800;
+  background: rgba(59, 142, 165, 0.15);
+  color: #3b8ea5;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+}
+
+.dark .tab-badge {
+  background: rgba(0, 210, 180, 0.15);
+  color: #00d2b4;
+}
+
+.page-tab-btn.active .tab-badge {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.dark .page-tab-btn.active .tab-badge {
+  background: #00d2b4;
+  color: #0f172a;
+}
+
+.catalog-bar .cat-pill {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-divider);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--vp-c-text-1);
 }
 
 /* Simulation Action Bar */

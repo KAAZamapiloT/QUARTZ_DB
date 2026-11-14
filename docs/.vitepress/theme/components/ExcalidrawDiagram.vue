@@ -70,18 +70,35 @@
               </div>
             </div>
 
-            <div class="lightbox-viewport">
-              <div class="lightbox-canvas" :style="{ transform: `scale(${zoomScale})` }">
+            <div 
+              class="lightbox-viewport"
+              ref="viewportRef"
+              @touchstart="onTouchStart"
+              @touchmove="onTouchMove"
+              @touchend="onTouchEnd"
+              @mousedown="onMouseDown"
+              @mousemove="onMouseMove"
+              @mouseup="onMouseUp"
+              @mouseleave="onMouseUp"
+              @wheel.prevent="onWheel"
+              @dblclick="toggleZoom"
+            >
+              <div 
+                class="lightbox-canvas" 
+                :class="{ 'is-dragging': isPanning }"
+                :style="{ transform: `translate3d(${panX}px, ${panY}px, 0px) scale(${zoomScale})` }"
+              >
                 <img 
                   :src="`/diagrams/${name}.svg`" 
                   :alt="alt || title" 
                   class="lightbox-img"
+                  draggable="false"
                 />
               </div>
             </div>
 
             <div class="lightbox-footer">
-              <span class="footer-hint">Source: <code>docs/diagrams/editable/{{ name }}.excalidraw</code> // Hand-drawn vector wireframe</span>
+              <span class="footer-hint">Mobile: Pinch to zoom &bull; Drag to pan &bull; Double-tap to 2&times; // Desktop: Scroll wheel &bull; Drag to pan</span>
               <a :href="`/diagrams/${name}.svg`" download class="footer-download-btn">Download Vector SVG</a>
             </div>
           </div>
@@ -102,28 +119,149 @@ const props = defineProps<{
 
 const isModalOpen = ref(false)
 const zoomScale = ref(1.0)
+const panX = ref(0)
+const panY = ref(0)
+const isPanning = ref(false)
+const viewportRef = ref<HTMLElement | null>(null)
+
+// Touch tracking
+let initialPinchDist = 0
+let initialZoom = 1.0
+let touchStartX = 0
+let touchStartY = 0
+let startPanX = 0
+let startPanY = 0
+let lastTapTime = 0
+
+// Mouse tracking
+let mouseStartX = 0
+let mouseStartY = 0
 
 function openModal() {
   isModalOpen.value = true
   zoomScale.value = 1.0
+  panX.value = 0
+  panY.value = 0
   document.body.style.overflow = 'hidden'
 }
 
 function closeModal() {
   isModalOpen.value = false
+  zoomScale.value = 1.0
+  panX.value = 0
+  panY.value = 0
   document.body.style.overflow = ''
 }
 
 function zoomIn() {
-  zoomScale.value = Math.min(zoomScale.value + 0.25, 3.0)
+  zoomScale.value = Math.min(zoomScale.value + 0.25, 4.0)
 }
 
 function zoomOut() {
   zoomScale.value = Math.max(zoomScale.value - 0.25, 0.5)
+  if (zoomScale.value <= 1.0) {
+    panX.value = 0
+    panY.value = 0
+  }
 }
 
 function resetZoom() {
   zoomScale.value = 1.0
+  panX.value = 0
+  panY.value = 0
+}
+
+function toggleZoom() {
+  if (zoomScale.value > 1.0) {
+    resetZoom()
+  } else {
+    zoomScale.value = 2.0
+  }
+}
+
+function onTouchStart(e: TouchEvent) {
+  if (e.touches.length === 2) {
+    // Pinch-to-zoom
+    initialPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    )
+    initialZoom = zoomScale.value
+  } else if (e.touches.length === 1) {
+    const now = Date.now()
+    if (now - lastTapTime < 300) {
+      toggleZoom()
+      lastTapTime = 0
+      return
+    }
+    lastTapTime = now
+
+    touchStartX = e.touches[0].clientX
+    touchStartY = e.touches[0].clientY
+    startPanX = panX.value
+    startPanY = panY.value
+    isPanning.value = true
+  }
+}
+
+function onTouchMove(e: TouchEvent) {
+  e.preventDefault()
+  if (e.touches.length === 2 && initialPinchDist > 0) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    )
+    const factor = dist / initialPinchDist
+    zoomScale.value = Math.min(Math.max(initialZoom * factor, 0.5), 4.0)
+  } else if (e.touches.length === 1 && isPanning.value) {
+    const dx = e.touches[0].clientX - touchStartX
+    const dy = e.touches[0].clientY - touchStartY
+    panX.value = startPanX + dx
+    panY.value = startPanY + dy
+  }
+}
+
+function onTouchEnd() {
+  initialPinchDist = 0
+  isPanning.value = false
+  if (zoomScale.value <= 1.0) {
+    panX.value = 0
+    panY.value = 0
+  }
+}
+
+function onMouseDown(e: MouseEvent) {
+  if (e.button !== 0) return
+  isPanning.value = true
+  mouseStartX = e.clientX
+  mouseStartY = e.clientY
+  startPanX = panX.value
+  startPanY = panY.value
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (!isPanning.value) return
+  const dx = e.clientX - mouseStartX
+  const dy = e.clientY - mouseStartY
+  panX.value = startPanX + dx
+  panY.value = startPanY + dy
+}
+
+function onMouseUp() {
+  isPanning.value = false
+  if (zoomScale.value <= 1.0) {
+    panX.value = 0
+    panY.value = 0
+  }
+}
+
+function onWheel(e: WheelEvent) {
+  const delta = e.deltaY < 0 ? 0.2 : -0.2
+  zoomScale.value = Math.min(Math.max(zoomScale.value + delta, 0.5), 4.0)
+  if (zoomScale.value <= 1.0) {
+    panX.value = 0
+    panY.value = 0
+  }
 }
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -372,21 +510,30 @@ onUnmounted(() => {
 
 .lightbox-viewport {
   flex: 1;
-  overflow: auto;
-  padding: 2rem;
+  overflow: hidden;
+  padding: 1.5rem;
   background: var(--q-bg-canvas);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  touch-action: none;
+  user-select: none;
 }
 
 .lightbox-canvas {
   transform-origin: center center;
-  transition: transform 0.15s ease-out;
+  transition: transform 0.05s linear;
   display: flex;
   align-items: center;
   justify-content: center;
   max-width: 100%;
+  cursor: grab;
+}
+
+.lightbox-canvas.is-dragging {
+  cursor: grabbing;
+  transition: none;
 }
 
 .lightbox-img {
@@ -394,6 +541,7 @@ onUnmounted(() => {
   max-height: 80vh;
   object-fit: contain;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
 .lightbox-footer {

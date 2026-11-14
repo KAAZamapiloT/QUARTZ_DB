@@ -52,11 +52,38 @@
       </button>
     </div>
 
+    <!-- Stage Quick-Jump Strip (For SELECT Query) -->
+    <div v-if="activeStmtId === 'select'" class="stage-stepper-bar">
+      <div class="stepper-title">
+        <span class="stepper-tag">STAGE JUMP</span>
+        <span class="stepper-note">{{ activeStages.length }} Stages:</span>
+      </div>
+      <div class="stepper-pills">
+        <button 
+          v-for="(st, stIdx) in activeStages" 
+          :key="st.step" 
+          class="stepper-pill"
+          :class="[st.theme, { active: activeScrollStage === st.step }]"
+          @click="scrollToStage(st.step)"
+          :title="st.title"
+        >
+          <span class="pill-num">{{ st.step }}</span>
+          <span class="pill-name">{{ st.title.split(' ')[0] }}</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Pipeline Stages Sequence -->
-    <div class="stages-timeline">
+    <div 
+      class="stages-timeline" 
+      :class="{ 'select-scrollable': activeStmtId === 'select' }"
+      ref="timelineContainer"
+      @scroll="onTimelineScroll"
+    >
       <div 
         v-for="(stage, idx) in activeStages" 
         :key="stage.step"
+        :id="'pipeline-stage-' + stage.step"
         class="stage-card"
         :class="[stage.theme, { 'is-last': idx === activeStages.length - 1 }]"
       >
@@ -114,6 +141,12 @@
       </div>
     </div>
 
+    <!-- SELECT Query Scroll Status Hint -->
+    <div v-if="activeStmtId === 'select'" class="select-scroll-status">
+      <span class="scroll-status-icon">↕</span>
+      <span>SELECT Query Pipeline ({{ activeStages.length }} Stages) &middot; Scroll inside timeline container or click Stage Jump pills above to inspect each phase</span>
+    </div>
+
     <!-- Pipeline Footer Summary -->
     <div class="pipeline-footer">
       <div class="footer-left">
@@ -132,6 +165,39 @@ import { ref, computed } from 'vue'
 
 const activeStmtId = ref('select')
 const executionMode = ref('fast')
+const activeScrollStage = ref('01')
+const timelineContainer = ref(null)
+
+function scrollToStage(step) {
+  activeScrollStage.value = step
+  if (!timelineContainer.value) return
+  const el = timelineContainer.value.querySelector('#pipeline-stage-' + step)
+  if (el) {
+    const containerTop = timelineContainer.value.offsetTop
+    const elTop = el.offsetTop
+    timelineContainer.value.scrollTo({
+      top: elTop - containerTop - 12,
+      behavior: 'smooth'
+    })
+  }
+}
+
+function onTimelineScroll() {
+  if (!timelineContainer.value || activeStmtId.value !== 'select') return
+  const stages = activeStages.value
+  const scrollTop = timelineContainer.value.scrollTop
+  const containerTop = timelineContainer.value.offsetTop
+  for (let i = stages.length - 1; i >= 0; i--) {
+    const el = timelineContainer.value.querySelector('#pipeline-stage-' + stages[i].step)
+    if (el) {
+      const relTop = el.offsetTop - containerTop - 40
+      if (scrollTop >= relTop) {
+        activeScrollStage.value = stages[i].step
+        break
+      }
+    }
+  }
+}
 
 const statements = [
   { id: 'select', label: 'SELECT Query', color: 'blue' },
@@ -960,12 +1026,150 @@ const activeStages = computed(() => {
   font-weight: 600;
 }
 
+/* Stage Stepper Bar (SELECT Query Quick-Jump) */
+.stage-stepper-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1.75rem;
+  background: var(--vp-c-bg-soft);
+  border-bottom: 1px solid var(--vp-c-divider);
+  flex-wrap: wrap;
+}
+
+.stepper-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.stepper-tag {
+  background: #b83a24;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+}
+
+.dark .stepper-tag {
+  background: #d1493e;
+}
+
+.stepper-note {
+  color: var(--vp-c-text-2);
+}
+
+.stepper-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.stepper-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.stepper-pill:hover {
+  border-color: #3b8ea5;
+  color: var(--vp-c-text-1);
+}
+
+.stepper-pill.active {
+  background: #1e293b;
+  color: #38bdf8;
+  border-color: #38bdf8;
+  font-weight: 700;
+}
+
+.dark .stepper-pill.active {
+  background: #0f172a;
+  color: #00d2b4;
+  border-color: #00d2b4;
+}
+
+.pill-num {
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+.pill-name {
+  font-weight: 600;
+}
+
 /* Stages Timeline */
 .stages-timeline {
   padding: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+/* Scrollable Container ONLY for SELECT Query */
+.stages-timeline.select-scrollable {
+  max-height: 620px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  padding-right: 1.25rem;
+  border-bottom: 1px dashed var(--vp-c-divider);
+}
+
+.stages-timeline.select-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+.stages-timeline.select-scrollable::-webkit-scrollbar-track {
+  background: var(--vp-c-bg-mute);
+  border-radius: 4px;
+}
+.stages-timeline.select-scrollable::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 4px;
+  border: 1px solid var(--vp-c-bg);
+}
+.stages-timeline.select-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #3b8ea5;
+}
+
+.dark .stages-timeline.select-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #00d2b4;
+}
+
+.select-scroll-status {
+  padding: 0.45rem 1.75rem;
+  background: var(--vp-c-bg-mute);
+  border-top: 1px solid var(--vp-c-divider);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  color: var(--vp-c-text-2);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  letter-spacing: 0.02em;
+}
+
+.scroll-status-icon {
+  color: #b83a24;
+  font-weight: 800;
+}
+
+.dark .scroll-status-icon {
+  color: #00d2b4;
 }
 
 .stage-card {

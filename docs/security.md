@@ -10,29 +10,7 @@ This page outlines the operational security model, process boundaries, and archi
 
 Because QuartzDB executes strictly in-process within the host application:
 
-```
-┌────────────────────────────────────────────────────────┐
-│ Host Application Process (e.g. C++ / Python / Go)      │
-│                                                        │
-│  ┌─────────────────────────┐  ┌──────────────────────┐ │
-│  │ Application Auth / RBAC │  │ Business Logic Layer │ │
-│  └────────────┬────────────┘  └──────────┬───────────┘ │
-│               │ (Validated Queries)      │             │
-│               ▼                          ▼             │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ QuartzDB Engine (qdb::Database / qdb::Executor)  │  │
-│  │ - AST Parser & Semantic Validation               │  │
-│  │ - Slotted-Page & B+ Tree Storage Engine          │  │
-│  │ - 4KB Block Pager I/O Layer                      │  │
-│  └──────────────────────────┬───────────────────────┘  │
-└─────────────────────────────┼──────────────────────────┘
-                              │ Direct Synchronous File I/O
-                              ▼
-                 ┌──────────────────────────┐
-                 │ Local Database File      │
-                 │ production.db (4KB pages)│
-                 └──────────────────────────┘
-```
+<ExcalidrawDiagram name="embedded-execution-model" title="In-Process Embedded Execution Model" alt="Architectural diagram of QuartzDB in-process execution model showing Host Application Process, Auth and Business Logic, QuartzDB Engine, and Direct Synchronous File I/O" />
 
 ### Architectural Guarantees
 - **Zero Network Exposure**: QuartzDB opens no TCP/UDP listening sockets and implements no wire protocol. It cannot be targeted by remote port scanning, network packet spoofing, or denial-of-service against a listening port.
