@@ -1,6 +1,6 @@
-# Backup & Recovery Runbooks 🛡️
+# File Backup, Compaction & Disaster Recovery 🛡️
 
-Operational procedures for administering, backing up, compacting, and recovering QuartzDB database files in production environments.
+Operational procedures for administering, backing up, compacting, and verifying QuartzDB database files in production environments.
 
 ---
 

@@ -1,47 +1,86 @@
-# Security, Roles & PII Map 🔒
+# Security & Threat Model 🔒
 
-QuartzDB provides role-based access patterns, data governance guidelines, and a comprehensive Personally Identifiable Information (PII) map.
+QuartzDB is an in-process, embedded relational storage engine. Unlike client-server database systems (such as PostgreSQL or MySQL), QuartzDB does not listen on network sockets, manage user accounts, or execute privileged background daemons.
 
-> [!NOTE] Example Schema — Not Engine-Specific
-> This page describes the **example sample schema** shipped with QuartzDB for demonstration purposes (`users`, `orders`, `products`). QuartzDB itself does not enforce any predefined business schema, roles, or PII policy. These tables exist solely to illustrate engine capabilities.
-
----
-
-## 1. Role-Based Access Control (RBAC)
-
-Because QuartzDB runs as an embedded engine within the host application process, authentication and authorization are validated at the API and executor boundary:
-
-| Role Name | Table DDL (`CREATE` / `DROP`) | Read Operations (`SELECT`) | Write Operations (`INSERT` / `UPDATE` / `DELETE`) | Administrative (.open, .drop) |
-| :--- | :---: | :---: | :---: | :---: |
-| **`Admin`** | ✅ | ✅ | ✅ | ✅ |
-| **`AppService`** | ❌ | ✅ | ✅ | ❌ |
-| **`Auditor`** | ❌ | ✅ (Read-Only) | ❌ | ❌ |
-| **`Restricted`** | ❌ | ⚠️ Non-PII Only | ❌ | ❌ |
+This page outlines the operational security model, process boundaries, and architectural considerations when embedding QuartzDB into host applications.
 
 ---
 
-## 2. Personally Identifiable Information (PII) Map
+## 1. The Embedded Execution Model
 
-Attributes marked <span class="badge-pii">PII ⚠️</span> contain personal customer data subject to global compliance regulations (GDPR, CCPA, SOC2).
+Because QuartzDB executes strictly in-process within the host application:
 
-| Table | Column | PII Classification | Sensitivity | Retention Policy | Compliance Requirement |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`users`** | `email` | Direct Identifier | High (Tier 1) | Account Lifetime + 30 Days | Encrypted at rest; purge upon deletion. |
-| **`users`** | `full_name` | Direct Identifier | Medium (Tier 2) | Account Lifetime + 30 Days | Purge upon GDPR deletion request. |
-
-### GDPR "Right to be Forgotten" Workflow
-When a customer requests account deletion:
-```sql
--- 1. Remove customer identity from users table
-DELETE FROM users WHERE id = 1042;
-
--- 2. Trigger slotted page compaction to overwrite physical bytes
--- The engine reclaims slot gaps and compacts the 4KB data page.
 ```
+┌────────────────────────────────────────────────────────┐
+│ Host Application Process (e.g. C++ / Python / Go)      │
+│                                                        │
+│  ┌─────────────────────────┐  ┌──────────────────────┐ │
+│  │ Application Auth / RBAC │  │ Business Logic Layer │ │
+│  └────────────┬────────────┘  └──────────┬───────────┘ │
+│               │ (Validated Queries)      │             │
+│               ▼                          ▼             │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ QuartzDB Engine (qdb::Database / qdb::Executor)  │  │
+│  │ - AST Parser & Semantic Validation               │  │
+│  │ - Slotted-Page & B+ Tree Storage Engine          │  │
+│  │ - 4KB Block Pager I/O Layer                      │  │
+│  └──────────────────────────┬───────────────────────┘  │
+└─────────────────────────────┼──────────────────────────┘
+                              │ Direct Synchronous File I/O
+                              ▼
+                 ┌──────────────────────────┐
+                 │ Local Database File      │
+                 │ production.db (4KB pages)│
+                 └──────────────────────────┘
+```
+
+### Architectural Guarantees
+- **Zero Network Exposure**: QuartzDB opens no TCP/UDP listening sockets and implements no wire protocol. It cannot be targeted by remote port scanning, network packet spoofing, or denial-of-service against a listening port.
+- **In-Process Boundary**: Execution is strictly synchronous within the calling thread. The host process controls the execution lifecycle completely.
+
+---
+
+## 2. Access Control & Authorization
+
+> [!IMPORTANT] Host Application Responsibility
+> QuartzDB **does not implement native multi-user accounts, passwords, or Role-Based Access Control (RBAC)**. All SQL queries submitted via `qdb::Executor::execute()` or the C API (`qdb_execute()`) execute with the permissions of the calling process.
+
+If your system requires user roles (e.g. read-only auditors, administrators):
+1. **Validate permissions in the host application layer** before invoking the QuartzDB API.
+2. **Restrict DDL**: Guard `CREATE TABLE` and `DROP TABLE` queries in application routing logic.
+3. **Prepared Query Routing**: Keep SQL construction inside parameterized application services rather than concatenating untrusted user strings into query text.
 
 ---
 
 ## 3. Storage Security & File Permissions
 
-- **Operating System File Permissions**: Database `.db` files should be provisioned with POSIX `0600` permissions (read/write only by the application service owner).
-- **Embedded Boundary**: No open TCP sockets or network listening ports exist, eliminating remote network injection and port scanning vectors.
+Access control to QuartzDB data files is enforced directly by the host operating system's filesystem Discretionary Access Control (DAC):
+
+### Recommended File Permissions
+
+On Linux / macOS:
+```bash
+# Ensure only the application service user can read and write the database
+chmod 0600 /var/data/quartz/production.db
+chown quartz_app:quartz_app /var/data/quartz/production.db
+```
+
+On Windows (PowerShell):
+```powershell
+# Remove inherited permissions and grant FullControl exclusively to the service account
+icacls "C:\data\quartz\production.db" /inheritance:r /grant:r "QuartzServiceUser:(R,W)"
+```
+
+---
+
+## 4. Unsupported Security Features
+
+To maintain a lean, zero-dependency engine footprint, the following features are intentionally **not implemented** in QuartzDB:
+
+| Feature | Status | Architectural Alternative |
+| :--- | :---: | :--- |
+| **Native Multi-User Authentication** | ❌ Not Implemented | Enforce authentication in the host application prior to API execution. |
+| **Role-Based Access Control (RBAC)** | ❌ Not Implemented | Filter statements (e.g., block `DROP`/`DELETE`) in application controllers. |
+| **Transparent Data Encryption (TDE)** | ❌ Not Implemented | Use filesystem-level encryption (dm-crypt/LUKS, BitLocker, ZFS native encryption) or cloud volume encryption. |
+| **Network TLS / Wire Encryption** | ❌ Not Implemented | N/A (QuartzDB is strictly in-process with zero network sockets). |
+| **Audit Log Journals** | ❌ Not Implemented | Log executed SQL queries in host application logging frameworks. |

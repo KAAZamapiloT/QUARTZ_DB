@@ -62,7 +62,7 @@ export default withMermaid(
             { text: 'Architecture & Pipeline', link: '/concepts/architecture' },
             { text: 'Slotted-Page Storage', link: '/concepts/storage' },
             { text: 'Disk-Backed B+ Tree', link: '/concepts/indexing' },
-            { text: 'Backup & Recovery Runbooks', link: '/operations/backup-recovery' }
+            { text: 'Storage Compaction & Backup', link: '/operations/backup-recovery' }
           ]
         },
         {
@@ -81,9 +81,9 @@ export default withMermaid(
         {
           text: 'v1.0',
           items: [
-            { text: 'Business Rules & Constraints', link: '/rules' },
-            { text: 'Security, Roles & PII Map', link: '/security' },
-            { text: 'All Tables Index', link: '/tables' },
+            { text: 'Engine Invariants & Constraints', link: '/rules' },
+            { text: 'Security & Threat Model', link: '/security' },
+            { text: 'Sample Schema Tables Index', link: '/tables' },
             { text: 'Documentation History', link: '/changelog' },
             { text: 'GitHub Repository', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB' },
             { text: 'Report Issue', link: 'https://github.com/KAAZamapiloT/QUARTZ_DB/issues' }
@@ -108,7 +108,9 @@ export default withMermaid(
             { text: 'Architecture & Pipeline', link: '/concepts/architecture' },
             { text: 'Slotted-Page Storage', link: '/concepts/storage' },
             { text: 'Disk-Backed B+ Tree', link: '/concepts/indexing' },
-            { text: 'Pager & Block Allocation', link: '/architecture/pager' }
+            { text: 'Pager & Block Allocation', link: '/architecture/pager' },
+            { text: 'Engine Invariants & Constraints', link: '/rules' },
+            { text: 'Security & Threat Model', link: '/security' }
           ]
         },
         {
@@ -139,19 +141,17 @@ export default withMermaid(
           text: 'Operations & Tooling',
           items: [
             { text: 'Interactive CLI (quartz.exe)', link: '/tools/cli' },
-            { text: 'Backup & Recovery Runbooks', link: '/operations/backup-recovery' },
+            { text: 'Storage Compaction & Backup', link: '/operations/backup-recovery' },
             { text: 'Scale Benchmarks (120k Rows)', link: '/benchmarks/performance' }
           ]
         },
         {
           text: 'Example Database Schema',
-          collapsed: false,
+          collapsed: true,
           items: [
             { text: 'Interactive Relational ERD', link: '/diagrams' },
             { text: 'Global Data Dictionary', link: '/data-dictionary' },
-            { text: 'All Tables Index', link: '/tables' },
-            { text: 'Business Rules & Constraints', link: '/rules' },
-            { text: 'Security, Roles & PII Map', link: '/security' }
+            { text: 'All Tables Index', link: '/tables' }
           ]
         }
       ],
@@ -165,7 +165,7 @@ export default withMermaid(
       ],
 
       footer: {
-        message: 'A serial publication for systems & database engineers. Released under the MIT License.',
+        message: 'A modern C++23 embedded relational database engine. Released under the MIT License.',
         copyright: 'Copyright © 2026 QuartzDB Engineering Team'
       },
 

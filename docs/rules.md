@@ -1,9 +1,6 @@
-# Business Rules & Constraints ⚖️
+# Engine Invariants & Constraints ⚖️
 
-This document details the relational invariants, schema constraints, and storage guarantees enforced by QuartzDB.
-
-> [!NOTE] Example Schema — Not Engine-Specific
-> This page describes the **example sample schema** shipped with QuartzDB for demonstration purposes (`users`, `orders`, `products`). QuartzDB itself does not enforce any predefined business schema, roles, or PII policy. These tables exist solely to illustrate engine capabilities.
+This document details the relational invariants, schema constraints, and storage guarantees enforced by the QuartzDB C++23 engine.
 
 ---
 

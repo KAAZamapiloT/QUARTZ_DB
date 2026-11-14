@@ -152,6 +152,38 @@ body,
   backdrop-filter: none !important;
 }
 
+.VPNavBar .wrapper {
+  padding: 0 16px !important;
+}
+
+.VPNavBar .container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Prevent Title from being positioned absolute or restricted to sidebar width */
+@media (min-width: 960px) {
+  .VPNavBar.has-sidebar .title {
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    flex-shrink: 0 !important;
+    padding: 0 16px 0 0 !important;
+    height: var(--vp-nav-height) !important;
+  }
+
+  .VPNavBar.has-sidebar .content {
+    position: static !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    flex-grow: 1 !important;
+    width: auto !important;
+  }
+}
+
 .VPNavBarTitle .title {
   font-family: var(--vp-font-family-mono) !important;
   font-weight: 700 !important;
@@ -175,6 +207,64 @@ body,
   background: var(--q-bg-elevated);
 }
 
+/* Content Body Flex Layout */
+.content-body {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+}
+
+/* Search Bar Placement & Retro Technical Styling */
+.VPNavBarSearch {
+  flex-grow: 0 !important;
+  padding-left: 0 !important;
+  margin-left: auto !important;
+  margin-right: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.VPNavBarSearchButton {
+  background-color: var(--q-bg-elevated) !important;
+  border: 1px solid var(--q-ink-muted) !important;
+  border-radius: 0 !important;
+  color: var(--q-ink) !important;
+  font-family: var(--vp-font-family-mono) !important;
+  padding: 0 10px !important;
+  height: 32px !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .VPNavBarSearchButton {
+  border-color: var(--q-accent-primary) !important;
+}
+
+.VPNavBarSearchButton:hover {
+  border-color: var(--q-accent-primary) !important;
+  background-color: var(--q-bg-panel) !important;
+}
+
+.VPNavBarSearchButton .search-button-text,
+.VPNavBarSearchButton .DocSearch-Button-Placeholder {
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: var(--q-ink) !important;
+}
+
+.VPNavBarSearchButton .search-button-keyboard-shortcut,
+.VPNavBarSearchButton .DocSearch-Button-Keys kbd {
+  background: var(--q-bg-panel) !important;
+  border: 1px solid var(--q-ink-muted) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 10px !important;
+  color: var(--q-ink-muted) !important;
+}
+
 /* Right-aligned Monospace Spec Metadata */
 .VPNavBarMenu::before {
   content: 'PAGE_SIZE: 4096B // ENGINE: B+TREE';
@@ -183,7 +273,7 @@ body,
   font-weight: 700;
   color: var(--q-ink-muted);
   letter-spacing: 0.06em;
-  margin-right: 1.5rem;
+  margin-right: 1.25rem;
   padding: 3px 8px;
   border: 1px solid var(--q-ink-muted);
   background-color: var(--q-bg-elevated);
@@ -192,8 +282,14 @@ body,
   align-items: center;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1280px) {
   .VPNavBarMenu::before {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .VPNavBarTitle .title::after {
     display: none;
   }
 }

@@ -24,13 +24,15 @@ All comparison operators operate on matching data types (`INT` vs `INT`, `TEXT` 
 
 ## Boolean Logical Operators
 
-Logical operators combine multiple relational predicates into complex filter expressions:
+Logical operators combine multiple relational predicates into complex filter expressions in `WHERE` clauses:
 
 | Operator | Precedence | Associativity | Example |
 | :---: | :---: | :---: | :--- |
-| **`NOT`** | 1 (Highest) | Right-to-Left | `WHERE NOT status = 'ARCHIVED'` |
-| **`AND`** | 2 (Medium) | Left-to-Right | `WHERE active = 1 AND score >= 90` |
-| **`OR`** | 3 (Lowest) | Left-to-Right | `WHERE role = 'admin' OR role = 'staff'` |
+| **`AND`** | 1 (Higher) | Left-to-Right | `WHERE active = 1 AND score >= 90` |
+| **`OR`** | 2 (Lower) | Left-to-Right | `WHERE role = 'admin' OR role = 'staff'` |
+
+> [!NOTE] Unary `NOT` Scope
+> In QuartzDB, the `NOT` keyword is currently supported exclusively within schema definition constraints (`NOT NULL`). Unary `NOT` in `WHERE` clauses is not part of the expression grammar; use inverse relational operators (e.g. `!=` instead of `NOT =`, `<` instead of `NOT >=`) to invert conditions.
 
 ### Operator Precedence & Grouping
 Because `AND` has higher precedence than `OR`, parentheses `(` and `)` are required to group alternate predicates:

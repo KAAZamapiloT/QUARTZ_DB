@@ -12,144 +12,139 @@
       </div>
     </div>
 
-    <!-- Top Serial Header Bar -->
+    <!-- Top Masthead Header Bar -->
     <header class="forge-masthead">
       <div class="forge-masthead-top">
         <div class="masthead-brand">
           <span class="brand-initial">Q.</span>
           <span class="brand-name">QuartzDB</span>
-          <span class="brand-sub">a serial publication for database & systems programmers</span>
+          <span class="brand-sub">Embedded Relational Storage Engine for C++23</span>
         </div>
         <div class="masthead-nav">
           <a href="/getting-started/" class="nav-item">Quickstart</a>
-          <a href="/concepts/architecture" class="nav-item">Concepts</a>
+          <a href="/concepts/architecture" class="nav-item">Architecture</a>
           <a href="/sql/" class="nav-item">SQL</a>
-          <a href="/configuration/" class="nav-item">Config</a>
-          <a href="/errors/" class="nav-item">Errors</a>
+          <a href="/guide/c-api" class="nav-item">C API</a>
+          <a href="/benchmarks/performance" class="nav-item">Benchmarks</a>
           <button @click="toggleDim" class="dim-btn" :title="isDim ? 'Switch to Paper Mode' : 'Switch to Dim Mode'">
             {{ isDim ? 'PAPER' : 'DIM' }}
           </button>
         </div>
       </div>
       <div class="forge-masthead-meta">
-        <span>Vol. I § Issue 01 § Published Autumn 2026</span>
-        <span>Edited by the QuartzDB Engineering Core</span>
+        <span>ARCHITECTURE SPECIFICATION // RELEASE 1.0</span>
+        <span>4096-BYTE SLOTTED PAGES · ON-DISK B+ TREE · ZERO RUNTIME DEPENDENCIES</span>
       </div>
     </header>
 
     <!-- Split Hero Section -->
     <section class="forge-hero">
-      <!-- Left Column: Featured Serial -->
+      <!-- Left Column: Primary Engine Spec -->
       <div class="hero-left">
         <div class="hero-pretitle">
-          <span class="pretitle-tag">Currently Serializing</span>
-          <span class="pretitle-issue">№ 5 of 9 · published weekly</span>
+          <span class="pretitle-tag">SYSTEM ARCHITECTURE</span>
+          <span class="pretitle-issue">C++23 EMBEDDED RELATIONAL ENGINE</span>
         </div>
 
         <h1 class="hero-title">
-          Systems Programming<br>
-          <span class="title-italic">in C++23.</span>
+          High-Performance<br>
+          <span class="title-italic">Storage & Indexing.</span>
         </h1>
 
         <p class="hero-deck">
-          A NINE-CHAPTER DEEP DIVE INTO THE MACHINE LAYER — Slotted pages, disk-backed B+ tree indexing, fixed 4KB page pagers, AST parsing, and zero-dependency relational execution. Written for engineers who want to understand databases from the metal up.
+          A modern embedded database engine written from scratch in C++23. Featuring fixed 4KB page block I/O, bidirectional slotted-page record layout, disk-backed B+ tree primary indexing, and an in-process SQL execution engine.
         </p>
 
-        <!-- Hero Actions: Only "Read Overview" is solid button; others are quiet text links with arrows -->
+        <!-- Hero Actions -->
         <div class="hero-actions-row">
-          <a href="/overview" class="btn-solid-primary">Read Overview</a>
+          <a href="/getting-started/" class="btn-solid-primary">Get Started</a>
           <div class="quiet-links-group">
-            <a href="/tables" class="quiet-arrow-link">Browse tables · 3 so far →</a>
-            <a href="/diagrams" class="quiet-arrow-link">Interactive ERD →</a>
+            <a href="/concepts/architecture" class="quiet-arrow-link">Architecture Pipeline →</a>
+            <a href="/sql/" class="quiet-arrow-link">SQL Reference →</a>
           </div>
         </div>
       </div>
 
-      <!-- Right Column: This Week Chapter Tracker -->
+      <!-- Right Column: Core Subsystems Directory -->
       <div class="hero-right">
         <div class="schedule-card">
           <div class="schedule-header">
             <div class="header-titles">
-              <span class="schedule-title">This Week</span>
-              <span class="schedule-sub">five chapters · core storage</span>
+              <span class="schedule-title">Subsystems</span>
+              <span class="schedule-sub">Core Storage & Execution Layers</span>
             </div>
             <div class="tracker-mini-stats">
-              <span class="tracker-pct">5 of 9 serialized</span>
+              <span class="tracker-pct">5 Core Layers</span>
             </div>
           </div>
 
-          <!-- Thin Serialization Progress Bar -->
+          <!-- Thin Status Bar -->
           <div class="thin-tracker-bar">
-            <div class="thin-tracker-fill" style="width: 55.5%"></div>
+            <div class="thin-tracker-fill" style="width: 100%"></div>
           </div>
 
           <div class="schedule-list">
-            <!-- Ch 1 (Published - Full row link) -->
             <a href="/architecture/pager" class="schedule-row-link">
-              <span class="item-date">Ch. 1</span>
-              <span class="item-desc">4KB Block Pager (I/O)</span>
-              <span class="badge-status read">READ →</span>
+              <span class="item-date">01 //</span>
+              <span class="item-desc">4KB Block Pager (Physical Disk I/O)</span>
+              <span class="badge-status read">PAGER</span>
             </a>
 
-            <!-- Ch 2 (Published - Full row link) -->
             <a href="/concepts/storage" class="schedule-row-link">
-              <span class="item-date">Ch. 2</span>
-              <span class="item-desc">Slotted-Page Storage</span>
-              <span class="badge-status read">READ →</span>
+              <span class="item-date">02 //</span>
+              <span class="item-desc">Slotted-Page Record Storage</span>
+              <span class="badge-status read">SLOTTED</span>
             </a>
 
-            <!-- Ch 3 (Published - Full row link) -->
             <a href="/concepts/indexing" class="schedule-row-link">
-              <span class="item-date">Ch. 3</span>
-              <span class="item-desc">Disk B+ Tree Indexing</span>
-              <span class="badge-status read">READ →</span>
+              <span class="item-date">03 //</span>
+              <span class="item-desc">Disk-Backed B+ Tree Index</span>
+              <span class="badge-status read">B+ TREE</span>
             </a>
 
-            <!-- Ch 4 (Ready - Full row link) -->
             <a href="/concepts/architecture" class="schedule-row-link">
-              <span class="item-date">Ch. 4</span>
-              <span class="item-desc">Recursive-Descent Parser</span>
-              <span class="badge-status ready">READY</span>
+              <span class="item-date">04 //</span>
+              <span class="item-desc">Recursive-Descent SQL Parser</span>
+              <span class="badge-status ready">PARSER</span>
             </a>
 
-            <!-- Ch 5 (Live - Full row link) -->
             <a href="/tools/cli" class="schedule-row-link">
-              <span class="item-date">Ch. 5</span>
-              <span class="item-desc">Execution Engine & CLI</span>
-              <span class="badge-status live">LIVE →</span>
+              <span class="item-date">05 //</span>
+              <span class="item-desc">Relational Executor & REPL CLI</span>
+              <span class="badge-status live">EXECUTOR</span>
             </a>
           </div>
 
-          <!-- Schedule Footer -->
+          <!-- Card Footer -->
           <div class="schedule-footer">
-            <span class="footer-rss">📡 Subscribe via RSS</span>
-            <span class="footer-next">Planned: Concurrency & Write-Ahead Logging</span>
+            <span class="footer-rss">📁 Single-File Persistence (.db)</span>
+            <span class="footer-next">PAGE_SIZE: 4096B</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Series Library Grid -->
+    <!-- Engine Subsystems Grid -->
     <section class="series-library">
       <div class="section-heading">
-        <h2>Curriculum & Modules</h2>
-        <p>Systematic coverage of QuartzDB's internal C++23 architectural subsystems. <em>(Percentages reflect documentation coverage of implemented engine features)</em></p>
+        <h2>Engine Subsystems</h2>
+        <p>Systematic breakdown of QuartzDB's internal C++23 architectural layers.</p>
       </div>
 
       <div class="series-grid">
         <div v-for="s in series" :key="s.title" class="series-card">
           <div class="series-header">
             <span class="series-vol">{{ s.tag }}</span>
-            <span class="series-pct">{{ s.progress }}% Doc Coverage</span>
+            <span class="series-pct">Implemented</span>
           </div>
           <h3 class="series-card-title">{{ s.title }}</h3>
           <p class="series-card-desc">{{ s.description }}</p>
           <div class="progress-bar-bg">
-            <div class="progress-bar-fill" :style="{ width: s.progress + '%' }"></div>
+            <div class="progress-bar-fill" style="width: 100%"></div>
           </div>
           <div class="series-card-footer">
-            <span>{{ s.chapters }} chapters</span>
-            <a :href="s.link" class="series-link">View Module →</a>
+            <span>{{ s.chapters }} modules</span>
+            <a :href="s.link" class="series-link">View Architecture →</a>
           </div>
         </div>
       </div>
