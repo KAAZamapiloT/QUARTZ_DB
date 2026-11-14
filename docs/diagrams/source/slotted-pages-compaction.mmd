@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    actor Engine as Table Engine
+    participant Page as Active 4KB Page
+    participant Rebuilt as In-Memory Page Buffer
+
+    Note over Page: fragmented_bytes exceeds threshold (> 20%)
+    Engine->>Rebuilt: initialize_page()
+    Engine->>Rebuilt: Copy header slot_count & next_page
+    loop For each slot in old page
+        alt Slot is active (length > 0)
+            Engine->>Rebuilt: Copy payload contiguous from byte 4096
+            Engine->>Rebuilt: Update slot offset to new position
+        else Slot is deleted (length == 0)
+            Engine->>Rebuilt: Preserve slot tombstone {0, 0}
+        end
+    end
+    Rebuilt->>Page: Replace buffer & reset fragmented_bytes = 0

@@ -14,49 +14,15 @@ Type integer keys below (e.g. `10`, `25`, `50`, `120`) to watch the B+ Tree visu
 
 ## Topology & Node Fan-Out
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Meta["Metadata Page 2<br/>Magic: BPM1 · Root: Page 3"]:::shared
-    Meta -.->|Root Pointer| Root
-
-    subgraph Hierarchy ["On-Disk Multi-Level Tree Hierarchy (4096-Byte Pages)"]
-        Root["Root Page 3 (Internal)<br/>Separator: [ 100 ]<br/>Fan-out: &le; 128 keys"]:::entry
-
-        LeftInt["Internal Page 5<br/>Key Range: &lt; 100<br/>Separator: [ 50 ]"]:::disk
-        RightInt["Internal Page 6<br/>Key Range: &ge; 100<br/>Separator: [ 150 ]"]:::disk
-
-        Root -->|Child 0: key &lt; 100| LeftInt
-        Root -->|Child 1: key &ge; 100| RightInt
-
-        L1["Leaf Page 10<br/>Keys: [ 10 .. 49 ]<br/>Payload: RecordID {P, S}"]:::success
-        L2["Leaf Page 11<br/>Keys: [ 50 .. 99 ]<br/>Payload: RecordID {P, S}"]:::success
-        L3["Leaf Page 12<br/>Keys: [ 100 .. 149 ]<br/>Payload: RecordID {P, S}"]:::success
-        L4["Leaf Page 13<br/>Keys: [ 150 .. 200 ]<br/>Payload: RecordID {P, S}"]:::success
-
-        LeftInt -->|key &lt; 50| L1
-        LeftInt -->|key &ge; 50| L2
-        RightInt -->|key &lt; 150| L3
-        RightInt -->|key &ge; 150| L4
-    end
-
-    %% Singly-Linked Horizontal Leaf Chain
-    L1 ==>|next_leaf: 11| L2
-    L2 ==>|next_leaf: 12| L3
-    L3 ==>|next_leaf: 13| L4
-    L4 -.->|next_leaf: NO_PAGE| Term["End of Index (0xFF..)"]:::guard
-```
+<ExcalidrawDiagram
+  name="concepts-indexing-topology"
+  title="Topology & Node Fan-Out (Root, Internal, Leaves, and Slotted Data)"
+  alt="B+ Tree indexing topology diagram showing Root Node Page 3, Internal Nodes 5 and 6, Leaf Pages 10-13, and RecordID links to Table Pages 1 and 4"
+/>
 
 - **Fan-Out (`MAX_KEYS = 128`)**: A 3-level tree indexes over 2 million records with only 3 disk page reads.
 - **Horizontal Leaf Chaining (`next_leaf`)**: Singly-linked leaf nodes enable sequential range scans without navigating ancestor internal pages.
-- **Point Lookups ($O(\log N)$)**: Point queries on primary keys execute in sub-millisecond latencies (~100–350 μs) across 120,000+ records.
+- **Point Lookups (`O(log N)`)**: Point queries on primary keys execute in sub-millisecond latencies (~100–350 μs) across 120,000+ records.
 
 ---
 

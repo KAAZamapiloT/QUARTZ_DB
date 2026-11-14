@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor User as Client
+    participant Ex as Executor
+    participant Tab as Table
+    participant Idx as PrimaryIndex
+    participant Bpt as B+ Tree
+    participant Pager as Pager
+    participant Disk as Disk File
+
+    Note over User, Disk: Path A: Point Query on Primary Key (WHERE id = 42)
+    User->>Ex: execute("SELECT ... WHERE id = 42;")
+    Ex->>Ex: Inspect AST filter
+    Ex->>Tab: find_by_primary_key(42)
+    Tab->>Idx: find_by_primary_key(42)
+    Idx->>Bpt: find(42)
+    Bpt->>Pager: read_node(root_page_)
+    Pager->>Disk: read 4KB block
+    Bpt-->>Idx: RecordID {page, slot}
+    Idx-->>Tab: RecordID
+    Tab->>Pager: read_page(page_id)
+    Pager->>Disk: read 4KB page
+    Tab-->>Ex: Record tuple
+    Ex-->>User: Tabular result (~100 μs)
+
+    Note over User, Disk: Path B: Filter on Non-Indexed Attribute (WHERE name = 'Bob')
+    User->>Ex: execute("SELECT ... WHERE name = 'Bob';")
+    Ex->>Tab: scan()
+    Tab->>Pager: read_page(first_page_)
+    loop For each 4KB data page
+        Pager->>Disk: read 4KB block
+        Tab->>Tab: Iterate slot array
+        Tab->>Tab: RecordCodec::deserialize()
+    end
+    Ex->>Ex: Evaluate predicate filter
+    Ex-->>User: Tabular filtered result

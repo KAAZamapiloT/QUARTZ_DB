@@ -16,7 +16,9 @@ This document details the relational invariants, schema constraints, and storage
 
 ### 1.2 Uniqueness Enforcement
 - Inserting a record with a duplicate primary key immediately aborts the insertion:
-  $$\text{insert}(k, v) \implies k \notin \text{BPlusTree}(T)$$
+  ```text
+  insert(k, v) requires k ∉ BPlusTree(T)
+  ```
 - When a duplicate key is detected, the executor returns a `ConstraintViolation` error and no pages are modified.
 
 ### 1.3 Nullability Constraints
@@ -29,7 +31,9 @@ This document details the relational invariants, schema constraints, and storage
 
 ### 2.1 Maximum Record Payload Size
 - In the slotted-page architecture, every record must fit inside a single 4096-byte page alongside the page header and slot:
-  $$\text{Max Record Size} = \text{PAGE\_SIZE} - \text{HEADER\_SIZE} - \text{SLOT\_SIZE} = 4096 - 24 - 4 = 4068 \text{ Bytes}$$
+  ```text
+  Max Record Size = PAGE_SIZE - HEADER_SIZE - SLOT_SIZE = 4096 - 24 - 4 = 4068 Bytes
+  ```
 - Tuples exceeding 4068 bytes are rejected with `std::length_error`.
 
 ### 2.2 Page Compaction Trigger
@@ -42,5 +46,7 @@ This document details the relational invariants, schema constraints, and storage
 - **Occupancy Bounds**: Every non-root node maintains between `MIN_KEYS = 64` and `MAX_KEYS = 128` keys.
 - **Tree Uniformity**: All leaf nodes reside at the exact same depth from the root.
 - **Sorted Ordering**: Keys within every node must be strictly monotonically increasing:
-  $$k_0 < k_1 < k_2 < \dots < k_{m-1}$$
+  ```text
+  k₀ < k₁ < k₂ < ... < kₘ₋₁
+  ```
 - **Horizontal Chain**: Leaves must maintain valid `next_leaf` singly-linked list pointers terminating in `NO_PAGE` (`0xFFFFFFFFFFFFFFFF`).

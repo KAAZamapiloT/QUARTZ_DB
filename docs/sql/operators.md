@@ -18,7 +18,7 @@ All comparison operators operate on matching data types (`INT` vs `INT`, `TEXT` 
 | **`>=`** | Greater than or equal to | `INT`, `TEXT` (lexicographic) | `SELECT * FROM logs WHERE timestamp >= 1700000000;` |
 
 > [!NOTE]
-> When equality (`=`) is evaluated against the table's `PRIMARY KEY` (e.g. `WHERE id = 42`), the query planner selects the **$O(\log N)$ B+ Tree fast-path** instead of executing a full table scan.
+> When equality (`=`) is evaluated against the table's `PRIMARY KEY` (e.g. `WHERE id = 42`), the query planner selects the **O(log N) B+ Tree fast-path** instead of executing a full table scan.
 
 ---
 

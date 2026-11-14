@@ -56,33 +56,11 @@ Must specify a valid table registered in Catalog Page 0.
 
 Tuple insertion coordinates schema validation, slotted-page two-way spatial allocation, and disk B+ tree indexing:
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Start["1. Client Issues INSERT<br/>INSERT INTO users VALUES (42, 'Ada', 'ada@lovelace.org')"]:::entry
-    ValidateSchema["2. Schema &amp; Constraint Check<br/>Verify column count, types, and NOT NULL invariants"]:::entry
-
-    CheckPK{"3. Check Primary Key<br/>in Disk B+ Tree"}:::guard
-    CheckPK -- "Key Exists" --> AbortPK["Abort: QERR_PK_DUPLICATE (1001)<br/>Zero disk pages modified"]:::error
-    CheckPK -- "Key Unique" --> Serialize["4. RecordCodec::serialize()<br/>Packs INT64 (Tag 1), TEXT (Tag 2), NULL (Tag 0)"]:::shared
-
-    Serialize --> CheckSpace{"5. Contiguous Free Space?<br/>free_end - free_start &ge; 4B + payload_len"}:::guard
-    CheckSpace -- "No &amp; Fragmented &gt; 0" --> Compact["compact_page() in-memory pass"]:::shared
-    Compact --> CheckSpace
-    CheckSpace -- "No Space" --> AllocNew["Pager::allocate_page()<br/>Link via next_page"]:::disk
-    CheckSpace -- "Yes (Sufficient)" --> DoAlloc["6. Two-Way Spatial Placement<br/>Slot written at free_start (grows &darr;)<br/>Payload written at free_end - len (grows &uarr;)"]:::disk
-
-    AllocNew --> DoAlloc
-    DoAlloc --> IndexBPT["7. Index Insertion in B+ Tree<br/>Map key &rarr; RecordID {page_id, slot_index}<br/>Split node if keys &gt; 128"]:::shared
-    IndexBPT --> Done["8. Return Success<br/>QueryResult: '1 row inserted.'"]:::success
-```
+<ExcalidrawDiagram
+  name="insert-workflow"
+  title="How INSERT Works Under the Hood in QuartzDB"
+  alt="INSERT query execution pipeline: schema type validation, primary key uniqueness check, contiguous space check, slot allocation, and B+ Tree index insertion"
+/>
 
 ### Detailed Execution Stages:
 1. **Schema Reordering**: If optional column names are specified (`INSERT INTO users (email, id, name)`), the parser maps values into canonical table schema column ordering; missing nullable columns are populated with `NULL`.

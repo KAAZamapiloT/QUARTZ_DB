@@ -9,7 +9,7 @@ QuartzDB enforces strong, static column typing across table creation, tuple seri
 | SQL Type Name | Aliases | C++ In-Memory Representation | Wire / Disk Tag | Binary Serialization Format |
 | :--- | :--- | :--- | :---: | :--- |
 | **`INT`** | `INTEGER`, `INT64`, `BIGINT` | `std::int64_t` (8-byte signed) | `0x01` | `0x01` + 8 bytes (little-endian) |
-| **`TEXT`** | `VARCHAR`, `STRING` | `std::string` (arbitrary UTF-8) | `0x02` | `0x02` + 4 bytes length ($N$) + $N$ raw UTF-8 bytes |
+| **`TEXT`** | `VARCHAR`, `STRING` | `std::string` (arbitrary UTF-8) | `0x02` | `0x02` + 4 bytes length (N) + N raw UTF-8 bytes |
 | **`NULL`** | — | `std::monostate` | `0x00` | `0x00` (1 single tag byte) |
 
 ---
@@ -28,7 +28,7 @@ Bytes: 01  2A 00 00 00 00 00 00 00  (9 bytes total)
 
 ### 2. Variable-Length String Serialization (`TEXT`)
 - **Tag**: `0x02` (1 byte)
-- **Length**: 32-bit unsigned integer ($N$) in little-endian format (4 bytes)
+- **Length**: 32-bit unsigned integer (N) in little-endian format (4 bytes)
 - **Bytes**: Raw UTF-8 string bytes:
 ```text
 Value: 'Quartz'

@@ -1,0 +1,24 @@
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
+flowchart TD
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
+
+    Start["1. Client Issues CREATE TABLE<br/>CREATE TABLE users (id INT PRIMARY KEY, name TEXT NOT NULL);"]:::entry
+    ValidateSchema["2. Schema Validation:<br/>&bull; Exactly 1 PRIMARY KEY (must be INT)<br/>&bull; Column names non-empty &amp; unique<br/>&bull; Valid types: INT, TEXT"]:::entry
+
+    CheckCatalog{"3. Table Name already<br/>exists in Page 0?"}:::guard
+    CheckCatalog -- "Yes" --> AbortDup["Abort: Table already exists"]:::error
+
+    CheckCatalog -- "No" --> AllocDataPage["4. Allocate First Slotted Page (Page 1)<br/>&bull; Header initialized: Magic = 0x31475051 (QPG1)<br/>&bull; free_start = 24, free_end = 4096, slot_count = 0"]:::disk
+
+    AllocDataPage --> AllocMetaPage["5. Allocate Index Metadata (Page 2)<br/>&bull; Header initialized: Magic = 0x314D5042 (BPM1)"]:::shared
+
+    AllocMetaPage --> AllocBptRoot["6. Allocate B+ Tree Root Node (Page 3)<br/>&bull; Header initialized: Magic = 0x31545042 (BPT1)<br/>&bull; Node Type: LEAF (1), key_count = 0, next_leaf = NO_PAGE"]:::shared
+
+    AllocBptRoot --> WriteCatalog["7. Serialize into Catalog Page 0<br/>&bull; Write table_name, first_page (1), index_meta_page (2)<br/>&bull; Serialize schema columns &amp; increment table_count<br/>&bull; pager::write_page(0, catalog_buffer)"]:::disk
+
+    WriteCatalog --> SuccessDone["8. Table Ready for Queries!"]:::success

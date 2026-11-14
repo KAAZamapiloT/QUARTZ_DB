@@ -71,7 +71,7 @@ SELECT * FROM users;
 SELECT name, email FROM users;
 ```
 
-#### Point Lookup ($O(\log N)$ Index Path)
+#### Point Lookup (O(log N) Index Path)
 ```sql
 SELECT * FROM users WHERE id = 1;
 ```

@@ -57,35 +57,18 @@
 
 | Index Name | Indexed Column | Index Type | Height | Complexity | Path Selected |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`idx_orders_pk`** | `id` | Disk B+ Tree | 3 | $O(\log N)$ | Used for point lookups (`WHERE id = ?`). Fetches record in ~100–250 μs. |
-| **Sequential Scan** | `user_id`, `status` | Slotted Page Chain | — | $O(N)$ | Linear traversal across 4KB pages linked via `next_page`. |
+| **`idx_orders_pk`** | `id` | Disk B+ Tree | 3 | `O(log N)` | Used for point lookups (`WHERE id = ?`). Fetches record in ~100–250 μs. |
+| **Sequential Scan** | `user_id`, `status` | Slotted Page Chain | — | `O(N)` | Linear traversal across 4KB pages linked via `next_page`. |
 
 ---
 
 ## Related Tables
 
-```mermaid
-erDiagram
-    users ||--o{ orders : "places (1:N)"
-    orders ||--|{ line_items : "contains (1:N)"
-
-    users {
-        int64 id PK
-        string email
-        string full_name
-    }
-    orders {
-        int64 id PK
-        int64 user_id FK
-        int64 total_cents
-        string status
-    }
-    line_items {
-        int64 id PK
-        int64 order_id FK
-        int64 product_id FK
-    }
-```
+<ExcalidrawDiagram
+  name="erd-orders-related"
+  title="Related Tables Entity-Relationship Diagram"
+  alt="ER diagram showing users table (1:N) orders table (1:N) line_items table with primary and foreign key relations"
+/>
 
 - **Parent Table**: [**`users`**](/tables/users) via `orders.user_id = users.id`.
 - **Child Table**: [**`line_items`**](/data-dictionary) via `line_items.order_id = orders.id`.
@@ -94,7 +77,7 @@ erDiagram
 
 ## Sample SQL Queries
 
-### Point Query via B+ Tree Index ($O(\log N)$)
+### Point Query via B+ Tree Index (O(log N))
 ```sql
 SELECT * FROM orders WHERE id = 1042;
 ```

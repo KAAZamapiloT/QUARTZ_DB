@@ -119,19 +119,19 @@ For complete details, see [ORDER BY, LIMIT & OFFSET](/sql/order-by-limit).
 
 ## Complete SELECT Query Execution Order in QuartzDB
 
-1. **Table Scan & Join Resolution**: Reads candidate tuples. If a `JOIN` is present, executes Index Nested-Loop Join ($O(N \log M)$) if right key is primary key, otherwise performs block scan.
+1. **Table Scan & Join Resolution**: Reads candidate tuples. If a `JOIN` is present, executes Index Nested-Loop Join (`O(N log M)`) if right key is primary key, otherwise performs block scan.
 2. **Predicate Filtering**: Evaluates `where_clause` expression tree against candidate tuples, short-circuiting on `AND`/`OR`.
 3. **Projection / Aggregation Reduction**:
    - If aggregate functions exist, runs `evaluate_aggregates()` accumulator across matching rows.
    - If column projections exist, extracts specified attributes or expands `*`.
 4. **Ordering Pass**: If `ORDER BY` is present, executes `std::stable_sort` over the typed record buffer.
-5. **Pagination Slice**: If `OFFSET` is present, skips $K$ tuples; if `LIMIT` is present, takes at most $M$ tuples.
+5. **Pagination Slice**: If `OFFSET` is present, skips K tuples; if `LIMIT` is present, takes at most M tuples.
 
 ---
 
 ## Execution Routing: Fast-Path vs Table Scan {#fast-path-index}
 
-When the query planner evaluates `qdb::SelectStatement`, it inspects filter clauses to route primary-key point queries to the $O(\log N)$ B+ Tree fast-path or execute a linear slotted-page scan:
+When the query planner evaluates `qdb::SelectStatement`, it inspects filter clauses to route primary-key point queries to the `O(log N)` B+ Tree fast-path or execute a linear slotted-page scan:
 
 > [!NOTE] Educational Visualizer — Not an Implemented SQL Command
 > The interactive plan tree below is a **conceptual educational tool** illustrating how QuartzDB internally routes queries. QuartzDB does **not** currently implement an `EXPLAIN` SQL command — the execution strategy is determined internally by the query planner and is not exposed as user-visible query plan output.

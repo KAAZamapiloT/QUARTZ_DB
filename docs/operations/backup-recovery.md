@@ -11,7 +11,7 @@ Operational procedures for administering, backing up, compacting, and verifying 
 
 QuartzDB consolidates all database state into a **single binary file** (e.g. `production.db`):
 - **Page 0**: System Catalog, schema definitions, and table root pointers.
-- **Pages $1 \dots N$**: 4KB slotted data pages and disk-backed B+ Tree index nodes.
+- **Pages 1 .. N**: 4KB slotted data pages and disk-backed B+ Tree index nodes.
 - **Header Magic**: Constant `0x31424451` (`"QDB1"`) in database files and `0x31475051` (`"QPG1"`) on individual pages.
 
 Because no separate transaction journals or auxiliary catalog files exist, backup and restore procedures are fundamentally atomic at the file boundary.
@@ -61,22 +61,11 @@ When tuples are updated or deleted (`length = 0`), slotted pages accumulate `fra
 
 ### Compaction Mechanics
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Scan["1. Pager Scans 4KB Pages<br/>Inspect slotted header state"]:::entry --> CheckFrag{"Fragmented Bytes &gt; 20%?"}:::guard
-    CheckFrag -- "Yes (&gt; 20% Fragmentation)" --> CompactPass["2. Rebuild In-Memory Page<br/>Copy active slots (length &gt; 0)"]:::disk
-    CompactPass --> Slide["3. Slide Payloads Contiguous to Byte 4096"]:::shared
-    Slide --> ZeroFrag["4. Write Back Page &amp; Reset fragmented_bytes = 0"]:::disk
-    CheckFrag -- "No (Optimal Density)" --> Retain["Optimal Allocation Preserved"]:::success
-```
+<ExcalidrawDiagram
+  name="backup-recovery-compaction"
+  title="Compaction Mechanics & Gap Elimination"
+  alt="Flowchart of slotted-page compaction triggering on fragmented bytes > 20%, copying active slots, sliding payloads, and resetting fragmentation"
+/>
 
 Inside `src/storage/table.cpp`:
 1. `compact_page()` allocates a clean temporary 4096-byte buffer.

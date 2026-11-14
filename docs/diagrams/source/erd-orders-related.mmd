@@ -1,0 +1,20 @@
+erDiagram
+    users ||--o{ orders : "places (1:N)"
+    orders ||--|{ line_items : "contains (1:N)"
+
+    users {
+        int64 id PK
+        string email
+        string full_name
+    }
+    orders {
+        int64 id PK
+        int64 user_id FK
+        int64 total_cents
+        string status
+    }
+    line_items {
+        int64 id PK
+        int64 order_id FK
+        int64 product_id FK
+    }

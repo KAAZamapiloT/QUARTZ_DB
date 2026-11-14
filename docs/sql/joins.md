@@ -58,48 +58,19 @@ QuartzDB supports multi-table relational queries via **`INNER JOIN`** and **`LEF
 
 Relational joins are evaluated in `src/execution/executor.cpp` (`execute_select_join()`):
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Start["1. SELECT with JOIN Clause<br/>FROM left_table JOIN right_table ON left.k = right.k"]:::entry
-    BuildSchema["2. Build Qualified Joined Schema<br/>left.col1, left.col2, right.col1, right.col2"]:::shared
-    
-    CheckOpt{"3. Is right_table.key<br/>the PRIMARY KEY with B+ Tree?"}:::guard
-
-    %% Fast-Path INLJ
-    CheckOpt -- "Yes (Index Available)" --> INLJ["Index Nested-Loop Join (INLJ)<br/>Complexity: O(N &times; log M)<br/>Direct root-to-leaf index lookup per row"]:::success
-
-    %% Full Nested Loop
-    CheckOpt -- "No (Unindexed)" --> NestedLoop["Full Nested-Loop Scan<br/>Complexity: O(N &times; M)<br/>Scans all 4KB slotted pages of right table"]:::disk
-
-    INLJ --> MatchCheck{"Match Found?"}:::guard
-    NestedLoop --> MatchCheck
-
-    MatchCheck -- "Match Found" --> EmitBoth["Emit Concatenated Tuple<br/>[ Left Attributes + Right Attributes ]"]:::success
-    MatchCheck -- "No Match" --> CheckType{"Join Type?"}:::guard
-
-    CheckType -- "INNER JOIN" --> DiscardRow["Discard Row"]:::error
-    CheckType -- "LEFT JOIN" --> EmitNullPad["Emit Padded Tuple<br/>[ Left Attributes + NULLs for Right ]"]:::shared
-
-    EmitBoth --> FilterPost["4. Apply WHERE Predicates, Projections &amp; ORDER BY"]:::entry
-    EmitNullPad --> FilterPost
-    FilterPost --> FinalResult["5. Return Formatted QueryResult"]:::success
-```
+<ExcalidrawDiagram
+  name="sql-joins-workflow"
+  title="How JOIN Works Under the Hood in QuartzDB"
+  alt="Relational JOIN execution flowchart: scanning Table A, evaluating ON predicate, selecting INLJ Fast-Path vs Block Scan, and formatting LEFT/INNER rows"
+/>
 
 ### 1. Index Nested-Loop Join (INLJ) Fast-Path
 When the join predicate equates a foreign key column to the **`PRIMARY KEY`** of the right table (e.g. `orders.user_id = users.id`):
-- Instead of scanning every slotted page in `users` ($O(N \times M)$), QuartzDB extracts the integer key from the left row and calls:
+- Instead of scanning every slotted page in `users` (`O(N × M)`), QuartzDB extracts the integer key from the left row and calls:
   ```cpp
   auto find_res = right_table->find_by_primary_key(pk_key);
   ```
-- This descends the on-disk B+ Tree in **$O(\log M)$** page reads. For 100,000 orders and 50,000 users, INLJ executes in milliseconds rather than minutes!
+- This descends the on-disk B+ Tree in **`O(log M)`** page reads. For 100,000 orders and 50,000 users, INLJ executes in milliseconds rather than minutes!
 
 ### 2. Qualified Column Naming & Wildcard Expansions
 When tables are joined, column names are qualified by their table name:

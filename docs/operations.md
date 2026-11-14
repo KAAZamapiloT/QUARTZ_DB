@@ -38,21 +38,11 @@ For 24/7 continuous workloads, execute copy-on-write volume snapshots (e.g., LVM
 
 When records are updated or deleted, slotted pages accumulate `fragmented_bytes`:
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Scan["1. Run Diagnostics on .db File<br/>Inspect free_start, free_end, fragmented_bytes"]:::entry --> CheckFrag{"Fragmented Bytes &gt; 20%?"}:::guard
-    CheckFrag -- "Yes (&gt; 20% Fragmentation)" --> Compact["2. Execute Table Compaction<br/>Iterate pages &amp; invoke compact_page()"]:::disk
-    Compact --> Reclaim["3. Slide active payloads contiguous to 4096<br/>Reset fragmented_bytes = 0"]:::shared
-    CheckFrag -- "No (Optimal)" --> OK["4. Optimal Packing Density Maintained"]:::success
-```
+<ExcalidrawDiagram
+  name="operations-compaction-runbook"
+  title="Storage Compaction Runbook Flow"
+  alt="Six-stage offline storage compaction runbook flow: Stop App, Scan DB, Rebuild Data, Re-index B+ Tree, Rename File, and Verify Reopen"
+/>
 
 ### Compaction Mechanics
 Inside `src/storage/table.cpp`:

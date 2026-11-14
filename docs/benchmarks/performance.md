@@ -1,6 +1,6 @@
 # Performance & Scale Benchmarks 📊
 
-To evaluate real-world endurance, QuartzDB was benchmarked across the complete query pipeline (**Lexer $\to$ Parser $\to$ Query Executor $\to$ Slotted Pages & B+ Tree Index**) from 100 to over 120,000 records.
+To evaluate real-world endurance, QuartzDB was benchmarked across the complete query pipeline (**Lexer → Parser → Query Executor → Slotted Pages & B+ Tree Index**) from 100 to over 120,000 records.
 
 ---
 
@@ -30,11 +30,11 @@ To evaluate real-world endurance, QuartzDB was benchmarked across the complete q
 
 ### 1. Sustained High Write Throughput
 - QuartzDB sustained between **2,000 and 3,500+ QPS** continuously while inserting over 120,000 records end-to-end.
-- Because data is persisted onto slotted pages and the B+ tree rebalances incrementally, write latency remains predictable ($\sim 280\text{--}520\,\mu\text{s}$) without long pause spikes.
+- Because data is persisted onto slotted pages and the B+ tree rebalances incrementally, write latency remains predictable (~280–520 µs) without long pause spikes.
 
 ### 2. Logarithmic Point Reads via B+ Tree Index
-- Primary key queries (`WHERE id = ?`) trigger the $O(\log N)$ index path.
-- Read latencies consistently hover between **$100\,\mu\text{s}$ and $360\,\mu\text{s}$**, demonstrating flat logarithmic scaling even as the tree height grows to hold 120,000 index keys.
+- Primary key queries (`WHERE id = ?`) trigger the `O(log N)` index path.
+- Read latencies consistently hover between **100 µs and 360 µs**, demonstrating flat logarithmic scaling even as the tree height grows to hold 120,000 index keys.
 
 ### 3. Highly Compact Storage Footprint
 - 120,000 complete relational rows along with all multi-level B+ tree internal and leaf node pages consume **only 12.09 MB** on disk across 3,094 pages.

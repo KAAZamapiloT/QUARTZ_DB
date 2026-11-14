@@ -69,7 +69,7 @@ Validates the on-disk, page-backed B+ Tree implementation (`include/index/bplus_
 
 ### 5. `PrimaryIndexTest` (8 Tests)
 Tests `PrimaryIndex`, which bridges 64-bit integer primary keys to physical slotted-page `RecordID` (`{page_id, slot_id}`).
-- **`CreateAndInsertThenFind`**: Tests index creation, key insertion, and $\mathcal{O}(\log n)$ lookup.
+- **`CreateAndInsertThenFind`**: Tests index creation, key insertion, and `O(log n)` lookup.
 - **`FindMissingKeyReturnsEmptyOptional`**: Validates non-existent keys return `std::nullopt` instead of crashing.
 - **`DuplicateKeyReturnsDuplicatePrimaryKeyStatus`**: Enforces primary key uniqueness, returning `StatusCode::DuplicatePrimaryKey`.
 - **`SupportsNegativeZeroAndIntegerBoundaries`**: Verifies ordering and lookups for boundary values (`INT64_MIN`, `-1`, `0`, `INT64_MAX`).
@@ -141,7 +141,7 @@ Validates query planning, execution, and relational algebra (`src/execution/exec
 
 ### 12. `SQLScaleTest` (7 Tests)
 End-to-end performance and scalability suite scaling up to 120,000 records.
-- **`Scale_100`** to **`Scale_120000`**: Measures write throughput (QPS), read throughput (QPS), read latency ($\mu\text{s}$), and file footprint at scale milestones (100, 1K, 10K, 50K, 100K, 120K).
+- **`Scale_100`** to **`Scale_120000`**: Measures write throughput (QPS), read throughput (QPS), read latency (µs), and file footprint at scale milestones (100, 1K, 10K, 50K, 100K, 120K).
 - **`FullProgressionAndLimitsMatrix`**: Executes the comprehensive scale matrix and verifies 100% data integrity across all 120,000 records.
 
 ### 13. `CAPITest` (7 Tests)

@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    participant SQL as DDL Query Executor
+    participant Cat as Catalog (Page 0)
+    participant Pager as Pager (4KB Engine)
+    participant Bpt as Disk B+ Tree Index
+
+    SQL->>Pager: allocate_page() -> Page 1
+    Pager-->>SQL: Page 1 Initialized (Table Data Root)
+    SQL->>Pager: allocate_page() -> Page 2
+    Pager-->>SQL: Page 2 Initialized (Index Metadata)
+    SQL->>Bpt: Create(Page 2)
+    Bpt->>Pager: allocate_page() -> Page 3
+    Pager-->>Bpt: Page 3 Initialized (B+ Tree Root Node)
+    Bpt-->>SQL: Index Hierarchy Ready
+    SQL->>Cat: Serialize Table Descriptor (Name, Schema, Page 1, Page 2)
+    Cat->>Pager: write_page(0, catalog_buffer)
+    Pager-->>Cat: Flushed Page 0 to Disk

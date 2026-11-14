@@ -1,0 +1,17 @@
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
+flowchart LR
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
+
+    Q1["1. Raw SQL Query<br/>SELECT * FROM users..."]:::entry
+    Q2["2. Lexical Scan<br/>Keyword, Ident, Literal Tokens"]:::entry
+    Q3["3. AST Construction<br/>Expression Trees &amp; Clauses"]:::guard
+    Q4["4. Planning &amp; Routing<br/>PK Fast-Path vs Full Scan"]:::guard
+    Q5["5. Physical Execution<br/>INLJ, B+ Tree, Slotted Page"]:::disk
+    Q6["6. QueryResult<br/>Tabular Rows &amp; Affected Counts"]:::success
+
+    Q1 --> Q2 --> Q3 --> Q4 --> Q5 --> Q6

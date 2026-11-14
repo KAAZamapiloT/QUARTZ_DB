@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    participant Leaf as Left Leaf (Page A)
+    participant Right as New Right Leaf (Page B)
+    participant Parent as Parent Internal Node
+    participant Pager as qdb::pager
+
+    Note over Leaf: Leaf has 129 keys (Exceeds MAX_KEYS)
+    Leaf->>Pager: allocate_page(Page B)
+    Pager-->>Right: Returns Page B
+    Note over Leaf, Right: Split at middle (index 64)
+    Leaf->>Right: Right.next_leaf = Leaf.next_leaf
+    Leaf->>Leaf: Leaf.next_leaf = Page B
+    Leaf->>Parent: Push Separator Key & Page B
+    alt Parent exceeds MAX_KEYS
+        Note over Parent: Recursively split Parent
+    else Root splits
+        Note over Parent: Allocate New Root Page
+    end

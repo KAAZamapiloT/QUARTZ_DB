@@ -16,6 +16,7 @@ import QueryPlanVisualizer from './components/QueryPlanVisualizer.vue'
 import HexInspector from './components/HexInspector.vue'
 import PipelineStages from './components/PipelineStages.vue'
 import OperatorCallout from './components/OperatorCallout.vue'
+import ExcalidrawDiagram from './components/ExcalidrawDiagram.vue'
 
 export default {
   extends: DefaultTheme,
@@ -35,5 +36,6 @@ export default {
     app.component('HexInspector', HexInspector)
     app.component('PipelineStages', PipelineStages)
     app.component('OperatorCallout', OperatorCallout)
+    app.component('ExcalidrawDiagram', ExcalidrawDiagram)
   }
 }

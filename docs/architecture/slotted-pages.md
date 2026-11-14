@@ -73,7 +73,9 @@ When a new tuple is inserted into a table:
 
 1. **Serialization**: `RecordCodec::serialize()` packs values into a compact byte slice.
 2. **Space Check**: The table checks whether the page has contiguous free capacity:
-   $$\text{required} = \text{sizeof(Slot)} + \text{payload\_length} \le \text{free\_end} - \text{free\_start}$$
+   ```text
+   required = sizeof(Slot) + payload_length ≤ free_end - free_start
+   ```
 3. **Slot Allocation**: The slot at offset `free_start` is populated:
    ```cpp
    Slot slot { .offset = free_end - payload_length, .length = payload_length };
@@ -87,26 +89,11 @@ When a new tuple is inserted into a table:
 
 When records are updated with smaller values or deleted (`length = 0`), the unused space is recorded as `fragmented_bytes`:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Engine as Table Engine
-    participant Page as Active 4KB Page
-    participant Rebuilt as In-Memory Page Buffer
-
-    Note over Page: fragmented_bytes exceeds threshold (> 20%)
-    Engine->>Rebuilt: initialize_page()
-    Engine->>Rebuilt: Copy header slot_count & next_page
-    loop For each slot in old page
-        alt Slot is active (length > 0)
-            Engine->>Rebuilt: Copy payload contiguous from byte 4096
-            Engine->>Rebuilt: Update slot offset to new position
-        else Slot is deleted (length == 0)
-            Engine->>Rebuilt: Preserve slot tombstone {0, 0}
-        end
-    end
-    Rebuilt->>Page: Replace buffer & reset fragmented_bytes = 0
-```
+<ExcalidrawDiagram
+  name="slotted-pages-compaction"
+  title="Page Fill and Compaction Sequence"
+  alt="Sequence diagram of compact_page() sorting active slots, packing payloads contiguous to byte 4096, and resetting fragmented_bytes to 0"
+/>
 
 ### When Compaction Triggers
 1. **Automatic Insert Pass**: If `free_end - free_start < required`, but `(free_end - free_start) + fragmented_bytes >= required`, `compact_page()` runs before allocating a new block.

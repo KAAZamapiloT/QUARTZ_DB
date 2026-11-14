@@ -65,35 +65,11 @@ QuartzDB provides row ordering and result windowing clauses for sorting query ou
 
 Sorting and pagination execute in the final stages of the query pipeline inside `src/execution/executor.cpp`:
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Candidates["1. Candidate Tuples<br/>Produced from Slotted-Page Scan or B+ Tree Lookup"]:::entry
-    FilterPass["2. Filter Pass<br/>Evaluate WHERE predicates across rows"]:::entry
-
-    SortDecision{"3. Has ORDER BY?"}:::guard
-    SortDecision -- "Yes" --> StableSort["In-Memory Stable Sort (std::stable_sort)<br/>Evaluates order_by_compare() on variant values<br/>Handles INT64, String, and NULL ordering"]:::shared
-    SortDecision -- "No" --> PaginationPass
-
-    StableSort --> PaginationPass["4. Windowing Pass: OFFSET &amp; LIMIT"]:::entry
-
-    PaginationPass --> OffsetCheck{"Has OFFSET?"}:::guard
-    OffsetCheck -- "Yes (OFFSET K)" --> SliceOffset["Skip first K records in memory buffer"]:::shared
-    OffsetCheck -- "No" --> LimitCheck
-
-    SliceOffset --> LimitCheck{"Has LIMIT?"}:::guard
-    LimitCheck -- "Yes (LIMIT M)" --> SliceLimit["Truncate buffer to M records"]:::shared
-    LimitCheck -- "No" --> FinalEmit["5. Format QueryResult Output"]:::success
-
-    SliceLimit --> FinalEmit
-```
+<ExcalidrawDiagram
+  name="sql-order-by-limit-workflow"
+  title="How Sorting & Windowing Work in QuartzDB"
+  alt="Sorting and pagination workflow: evaluating ORDER BY via std::stable_sort, evaluating OFFSET to skip K records, and evaluating LIMIT to truncate buffer"
+/>
 
 ### Type-Safe Comparisons (`order_by_compare()`)
 Inside `src/execution/executor.cpp`:

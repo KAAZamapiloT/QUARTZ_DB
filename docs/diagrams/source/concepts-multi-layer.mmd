@@ -1,0 +1,55 @@
+%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
+flowchart TB
+    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
+    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
+    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
+    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
+
+    subgraph Layer0 ["0. Client Interface Layer"]
+        CLI["Interactive CLI REPL<br/>quartz.exe"]:::entry
+        CPP["C++ Native Embedding API<br/>qdb::Database, qdb::Executor"]:::entry
+    end
+
+    subgraph Layer1 ["1. Query Compilation Engine (qdb::sql)"]
+        SQL["Raw SQL String"]:::entry
+        LEX["Lexical Scanner<br/>lexer.cpp"]:::entry
+        TOK["Token Stream<br/>qdb::Token"]:::entry
+        PARSE["Recursive-Descent Parser<br/>parser.cpp"]:::entry
+        AST["Statement AST Variant<br/>Select, Insert, Update, Delete"]:::entry
+
+        SQL --> LEX
+        LEX --> TOK
+        TOK --> PARSE
+        PARSE --> AST
+    end
+
+    subgraph Layer2 ["2. Execution & Catalog Engine (qdb::execution &amp; qdb)"]
+        EXEC["Query Executor<br/>executor.cpp"]:::guard
+        CATALOG["Database Catalog<br/>Page 0 · database.cpp"]:::shared
+        TABLE["Table Engine<br/>table.cpp"]:::guard
+        INDEX["Primary Key Index<br/>primary_index.cpp"]:::guard
+
+        AST --> EXEC
+        EXEC <--> CATALOG
+        EXEC --> TABLE
+        EXEC --> INDEX
+        TABLE <--> INDEX
+    end
+
+    subgraph Layer3 ["3. Physical Storage Subsystem (qdb::storage &amp; qdb::index)"]
+        SLOT["Slotted-Page Storage<br/>4KB Page Frames · table.cpp"]:::disk
+        BPT["Disk-Backed B+ Tree<br/>Nodes on 4KB Pages · bplus_tree.cpp"]:::shared
+        PAGER["Block Pager Engine<br/>4096-Byte I/O · pager.cpp"]:::disk
+        DISK[("Database File (*.db)<br/>Single-File Persistent Store")]:::disk
+
+        TABLE --> SLOT
+        INDEX --> BPT
+        SLOT --> PAGER
+        BPT --> PAGER
+        PAGER <--> DISK
+    end
+
+    CLI --> SQL
+    CPP --> SQL

@@ -55,7 +55,7 @@ QuartzDB supports standard SQL aggregate functions for calculating statistical s
 
 | Function | Argument | Supported Types | Semantics & Return Behavior |
 | :--- | :---: | :--- | :--- |
-| **`COUNT(*)`** | `*` | Any | Returns total matching rows ($N \ge 0$). Returns `0` if empty. |
+| **`COUNT(*)`** | `*` | Any | Returns total matching rows (N ≥ 0). Returns `0` if empty. |
 | **`COUNT(col)`** | Column | `INT`, `TEXT` | Counts rows where `col` is not `NULL`. |
 | **`SUM(col)`** | Column | `INT` only | Computes 64-bit integer sum. Returns `NULL` if 0 rows matched. |
 | **`AVG(col)`** | Column | `INT` only | Computes integer quotient `sum / count` using **integer division** — fractional results are truncated toward zero. `AVG({1,2})` → `1`, not `1.5`. Returns `NULL` if 0 rows. NULL values excluded from both sum and count. |
@@ -68,38 +68,11 @@ QuartzDB supports standard SQL aggregate functions for calculating statistical s
 
 Aggregation in QuartzDB is implemented inside `src/execution/executor.cpp` (`evaluate_aggregates()`):
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%
-flowchart TD
-    classDef entry fill:#1e2030,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef guard fill:#2e2619,stroke:#f9e2af,stroke-width:2px,color:#f9e2af;
-    classDef success fill:#182c25,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
-    classDef error fill:#331c24,stroke:#f38ba8,stroke-width:2px,color:#f38ba8;
-    classDef disk fill:#241e38,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
-    classDef shared fill:#162a35,stroke:#89dceb,stroke-width:2px,color:#cdd6f4;
-
-    Start["1. SELECT with Aggregate Functions<br/>SELECT COUNT(*), SUM(cents) FROM orders..."]:::entry
-    FilterPhase["2. Filter Phase: Evaluate WHERE predicates<br/>Generates filtered matched_rows vector"]:::shared
-    
-    CheckLimit{"3. Is LIMIT = 0?"}:::guard
-    CheckLimit -- "Yes" --> EmptySet["Return 0 rows immediately"]:::success
-    CheckLimit -- "No" --> InitAcc["4. Initialize Accumulator Record<br/>Reserve slots for each AggregateCall"]:::shared
-
-    InitAcc --> LoopCols["5. For each AggregateCall"]:::entry
-
-    LoopCols -- "COUNT(*)" --> DoStar["Append matched_rows.size()"]:::success
-    LoopCols -- "COUNT(col)" --> DoCount["Scan column: increment if != std::monostate"]:::success
-    LoopCols -- "SUM / AVG" --> ValidateInt{"Column type == INT?"}:::guard
-    LoopCols -- "MIN / MAX" --> DoExtremal["Track min/max via order_by_compare()"]:::success
-
-    ValidateInt -- "No (Text)" --> ErrorType["Abort: Aggregate requires an integer column"]:::error
-    ValidateInt -- "Yes" --> AccumulateSum["Sum values &amp; count non-nulls<br/>AVG = sum / count"]:::success
-
-    DoStar --> BuildResult["6. Package QueryResult:<br/>1 row containing accumulated metrics"]:::success
-    DoCount --> BuildResult
-    AccumulateSum --> BuildResult
-    DoExtremal --> BuildResult
-```
+<ExcalidrawDiagram
+  name="sql-aggregations-workflow"
+  title="How Aggregations Work Under the Hood in QuartzDB"
+  alt="Aggregation execution flowchart: WHERE filtering, LIMIT checks, accumulator initialization, and reduction passes for COUNT, SUM, AVG, MIN, and MAX"
+/>
 
 ### Key Engine Invariants:
 1. **Single-Pass In-Memory Reduction**: Once candidate tuples are filtered from the slotted pages or index scan, QuartzDB executes a single continuous pass through memory.
@@ -120,7 +93,7 @@ flowchart TD
 
 ## Practical Examples
 
-### 1. Count All Records ($O(\log N)$ or Full Scan)
+### 1. Count All Records (O(log N) or Full Scan)
 ```sql
 SELECT COUNT(*) FROM users;
 ```
