@@ -12,11 +12,11 @@
       "height": 70,
       "angle": 0,
       "strokeColor": "#2563eb",
-      "backgroundColor": "rgba(219, 234, 254, 0.65)",
+      "backgroundColor": "rgba(37, 99, 235, 0.10)",
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -75,11 +75,11 @@
       "height": 70,
       "angle": 0,
       "strokeColor": "#2563eb",
-      "backgroundColor": "rgba(219, 234, 254, 0.65)",
+      "backgroundColor": "rgba(37, 99, 235, 0.10)",
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -138,11 +138,11 @@
       "height": 70,
       "angle": 0,
       "strokeColor": "#2563eb",
-      "backgroundColor": "rgba(219, 234, 254, 0.65)",
+      "backgroundColor": "rgba(37, 99, 235, 0.10)",
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -200,12 +200,12 @@
       "width": 130,
       "height": 70,
       "angle": 0,
-      "strokeColor": "#d97706",
-      "backgroundColor": "rgba(254, 243, 199, 0.75)",
+      "strokeColor": "#b45309",
+      "backgroundColor": "rgba(180, 83, 9, 0.10)",
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -263,12 +263,12 @@
       "width": 130,
       "height": 70,
       "angle": 0,
-      "strokeColor": "#0891b2",
-      "backgroundColor": "rgba(207, 250, 254, 0.70)",
+      "strokeColor": "#0e7490",
+      "backgroundColor": "rgba(14, 116, 144, 0.10)",
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -326,12 +326,12 @@
       "width": 105,
       "height": 70,
       "angle": 0,
-      "strokeColor": "#7c3aed",
-      "backgroundColor": "rgba(243, 232, 255, 0.70)",
+      "strokeColor": "#6d28d9",
+      "backgroundColor": "rgba(109, 40, 217, 0.10)",
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -382,7 +382,7 @@
       "lineHeight": 1.25
     },
     {
-      "id": "arrow_107_31mvc",
+      "id": "arrow_107_you60",
       "type": "arrow",
       "x": 150,
       "y": 90,
@@ -394,7 +394,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -425,7 +425,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "arrow_108_czdps",
+      "id": "arrow_108_4510k",
       "type": "arrow",
       "x": 305,
       "y": 90,
@@ -437,7 +437,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -468,7 +468,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "arrow_109_ua1d9",
+      "id": "arrow_109_k7odc",
       "type": "arrow",
       "x": 460,
       "y": 90,
@@ -480,7 +480,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -511,7 +511,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "arrow_110_m3ixn",
+      "id": "arrow_110_a7blw",
       "type": "arrow",
       "x": 615,
       "y": 90,
@@ -523,7 +523,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -554,7 +554,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "arrow_111_bmw2b",
+      "id": "arrow_111_kul6t",
       "type": "arrow",
       "x": 770,
       "y": 90,
@@ -566,7 +566,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {

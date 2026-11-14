@@ -16,7 +16,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -120,7 +120,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -224,7 +224,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -316,7 +316,7 @@
       "endArrowhead": null
     },
     {
-      "id": "seq_msg_84_5ktcg",
+      "id": "seq_msg_84_dmu73",
       "type": "arrow",
       "x": 160,
       "y": 90,
@@ -328,7 +328,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -359,7 +359,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_84_5ktcg_txt",
+      "id": "seq_msg_84_dmu73_txt",
       "type": "text",
       "x": 200,
       "y": 70,
@@ -394,19 +394,19 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_note_85_gpvii",
+      "id": "seq_note_85_mjjx2",
       "type": "rectangle",
       "x": 340,
       "y": 115,
       "width": 200,
       "height": 30,
       "angle": 0,
-      "strokeColor": "#d97706",
+      "strokeColor": "#b45309",
       "backgroundColor": "#fff9db",
       "fillStyle": "solid",
       "strokeWidth": 1.2,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -422,7 +422,7 @@
       "locked": false
     },
     {
-      "id": "seq_note_85_gpvii_txt",
+      "id": "seq_note_85_mjjx2_txt",
       "type": "text",
       "x": 350,
       "y": 121,
@@ -452,12 +452,12 @@
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 12,
-      "containerId": "seq_note_85_gpvii",
+      "containerId": "seq_note_85_mjjx2",
       "originalText": "fragmented_bytes > 0 detected",
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_86_un7x4",
+      "id": "seq_msg_86_dlucj",
       "type": "arrow",
       "x": 440,
       "y": 165,
@@ -469,7 +469,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -500,7 +500,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_86_un7x4_txt",
+      "id": "seq_msg_86_dlucj_txt",
       "type": "text",
       "x": 365,
       "y": 145,
@@ -535,7 +535,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_87_aochz",
+      "id": "seq_msg_87_qsoo0",
       "type": "arrow",
       "x": 440,
       "y": 200,
@@ -547,7 +547,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -578,7 +578,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_87_aochz_txt",
+      "id": "seq_msg_87_qsoo0_txt",
       "type": "text",
       "x": 365,
       "y": 180,
@@ -613,7 +613,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_88_vonw8",
+      "id": "seq_msg_88_stjx1",
       "type": "arrow",
       "x": 440,
       "y": 240,
@@ -625,7 +625,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -656,7 +656,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_88_vonw8_txt",
+      "id": "seq_msg_88_stjx1_txt",
       "type": "text",
       "x": 480,
       "y": 220,
@@ -691,7 +691,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_89_rxe1a",
+      "id": "seq_msg_89_2ymbq",
       "type": "arrow",
       "x": 440,
       "y": 275,
@@ -703,7 +703,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -734,7 +734,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_89_rxe1a_txt",
+      "id": "seq_msg_89_2ymbq_txt",
       "type": "text",
       "x": 365,
       "y": 255,
@@ -769,7 +769,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_90_4n4eh",
+      "id": "seq_msg_90_y7epf",
       "type": "arrow",
       "x": 440,
       "y": 310,
@@ -781,7 +781,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -812,7 +812,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_90_4n4eh_txt",
+      "id": "seq_msg_90_y7epf_txt",
       "type": "text",
       "x": 365,
       "y": 290,
@@ -847,19 +847,19 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_note_91_przgx",
+      "id": "seq_note_91_muubt",
       "type": "rectangle",
       "x": 340,
       "y": 335,
       "width": 200,
       "height": 30,
       "angle": 0,
-      "strokeColor": "#d97706",
+      "strokeColor": "#b45309",
       "backgroundColor": "#fff9db",
       "fillStyle": "solid",
       "strokeWidth": 1.2,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -875,7 +875,7 @@
       "locked": false
     },
     {
-      "id": "seq_note_91_przgx_txt",
+      "id": "seq_note_91_muubt_txt",
       "type": "text",
       "x": 350,
       "y": 341,
@@ -905,12 +905,12 @@
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 12,
-      "containerId": "seq_note_91_przgx",
+      "containerId": "seq_note_91_muubt",
       "originalText": "fragmented_bytes = 0 reset",
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_92_sag2r",
+      "id": "seq_msg_92_kkki2",
       "type": "arrow",
       "x": 440,
       "y": 375,
@@ -922,7 +922,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -953,7 +953,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_92_sag2r_txt",
+      "id": "seq_msg_92_kkki2_txt",
       "type": "text",
       "x": 200,
       "y": 355,

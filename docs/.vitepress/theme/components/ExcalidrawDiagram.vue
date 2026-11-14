@@ -146,6 +146,7 @@ onUnmounted(() => {
 .excalidraw-diagram-container {
   margin: 2rem 0;
   border: 2px solid var(--q-ink);
+  border-radius: 8px;
   background: var(--q-bg-panel);
   box-shadow: 4px 4px 0px rgba(29, 41, 57, 0.18);
   font-family: var(--vp-font-family-mono, monospace);
@@ -166,6 +167,8 @@ onUnmounted(() => {
   padding: 0.5rem 0.85rem;
   background: var(--q-bg-elevated);
   border-bottom: 2px solid var(--q-ink);
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
@@ -236,7 +239,7 @@ onUnmounted(() => {
   padding: 1.25rem;
   cursor: zoom-in;
   position: relative;
-  background: var(--q-bg-canvas);
+  background: var(--q-bg-panel);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -292,6 +295,7 @@ onUnmounted(() => {
   height: 90vh;
   background: var(--q-bg-panel);
   border: 2px solid var(--q-accent-primary);
+  border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;

@@ -16,7 +16,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -120,7 +120,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -224,7 +224,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -328,7 +328,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -420,7 +420,7 @@
       "endArrowhead": null
     },
     {
-      "id": "seq_msg_188_f095y",
+      "id": "seq_msg_188_de8hu",
       "type": "arrow",
       "x": 120,
       "y": 95,
@@ -432,7 +432,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -463,7 +463,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_188_f095y_txt",
+      "id": "seq_msg_188_de8hu_txt",
       "type": "text",
       "x": 240,
       "y": 75,
@@ -498,7 +498,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_189_156mv",
+      "id": "seq_msg_189_mp3mc",
       "type": "arrow",
       "x": 560,
       "y": 130,
@@ -510,7 +510,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -541,7 +541,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_189_156mv_txt",
+      "id": "seq_msg_189_mp3mc_txt",
       "type": "text",
       "x": 240,
       "y": 110,
@@ -576,7 +576,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_190_sugpa",
+      "id": "seq_msg_190_mj5wr",
       "type": "arrow",
       "x": 120,
       "y": 170,
@@ -588,7 +588,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -619,7 +619,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_190_sugpa_txt",
+      "id": "seq_msg_190_mj5wr_txt",
       "type": "text",
       "x": 340,
       "y": 150,
@@ -654,7 +654,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_191_5unxb",
+      "id": "seq_msg_191_08igf",
       "type": "arrow",
       "x": 760,
       "y": 205,
@@ -666,7 +666,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -697,7 +697,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_191_5unxb_txt",
+      "id": "seq_msg_191_08igf_txt",
       "type": "text",
       "x": 560,
       "y": 185,
@@ -732,7 +732,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_192_8dtk5",
+      "id": "seq_msg_192_kd9sv",
       "type": "arrow",
       "x": 760,
       "y": 240,
@@ -744,7 +744,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -775,7 +775,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_192_8dtk5_txt",
+      "id": "seq_msg_192_kd9sv_txt",
       "type": "text",
       "x": 560,
       "y": 220,
@@ -810,7 +810,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_193_6muip",
+      "id": "seq_msg_193_r3qn8",
       "type": "arrow",
       "x": 560,
       "y": 275,
@@ -822,7 +822,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -853,7 +853,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_193_6muip_txt",
+      "id": "seq_msg_193_r3qn8_txt",
       "type": "text",
       "x": 560,
       "y": 255,
@@ -888,7 +888,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_194_im2s3",
+      "id": "seq_msg_194_6kb7v",
       "type": "arrow",
       "x": 120,
       "y": 315,
@@ -900,7 +900,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -931,7 +931,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_194_im2s3_txt",
+      "id": "seq_msg_194_6kb7v_txt",
       "type": "text",
       "x": 130,
       "y": 295,
@@ -966,7 +966,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_195_rufrk",
+      "id": "seq_msg_195_9pqdq",
       "type": "arrow",
       "x": 340,
       "y": 350,
@@ -978,7 +978,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1009,7 +1009,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_195_rufrk_txt",
+      "id": "seq_msg_195_9pqdq_txt",
       "type": "text",
       "x": 350,
       "y": 330,
@@ -1044,7 +1044,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_196_p9a0i",
+      "id": "seq_msg_196_434qc",
       "type": "arrow",
       "x": 340,
       "y": 385,
@@ -1056,7 +1056,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1087,7 +1087,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_196_p9a0i_txt",
+      "id": "seq_msg_196_434qc_txt",
       "type": "text",
       "x": 130,
       "y": 365,

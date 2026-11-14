@@ -16,7 +16,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -120,7 +120,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -224,7 +224,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -328,7 +328,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -432,7 +432,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -536,7 +536,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -628,19 +628,19 @@
       "endArrowhead": null
     },
     {
-      "id": "seq_note_55_p92jc",
+      "id": "seq_note_55_tv07b",
       "type": "rectangle",
       "x": 250,
       "y": 80,
       "width": 320,
       "height": 28,
       "angle": 0,
-      "strokeColor": "#d97706",
+      "strokeColor": "#b45309",
       "backgroundColor": "#fff9db",
       "fillStyle": "solid",
       "strokeWidth": 1.2,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -656,7 +656,7 @@
       "locked": false
     },
     {
-      "id": "seq_note_55_p92jc_txt",
+      "id": "seq_note_55_tv07b_txt",
       "type": "text",
       "x": 260,
       "y": 86,
@@ -686,12 +686,12 @@
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 12,
-      "containerId": "seq_note_55_p92jc",
+      "containerId": "seq_note_55_tv07b",
       "originalText": "Path A: Primary Key Fast-Path (WHERE id = 42)",
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_56_k2hw7",
+      "id": "seq_msg_56_uyuf9",
       "type": "arrow",
       "x": 80,
       "y": 125,
@@ -703,7 +703,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -734,7 +734,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_56_k2hw7_txt",
+      "id": "seq_msg_56_uyuf9_txt",
       "type": "text",
       "x": 50,
       "y": 105,
@@ -769,7 +769,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_57_ervtc",
+      "id": "seq_msg_57_negck",
       "type": "arrow",
       "x": 220,
       "y": 155,
@@ -781,7 +781,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -812,7 +812,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_57_ervtc_txt",
+      "id": "seq_msg_57_negck_txt",
       "type": "text",
       "x": 200,
       "y": 135,
@@ -847,7 +847,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_58_ryaa5",
+      "id": "seq_msg_58_rl77x",
       "type": "arrow",
       "x": 380,
       "y": 185,
@@ -859,7 +859,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -890,7 +890,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_58_ryaa5_txt",
+      "id": "seq_msg_58_rl77x_txt",
       "type": "text",
       "x": 355,
       "y": 165,
@@ -925,7 +925,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_59_8bobr",
+      "id": "seq_msg_59_rvu3g",
       "type": "arrow",
       "x": 530,
       "y": 215,
@@ -937,7 +937,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -968,7 +968,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_59_8bobr_txt",
+      "id": "seq_msg_59_rvu3g_txt",
       "type": "text",
       "x": 575,
       "y": 195,
@@ -1003,7 +1003,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_60_cm8yp",
+      "id": "seq_msg_60_99dud",
       "type": "arrow",
       "x": 530,
       "y": 245,
@@ -1015,7 +1015,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1046,7 +1046,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_60_cm8yp_txt",
+      "id": "seq_msg_60_99dud_txt",
       "type": "text",
       "x": 355,
       "y": 225,
@@ -1081,7 +1081,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_61_gjw6u",
+      "id": "seq_msg_61_bglu3",
       "type": "arrow",
       "x": 220,
       "y": 275,
@@ -1093,7 +1093,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1124,7 +1124,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_61_gjw6u_txt",
+      "id": "seq_msg_61_bglu3_txt",
       "type": "text",
       "x": 350,
       "y": 255,
@@ -1159,7 +1159,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_62_2msf7",
+      "id": "seq_msg_62_iiddr",
       "type": "arrow",
       "x": 220,
       "y": 305,
@@ -1171,7 +1171,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1202,7 +1202,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_62_2msf7_txt",
+      "id": "seq_msg_62_iiddr_txt",
       "type": "text",
       "x": 50,
       "y": 285,
@@ -1237,19 +1237,19 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_note_63_c9bwx",
+      "id": "seq_note_63_vqg9z",
       "type": "rectangle",
       "x": 250,
       "y": 345,
       "width": 320,
       "height": 28,
       "angle": 0,
-      "strokeColor": "#d97706",
+      "strokeColor": "#b45309",
       "backgroundColor": "#fff9db",
       "fillStyle": "solid",
       "strokeWidth": 1.2,
       "strokeStyle": "solid",
-      "roughness": 1.1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1265,7 +1265,7 @@
       "locked": false
     },
     {
-      "id": "seq_note_63_c9bwx_txt",
+      "id": "seq_note_63_vqg9z_txt",
       "type": "text",
       "x": 260,
       "y": 351,
@@ -1295,12 +1295,12 @@
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 12,
-      "containerId": "seq_note_63_c9bwx",
+      "containerId": "seq_note_63_vqg9z",
       "originalText": "Path B: Full Table Scan (WHERE status = \"PAID\")",
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_64_rasi2",
+      "id": "seq_msg_64_lrh9f",
       "type": "arrow",
       "x": 80,
       "y": 390,
@@ -1312,7 +1312,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1343,7 +1343,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_64_rasi2_txt",
+      "id": "seq_msg_64_lrh9f_txt",
       "type": "text",
       "x": 50,
       "y": 370,
@@ -1378,7 +1378,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_65_3xmr8",
+      "id": "seq_msg_65_7l0dl",
       "type": "arrow",
       "x": 220,
       "y": 420,
@@ -1390,7 +1390,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1421,7 +1421,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_65_3xmr8_txt",
+      "id": "seq_msg_65_7l0dl_txt",
       "type": "text",
       "x": 350,
       "y": 400,
@@ -1456,7 +1456,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_66_evyhv",
+      "id": "seq_msg_66_8386t",
       "type": "arrow",
       "x": 680,
       "y": 450,
@@ -1468,7 +1468,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "solid",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1499,7 +1499,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_66_evyhv_txt",
+      "id": "seq_msg_66_8386t_txt",
       "type": "text",
       "x": 650,
       "y": 430,
@@ -1534,7 +1534,7 @@
       "lineHeight": 1.2
     },
     {
-      "id": "seq_msg_67_4807h",
+      "id": "seq_msg_67_xyac8",
       "type": "arrow",
       "x": 220,
       "y": 480,
@@ -1546,7 +1546,7 @@
       "fillStyle": "solid",
       "strokeWidth": 1.5,
       "strokeStyle": "dashed",
-      "roughness": 1,
+      "roughness": 0.9,
       "opacity": 100,
       "groupIds": [],
       "roundness": {
@@ -1577,7 +1577,7 @@
       "endArrowhead": "arrow"
     },
     {
-      "id": "seq_msg_67_4807h_txt",
+      "id": "seq_msg_67_xyac8_txt",
       "type": "text",
       "x": 50,
       "y": 460,
