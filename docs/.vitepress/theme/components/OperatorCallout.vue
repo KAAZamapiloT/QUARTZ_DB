@@ -35,27 +35,27 @@ withDefaults(defineProps<{
   display: grid;
   grid-template-columns: 130px 1fr;
   gap: 0;
-  border: 2px solid var(--d1-teal, #00D2B4);
-  border-radius: 4px;
-  margin: 1.5rem 0;
+  border: var(--q-border-style);
+  border-radius: 0;
+  margin: 1.75rem 0;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--q-shadow);
 }
 
 .oc-avatar-frame {
   width: 130px;
-  background: var(--d1-navy, #141824);
+  background: var(--q-bg-canvas);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 2px solid var(--d1-teal, #00D2B4);
+  border-right: var(--q-border-style);
   padding: 16px;
 }
 
 .oc-avatar-placeholder {
   font-size: 48px;
-  color: var(--d1-teal, #00D2B4);
-  opacity: 0.6;
+  color: var(--q-accent-primary);
+  opacity: 0.85;
 }
 
 .oc-avatar {
@@ -65,7 +65,7 @@ withDefaults(defineProps<{
 }
 
 .oc-body {
-  background: var(--d3-parchment, #EFE8D8);
+  background: var(--q-bg-panel);
   padding: 0;
 }
 
@@ -74,18 +74,18 @@ withDefaults(defineProps<{
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background: rgba(29, 41, 57, 0.08);
-  border-bottom: 1px solid rgba(29, 41, 57, 0.15);
+  background: var(--q-bg-elevated);
+  border-bottom: 1.5px solid var(--q-ink-muted);
 }
 
 .oc-code {
   font-family: var(--vp-font-family-mono);
   font-size: 11px;
   font-weight: 700;
-  color: var(--d3-parchment, #EFE8D8);
-  background: var(--d3-vermilion, #D1493E);
+  color: var(--q-bg-panel);
+  background: var(--q-accent-secondary);
   padding: 2px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -94,7 +94,7 @@ withDefaults(defineProps<{
   font-family: var(--vp-font-family-mono);
   font-size: 12px;
   font-weight: 700;
-  color: var(--d3-navy, #1D2939);
+  color: var(--q-ink);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -103,25 +103,7 @@ withDefaults(defineProps<{
   padding: 14px 16px;
   font-family: var(--vp-font-family-base);
   font-size: 15px;
-  color: var(--d3-navy, #1D2939);
+  color: var(--q-ink);
   line-height: 1.65;
-}
-
-/* Dark mode overrides */
-.dark .oc-body {
-  background: var(--vp-c-bg-soft);
-}
-
-.dark .oc-header {
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom-color: var(--vp-c-divider);
-}
-
-.dark .oc-title {
-  color: var(--vp-c-text-1);
-}
-
-.dark .oc-content {
-  color: var(--vp-c-text-1);
 }
 </style>

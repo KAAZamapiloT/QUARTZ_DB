@@ -1,295 +1,650 @@
 /* ==========================================================================
-   QuartzDB Editorial & Systems Documentation Theme
-   Visual: Clean, signature print light mode (cream paper) + terminal dim mode
-   Prose serif, code monospace, brand tokens (--qd-*)
+   QUARTZ DB // C++ STORAGE ENGINE DOCUMENTATION
+   Unified Dual-Theme Architecture:
+   - Light Mode (:root): 1989 Tokyo Hardware Reference Manual (Aged Parchment, Soft Navy Ink, Blueprint Cyan, Vermilion)
+   - Dark Mode (.dark): 1990s NEC PC-9801 CRT Workstation (Deep Slate-Navy, Warm Text, Retro Teal, Muted Amber)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
+/* ==========================================================================
+   LIGHT MODE (:root) — 1989 TOKYO HARDWARE REFERENCE MANUAL
+   ========================================================================== */
 :root {
+  --q-bg-canvas: #efe8d8;
+  --q-bg-panel: #f6f1e5;
+  --q-bg-elevated: #e3dccb;
+  --q-ink: #1d2939;
+  --q-ink-muted: #5a6778;
+  --q-accent-primary: #3b8ea5;   /* Faded Blueprint Cyan */
+  --q-accent-secondary: #d1493e; /* Muted Vermilion Red */
+  --q-grid-line: rgba(29, 41, 57, 0.07);
+  --q-hatch-line: rgba(29, 41, 57, 0.14);
+  --q-border-style: 2px solid var(--q-ink);
+  --q-shadow: 4px 4px 0px rgba(29, 41, 57, 0.18);
+
+  /* Semantic Token Mapping to legacy components (--qd-*) */
+  --qd-paper: var(--q-bg-canvas);
+  --qd-paper-alt: var(--q-bg-elevated);
+  --qd-paper-surface: var(--q-bg-panel);
+  --qd-ink: var(--q-ink);
+  --qd-ink-muted: var(--q-ink-muted);
+  --qd-ink-faint: var(--q-ink-muted);
+  --qd-border: var(--q-ink);
+  --qd-border-subtle: rgba(29, 41, 57, 0.22);
+  --qd-accent: var(--q-accent-secondary);
+  --qd-accent-soft: rgba(209, 73, 62, 0.08);
+  --qd-accent-border: rgba(209, 73, 62, 0.25);
+  --qd-hatch: var(--q-hatch-line);
+
+  /* Map to VitePress Core Tokens */
+  --vp-c-bg: var(--q-bg-canvas);
+  --vp-c-bg-alt: var(--q-bg-elevated);
+  --vp-c-bg-elv: var(--q-bg-panel);
+  --vp-c-bg-soft: var(--q-bg-panel);
+  --vp-c-text-1: var(--q-ink);
+  --vp-c-text-2: var(--q-ink-muted);
+  --vp-c-text-3: var(--q-ink-muted);
+  --vp-c-brand-1: var(--q-accent-secondary);
+  --vp-c-brand-2: var(--q-accent-primary);
+  --vp-c-brand-3: #9b2f26;
+  --vp-c-divider: var(--q-ink);
+  --vp-c-border: var(--q-ink-muted);
+  --vp-sidebar-bg-color: var(--q-bg-canvas);
+  --vp-nav-bg-color: var(--q-bg-panel);
+
   /* Typography */
-  --vp-font-family-base: 'Newsreader', Charter, Georgia, 'Times New Roman', serif;
-  --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-  --vp-font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  /* Signature Editorial Print Tokens (Light Mode: Cream Paper) */
-  --qd-paper: #f7f3e9;
-  --qd-paper-alt: #eee9dc;
-  --qd-paper-surface: #ffffff;
-  --qd-ink: #181716;
-  --qd-ink-muted: #5e5a54;
-  --qd-ink-faint: #8e8a82;
-  --qd-border: #ded8cb;
-  --qd-border-subtle: #eae4d8;
-  --qd-accent: #b33927;                 /* Coral / Vermilion ink */
-  --qd-accent-soft: rgba(179, 57, 39, 0.08);
-  --qd-accent-border: rgba(179, 57, 39, 0.25);
-  --qd-hatch: rgba(142, 138, 130, 0.16);
-
-  /* Standard VitePress Doc Body Tokens */
-  --vp-c-bg: #f9f7f2;
-  --vp-c-bg-alt: #f1ede4;
-  --vp-c-bg-elv: #ffffff;
-  --vp-c-bg-soft: #f4f0e6;
-
-  --vp-c-text-1: #1f1e1d;
-  --vp-c-text-2: #54524e;
-  --vp-c-text-3: #8a867f;
-
-  --vp-c-border: #e3ded2;
-  --vp-c-divider: #e8e3d8;
-
-  --vp-c-brand-1: #b33927;
-  --vp-c-brand-2: #c44230;
-  --vp-c-brand-3: #8f291b;
-  --vp-c-brand-soft: rgba(179, 57, 39, 0.08);
+  --vp-font-family-base: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
 
   /* Badges */
-  --badge-pk-bg: #fef3c7;
-  --badge-pk-text: #92400e;
-  --badge-fk-bg: #e0f2fe;
-  --badge-fk-text: #0369a1;
-  --badge-pii-bg: #fee2e2;
-  --badge-pii-text: #b91c1c;
-  --badge-null-bg: #f3f4f6;
-  --badge-null-text: #4b5563;
-
-  --vp-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --vp-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* Dim Mode ("Terminal") */
-.dark {
-  /* Signature Editorial Print Tokens (Dark Mode: Midnight Terminal) */
-  --qd-paper: #141416;
-  --qd-paper-alt: #1a1a1d;
-  --qd-paper-surface: #1e1e23;
-  --qd-ink: #f4f4f5;
-  --qd-ink-muted: #a1a1aa;
-  --qd-ink-faint: #71717a;
-  --qd-border: #2e2e34;
-  --qd-border-subtle: #27272a;
-  --qd-accent: #e05a47;                 /* Glowing coral accent */
-  --qd-accent-soft: rgba(224, 90, 71, 0.15);
-  --qd-accent-border: rgba(224, 90, 71, 0.35);
-  --qd-hatch: rgba(113, 113, 122, 0.22);
-
-  --vp-c-bg: #141416;
-  --vp-c-bg-alt: #1a1a1d;
-  --vp-c-bg-elv: #202024;
-  --vp-c-bg-soft: #26262b;
-
-  --vp-c-text-1: #f4f4f5;
-  --vp-c-text-2: #a1a1aa;
-  --vp-c-text-3: #71717a;
-
-  --vp-c-border: #2e2e34;
-  --vp-c-divider: #27272a;
-
-  --vp-c-brand-1: #e05a47;
-  --vp-c-brand-2: #f87171;
-  --vp-c-brand-3: #c2410c;
-  --vp-c-brand-soft: rgba(224, 90, 71, 0.15);
-
-  --badge-pk-bg: #451a03;
-  --badge-pk-text: #fde68a;
-  --badge-fk-bg: #082f49;
-  --badge-fk-text: #7dd3fc;
-  --badge-pii-bg: #450a0a;
-  --badge-pii-text: #fca5a5;
-  --badge-null-bg: #27272a;
-  --badge-null-text: #d4d4d8;
-}
-
-/* Global Typography Refinements */
-body {
-  font-family: var(--vp-font-family-base);
-  font-size: 17px;
-  line-height: 1.7;
-  letter-spacing: -0.01em;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--vp-font-family-base);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-code, kbd, samp, pre {
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.9em;
+  --badge-pk-bg: #fde8cc;
+  --badge-pk-text: #8c3b06;
+  --badge-fk-bg: #d9eff5;
+  --badge-fk-text: #1d576a;
+  --badge-pii-bg: #fbd6d3;
+  --badge-pii-text: #962820;
+  --badge-null-bg: #e3dccb;
+  --badge-null-text: #3c4958;
 }
 
 /* ==========================================================================
-   Breakout Class for Diagrams (.diagram-full)
-   Spans wider than the standard text column (max-width ~920px centered)
+   DARK MODE (.dark) — 1990s NEC PC-9801 CRT WORKSTATION
    ========================================================================== */
-.diagram-full {
-  width: 100%;
-  max-width: 920px;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+.dark {
+  --q-bg-canvas: #141824;
+  --q-bg-panel: #191f2e;
+  --q-bg-elevated: #21293c;
+  --q-ink: #f4efe6;
+  --q-ink-muted: #8e9bae;
+  --q-accent-primary: #00d2b4;   /* PC-98 Retro Teal */
+  --q-accent-secondary: #ffb000; /* PC-98 Muted Amber */
+  --q-grid-line: rgba(0, 210, 180, 0.06);
+  --q-hatch-line: rgba(244, 239, 230, 0.14);
+  --q-border-style: 2px solid var(--q-accent-primary);
+  --q-shadow: 4px 4px 0px #0a0d14;
+
+  /* Semantic Token Mapping to legacy components (--qd-*) */
+  --qd-paper: var(--q-bg-canvas);
+  --qd-paper-alt: var(--q-bg-elevated);
+  --qd-paper-surface: var(--q-bg-panel);
+  --qd-ink: var(--q-ink);
+  --qd-ink-muted: var(--q-ink-muted);
+  --qd-ink-faint: var(--q-ink-muted);
+  --qd-border: var(--q-accent-primary);
+  --qd-border-subtle: rgba(0, 210, 180, 0.25);
+  --qd-accent: var(--q-accent-primary);
+  --qd-accent-soft: rgba(0, 210, 180, 0.12);
+  --qd-accent-border: rgba(0, 210, 180, 0.35);
+  --qd-hatch: var(--q-hatch-line);
+
+  /* Map to VitePress Core Tokens */
+  --vp-c-bg: var(--q-bg-canvas);
+  --vp-c-bg-alt: var(--q-bg-panel);
+  --vp-c-bg-elv: var(--q-bg-panel);
+  --vp-c-bg-soft: var(--q-bg-elevated);
+  --vp-c-text-1: var(--q-ink);
+  --vp-c-text-2: var(--q-ink-muted);
+  --vp-c-text-3: var(--q-ink-muted);
+  --vp-c-brand-1: var(--q-accent-primary);
+  --vp-c-brand-2: var(--q-accent-secondary);
+  --vp-c-brand-3: #009e86;
+  --vp-c-divider: var(--q-accent-primary);
+  --vp-c-border: var(--q-accent-primary);
+  --vp-sidebar-bg-color: var(--q-bg-canvas);
+  --vp-nav-bg-color: var(--q-bg-panel);
+
+  /* Badges */
+  --badge-pk-bg: #33230a;
+  --badge-pk-text: #ffd074;
+  --badge-fk-bg: #092c35;
+  --badge-fk-text: #7fe4f8;
+  --badge-pii-bg: #381216;
+  --badge-pii-text: #ff9b97;
+  --badge-null-bg: #21293c;
+  --badge-null-text: #b6c2d1;
 }
 
-/* Badges */
+/* ==========================================================================
+   1. UNIFIED CANVAS & BLUEPRINT GRID
+   ========================================================================== */
+body,
+.Layout,
+.VPContent,
+.VPDoc {
+  background-color: var(--q-bg-canvas) !important;
+  color: var(--q-ink) !important;
+  background-image:
+    linear-gradient(to right, var(--q-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--q-grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+  font-family: var(--vp-font-family-base);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* ==========================================================================
+   2. TOP SYSTEM SPECIFICATION BANNER (.VPNavBar)
+   ========================================================================== */
+.VPNavBar {
+  background-color: var(--q-bg-panel) !important;
+  border-bottom: var(--q-border-style) !important;
+  backdrop-filter: none !important;
+}
+
+.VPNavBarTitle .title {
+  font-family: var(--vp-font-family-mono) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: var(--q-ink) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.VPNavBarTitle .title::after {
+  content: '[クォーツDB]';
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 0.6rem;
+  padding: 1px 6px;
+  border: 1px solid var(--q-accent-secondary);
+  color: var(--q-accent-secondary);
+  letter-spacing: 0.06em;
+  background: var(--q-bg-elevated);
+}
+
+/* Right-aligned Monospace Spec Metadata */
+.VPNavBarMenu::before {
+  content: 'PAGE_SIZE: 4096B // ENGINE: B+TREE';
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--q-ink-muted);
+  letter-spacing: 0.06em;
+  margin-right: 1.5rem;
+  padding: 3px 8px;
+  border: 1px solid var(--q-ink-muted);
+  background-color: var(--q-bg-elevated);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 1080px) {
+  .VPNavBarMenu::before {
+    display: none;
+  }
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .button {
+  color: var(--q-ink) !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuGroup .button:hover {
+  color: var(--q-accent-primary) !important;
+}
+
+/* ==========================================================================
+   3. FOLDER-CARD CHAPTER SIDEBAR (.VPSidebar)
+   Stacked technical index cards (01 //, 02 //) with 12px chamfered bottom-right corner
+   ========================================================================== */
+.VPSidebar {
+  background-color: var(--q-bg-canvas) !important;
+  border-right: var(--q-border-style) !important;
+  padding-top: 1rem;
+  counter-reset: chapter-card;
+}
+
+.VPSidebarItem.level-0 > .item .text {
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: var(--q-accent-secondary) !important;
+}
+
+.VPSidebarItem.level-1 > .item,
+.VPSidebarItem.level-2 > .item {
+  counter-increment: chapter-card;
+  background-color: var(--q-bg-panel);
+  border: 1.5px solid var(--q-ink);
+  margin: 6px 0;
+  padding: 8px 12px !important;
+  position: relative;
+  /* 12px chamfered bottom-right corner */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+
+.dark .VPSidebarItem.level-1 > .item,
+.dark .VPSidebarItem.level-2 > .item {
+  border-color: var(--q-accent-primary);
+  background-color: var(--q-bg-panel);
+}
+
+.VPSidebarItem.level-1 > .item::after,
+.VPSidebarItem.level-2 > .item::after {
+  content: '+';
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 10px;
+  color: var(--q-ink-muted);
+  pointer-events: none;
+}
+
+.VPSidebarItem.level-1 > .item .text::before,
+.VPSidebarItem.level-2 > .item .text::before {
+  content: counter(chapter-card, decimal-leading-zero) ' // ';
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--q-accent-secondary);
+  margin-right: 4px;
+}
+
+.VPSidebarItem.level-1 > .item:hover,
+.VPSidebarItem.level-2 > .item:hover {
+  background-color: var(--q-bg-elevated);
+}
+
+.VPSidebarItem.is-active > .item {
+  background-color: var(--q-accent-primary) !important;
+  border-color: var(--q-ink) !important;
+  transform: translateX(3px);
+}
+
+.dark .VPSidebarItem.is-active > .item {
+  background-color: var(--q-accent-primary) !important;
+  border-color: var(--q-accent-primary) !important;
+}
+
+.VPSidebarItem.is-active > .item .text {
+  font-weight: 700 !important;
+}
+
+:root:not(.dark) .VPSidebarItem.is-active > .item .text,
+:root:not(.dark) .VPSidebarItem.is-active > .item .text::before {
+  color: #f6f1e5 !important;
+}
+
+.dark .VPSidebarItem.is-active > .item .text,
+.dark .VPSidebarItem.is-active > .item .text::before {
+  color: #141824 !important;
+}
+
+/* ==========================================================================
+   4. MAIN TECHNICAL ARTICLE / WORKSTATION CANVAS (.VPDoc .vp-doc)
+   ========================================================================== */
+.VPDoc .vp-doc {
+  background-color: var(--q-bg-panel);
+  border: var(--q-border-style);
+  box-shadow: var(--q-shadow);
+  padding: 2.25rem 2.75rem;
+  position: relative;
+  color: var(--q-ink);
+}
+
+/* Technical Specification Header Banner on Articles */
+.VPDoc .vp-doc::before {
+  content: '+ SPEC // QUARTZ-DB-4096B                                    [ - ][ □ ][ X ]';
+  display: block;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background-color: var(--q-bg-elevated);
+  color: var(--q-ink);
+  border-bottom: 1.5px solid var(--q-ink);
+  margin: -2.25rem -2.75rem 2rem -2.75rem;
+  padding: 8px 14px;
+}
+
+.dark .VPDoc .vp-doc::before {
+  background-color: var(--q-bg-elevated);
+  color: var(--q-accent-primary);
+  border-bottom: 1.5px solid var(--q-accent-primary);
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4,
+.vp-doc h5,
+.vp-doc h6 {
+  color: var(--q-ink) !important;
+  font-family: var(--vp-font-family-mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.vp-doc h1 {
+  font-size: 2rem;
+  border-bottom: 2px solid var(--q-accent-secondary) !important;
+  padding-bottom: 0.4rem;
+  margin-top: 1rem;
+}
+
+.vp-doc h2 {
+  font-size: 1.45rem;
+  border-bottom: 1.5px solid var(--q-accent-primary) !important;
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+}
+
+.vp-doc h3 {
+  font-size: 1.15rem;
+  margin-top: 1.5rem;
+}
+
+/* ==========================================================================
+   5. HYBRID PC-98 + BLUEPRINT WINDOW CHROME (CODE BLOCKS, DIAGRAMS & VISUALIZERS)
+   ========================================================================== */
+
+/* Code Blocks with Technical Window Titlebar */
+div[class*='language-'] {
+  position: relative !important;
+  background-color: var(--q-bg-panel) !important;
+  border: var(--q-border-style) !important;
+  box-shadow: var(--q-shadow) !important;
+  margin: 1.75rem 0 !important;
+  padding-top: 28px !important;
+  border-radius: 0 !important;
+}
+
+div[class*='language-']::before {
+  content: '+ BUFFER // 4096B                                      [ - ][ □ ][ X ]';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  line-height: 26px;
+  background-color: var(--q-bg-elevated);
+  color: var(--q-ink);
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--q-ink);
+  letter-spacing: 0.05em;
+  z-index: 2;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.dark div[class*='language-']::before {
+  background-color: var(--q-bg-elevated);
+  color: var(--q-accent-primary);
+  border-bottom: 1px solid var(--q-accent-primary);
+}
+
+div[class*='language-'] span.lang {
+  position: absolute !important;
+  top: 3px !important;
+  right: 85px !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  color: var(--q-accent-secondary) !important;
+  background: transparent !important;
+  border: 1px solid var(--q-accent-secondary) !important;
+  padding: 1px 6px !important;
+  line-height: 16px !important;
+  height: 20px !important;
+  z-index: 3 !important;
+}
+
+div[class*='language-'] pre {
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 14px 18px !important;
+}
+
+div[class*='language-'] code {
+  font-family: var(--vp-font-family-mono) !important;
+  color: var(--q-ink) !important;
+}
+
+div[class*='language-'] button.copy {
+  top: 32px !important;
+  right: 12px !important;
+  border-radius: 0 !important;
+  border: 1px solid var(--q-ink-muted) !important;
+  background-color: var(--q-bg-elevated) !important;
+}
+
+/* Inline Code Spans */
+.vp-doc :not(pre) > code {
+  background-color: var(--q-bg-elevated) !important;
+  color: var(--q-accent-secondary) !important;
+  border: 1px solid var(--q-ink-muted);
+  border-radius: 0 !important;
+  padding: 2px 6px;
+  font-weight: 600;
+  font-family: var(--vp-font-family-mono);
+}
+
+/* Diagram Panels & Visualizer Containers */
+.mermaid,
+.diagram-container,
+.visualizer-container,
+.magi-visualizer,
+.memory-map-card,
+.btree-visualizer-card,
+.pipeline-card,
+.erd-container,
+.data-dict-container {
+  position: relative;
+  background-color: var(--q-bg-panel) !important;
+  border: var(--q-border-style) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--q-shadow);
+  margin: 2rem 0;
+}
+
+.diagram-full {
+  width: 100%;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Reusable Diagonal Hatching for Memory Padding & Free Space */
+.quartz-hatch-fill,
+.mem-segment.free {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    var(--q-hatch-line) 5px,
+    var(--q-hatch-line) 8px
+  ) !important;
+}
+
+/* ==========================================================================
+   6. TABLES & DATA MATRICES
+   ========================================================================== */
+.vp-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.75rem 0;
+  font-size: 14px;
+}
+
+.vp-doc table th {
+  background-color: var(--q-bg-elevated) !important;
+  color: var(--q-ink) !important;
+  border: 1.5px solid var(--q-ink) !important;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 14px;
+}
+
+.dark .vp-doc table th {
+  border-color: var(--q-accent-primary) !important;
+}
+
+.vp-doc table td {
+  background-color: var(--q-bg-panel) !important;
+  color: var(--q-ink) !important;
+  border: 1px solid var(--q-ink-muted) !important;
+  padding: 10px 14px;
+}
+
+.vp-doc tr:nth-child(even) td {
+  background-color: var(--q-bg-elevated) !important;
+}
+
+/* ==========================================================================
+   7. CALLOUTS & BLOCKQUOTES
+   ========================================================================== */
+.vp-doc blockquote {
+  border-left: 4px solid var(--q-accent-primary) !important;
+  background-color: var(--q-bg-elevated) !important;
+  color: var(--q-ink) !important;
+  padding: 0.85rem 1.25rem !important;
+  margin: 1.5rem 0 !important;
+  border-radius: 0 !important;
+}
+
+.vp-doc blockquote p {
+  color: var(--q-ink) !important;
+  margin: 0;
+}
+
+.custom-block {
+  border-radius: 0 !important;
+  border: 1.5px solid var(--q-ink) !important;
+  background-color: var(--q-bg-elevated) !important;
+  color: var(--q-ink) !important;
+  margin: 1.5rem 0 !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.dark .custom-block {
+  border-color: var(--q-accent-primary) !important;
+}
+
+.custom-block.warning,
+.custom-block.danger {
+  border-left: 6px solid var(--q-accent-secondary) !important;
+}
+
+.custom-block.info,
+.custom-block.tip {
+  border-left: 6px solid var(--q-accent-primary) !important;
+}
+
+.custom-block .custom-block-title {
+  font-family: var(--vp-font-family-mono) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--q-ink) !important;
+  margin-bottom: 0.35rem;
+}
+
+/* ==========================================================================
+   8. BADGES & PILLS
+   ========================================================================== */
 .badge-pk {
   background-color: var(--badge-pk-bg);
   color: var(--badge-pk-text);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(146, 64, 14, 0.2);
+  border: 1px solid var(--badge-pk-text);
 }
 
 .badge-fk {
   background-color: var(--badge-fk-bg);
   color: var(--badge-fk-text);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(3, 105, 161, 0.2);
+  border: 1px solid var(--badge-fk-text);
 }
 
 .badge-pii {
   background-color: var(--badge-pii-bg);
   color: var(--badge-pii-text);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(185, 28, 28, 0.2);
+  border: 1px solid var(--badge-pii-text);
 }
 
 .badge-null {
   background-color: var(--badge-null-bg);
   color: var(--badge-null-text);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 0;
   font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid rgba(75, 85, 99, 0.2);
-}
-
-/* Tables */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.5rem 0;
-  font-size: 15px;
-}
-
-th {
-  background-color: var(--vp-c-bg-soft);
-  color: var(--vp-c-text-1);
-  font-family: var(--vp-font-family-sans);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 10px 14px;
-  border-bottom: 2px solid var(--vp-c-border);
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  border: 1px solid var(--badge-null-text);
 }
 
-td {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--vp-c-divider);
-  color: var(--vp-c-text-1);
-}
-
-tr:nth-child(even) td {
-  background-color: rgba(0, 0, 0, 0.015);
-}
-
-.dark tr:nth-child(even) td {
-  background-color: rgba(255, 255, 255, 0.02);
-}
-
-.click-copy {
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: all 0.15s ease;
-  font-family: var(--vp-font-family-mono);
-  background: var(--vp-c-bg-soft);
-}
-
-.click-copy:hover {
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
-}
-
-/* Stat Cards */
-.stat-card-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin: 1.5rem 0;
-}
-
-.stat-card {
-  background: var(--vp-c-bg-elv);
-  border: 1px solid var(--vp-c-border);
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: var(--vp-shadow-1);
-}
-
-.stat-card-label {
-  font-family: var(--vp-font-family-sans);
-  font-size: 12px;
-  text-transform: uppercase;
-  color: var(--vp-c-text-3);
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}
-
-.stat-card-val {
-  font-family: var(--vp-font-family-mono);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--vp-c-text-1);
-}
-
-/* Mermaid Wrapper Override */
+/* ==========================================================================
+   9. MERMAID DIAGRAM HIGH-CONTRAST PALETTE (THEME-ADAPTIVE)
+   ========================================================================== */
 .mermaid {
   display: flex;
   justify-content: center;
   padding: 1.75rem 1.25rem;
-  background: var(--qd-paper, #f7f3e9);
-  border: 1px solid var(--qd-border, #ded8cb);
-  border-radius: 10px;
-  margin: 1.75rem 0;
   overflow-x: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
-.dark .mermaid {
-  background: #141416;
-  border-color: #27272a;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-}
-
-/* Custom Mermaid SVG Enhancements */
 .mermaid svg {
   max-width: 100%;
   height: auto;
@@ -298,547 +653,286 @@ tr:nth-child(even) td {
 .mermaid .node rect,
 .mermaid .node polygon,
 .mermaid .node circle {
-  rx: 6px;
-  ry: 6px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
-  transition: all 0.2s ease;
+  rx: 0;
+  ry: 0;
+  stroke-width: 2px !important;
 }
 
 .mermaid .cluster rect {
-  rx: 8px;
-  ry: 8px;
+  rx: 0;
+  ry: 0;
+  stroke: var(--q-ink-muted) !important;
   stroke-dasharray: 4 4;
+  fill: var(--q-bg-canvas) !important;
 }
 
 .mermaid .edgePath path {
+  stroke: var(--q-ink-muted) !important;
   stroke-width: 2px !important;
 }
 
 .mermaid .edgeLabel {
-  background-color: #1e1e2e !important;
-  color: #cdd6f4 !important;
-  padding: 3px 8px !important;
-  border-radius: 4px !important;
+  background-color: var(--q-bg-elevated) !important;
+  color: var(--q-ink) !important;
+  padding: 2px 6px !important;
+  border-radius: 0 !important;
   font-family: var(--vp-font-family-mono) !important;
   font-size: 11px !important;
-  border: 1px solid rgba(205, 214, 244, 0.2) !important;
+  border: 1px solid var(--q-ink-muted) !important;
 }
 
 .mermaid .edgeLabel span,
 .mermaid .edgeLabel p {
-  color: #cdd6f4 !important;
+  color: var(--q-ink) !important;
 }
 
-.mermaid .edgePath path {
-  stroke: #6c7086 !important;
-  stroke-width: 2px !important;
+/* Light Mode Diagram Node Palettes */
+:root:not(.dark) .mermaid .entry rect,
+:root:not(.dark) .mermaid .node.entry rect,
+:root:not(.dark) .mermaid .node.entry polygon,
+:root:not(.dark) .mermaid .node.entry circle {
+  fill: #e8e2d2 !important;
+  stroke: #3b8ea5 !important;
+}
+:root:not(.dark) .mermaid .entry text,
+:root:not(.dark) .mermaid .node.entry text,
+:root:not(.dark) .mermaid .node.entry span {
+  fill: #1d2939 !important;
+  color: #1d2939 !important;
 }
 
-/* Centralized High-Contrast Dark Systems Palette */
-/* 1. Entry nodes: Query, Procedure Call, Start */
-.mermaid .entry rect,
-.mermaid .node.entry rect,
-.mermaid .node.entry polygon,
-.mermaid .node.entry circle {
-  fill: #1e2030 !important;
-  stroke: #89b4fa !important;
-  stroke-width: 2px !important;
+:root:not(.dark) .mermaid .guard rect,
+:root:not(.dark) .mermaid .node.guard rect,
+:root:not(.dark) .mermaid .node.guard polygon,
+:root:not(.dark) .mermaid .node.guard circle {
+  fill: #f5eedb !important;
+  stroke: #b37416 !important;
 }
-.mermaid .entry text,
-.mermaid .node.entry text,
-.mermaid .node.entry span {
-  fill: #cdd6f4 !important;
-  color: #cdd6f4 !important;
+:root:not(.dark) .mermaid .guard text,
+:root:not(.dark) .mermaid .node.guard text,
+:root:not(.dark) .mermaid .node.guard span {
+  fill: #5e3c09 !important;
+  color: #5e3c09 !important;
 }
 
-/* 2. Guard / Decision nodes: Validation, Conditions, Type Checks */
-.mermaid .guard rect,
-.mermaid .node.guard rect,
-.mermaid .node.guard polygon,
-.mermaid .node.guard circle {
-  fill: #2e2619 !important;
-  stroke: #f9e2af !important;
-  stroke-width: 2px !important;
+:root:not(.dark) .mermaid .success rect,
+:root:not(.dark) .mermaid .node.success rect,
+:root:not(.dark) .mermaid .node.success polygon,
+:root:not(.dark) .mermaid .node.success circle {
+  fill: #e0eee4 !important;
+  stroke: #258652 !important;
 }
-.mermaid .guard text,
-.mermaid .node.guard text,
-.mermaid .node.guard span {
-  fill: #f9e2af !important;
-  color: #f9e2af !important;
+:root:not(.dark) .mermaid .success text,
+:root:not(.dark) .mermaid .node.success text,
+:root:not(.dark) .mermaid .node.success span {
+  fill: #184c2f !important;
+  color: #184c2f !important;
 }
 
-/* 3. Success nodes: Hits, Allocation, Successful Commit */
-.mermaid .success rect,
-.mermaid .node.success rect,
-.mermaid .node.success polygon,
-.mermaid .node.success circle {
-  fill: #182c25 !important;
-  stroke: #a6e3a1 !important;
-  stroke-width: 2px !important;
+:root:not(.dark) .mermaid .error rect,
+:root:not(.dark) .mermaid .node.error rect,
+:root:not(.dark) .mermaid .node.error polygon,
+:root:not(.dark) .mermaid .node.error circle {
+  fill: #fce8e6 !important;
+  stroke: #d1493e !important;
 }
-.mermaid .success text,
-.mermaid .node.success text,
-.mermaid .node.success span {
+:root:not(.dark) .mermaid .error text,
+:root:not(.dark) .mermaid .node.error text,
+:root:not(.dark) .mermaid .node.error span {
+  fill: #8e1f18 !important;
+  color: #8e1f18 !important;
+}
+
+:root:not(.dark) .mermaid .disk rect,
+:root:not(.dark) .mermaid .node.disk rect,
+:root:not(.dark) .mermaid .node.disk polygon,
+:root:not(.dark) .mermaid .node.disk path,
+:root:not(.dark) .mermaid .diskIO rect {
+  fill: #eae4f2 !important;
+  stroke: #6a499d !important;
+}
+:root:not(.dark) .mermaid .disk text,
+:root:not(.dark) .mermaid .node.disk text,
+:root:not(.dark) .mermaid .node.disk span {
+  fill: #3b255a !important;
+  color: #3b255a !important;
+}
+
+:root:not(.dark) .mermaid .shared rect,
+:root:not(.dark) .mermaid .node.shared rect,
+:root:not(.dark) .mermaid .node.shared polygon,
+:root:not(.dark) .mermaid .node.shared path,
+:root:not(.dark) .mermaid .sharedState rect {
+  fill: #ddedf2 !important;
+  stroke: #3b8ea5 !important;
+}
+:root:not(.dark) .mermaid .shared text,
+:root:not(.dark) .mermaid .node.shared text,
+:root:not(.dark) .mermaid .node.shared span {
+  fill: #1a4f5c !important;
+  color: #1a4f5c !important;
+}
+
+/* Dark Mode Diagram Node Palettes (PC-98 CRT Workstation) */
+.dark .mermaid .entry rect,
+.dark .mermaid .node.entry rect,
+.dark .mermaid .node.entry polygon,
+.dark .mermaid .node.entry circle {
+  fill: #192032 !important;
+  stroke: #00d2b4 !important;
+}
+.dark .mermaid .entry text,
+.dark .mermaid .node.entry text,
+.dark .mermaid .node.entry span {
+  fill: #f4efe6 !important;
+  color: #f4efe6 !important;
+}
+
+.dark .mermaid .guard rect,
+.dark .mermaid .node.guard rect,
+.dark .mermaid .node.guard polygon,
+.dark .mermaid .node.guard circle {
+  fill: #2d2414 !important;
+  stroke: #ffb000 !important;
+}
+.dark .mermaid .guard text,
+.dark .mermaid .node.guard text,
+.dark .mermaid .node.guard span {
+  fill: #ffe08a !important;
+  color: #ffe08a !important;
+}
+
+.dark .mermaid .success rect,
+.dark .mermaid .node.success rect,
+.dark .mermaid .node.success polygon,
+.dark .mermaid .node.success circle {
+  fill: #132a22 !important;
+  stroke: #4ecca3 !important;
+}
+.dark .mermaid .success text,
+.dark .mermaid .node.success text,
+.dark .mermaid .node.success span {
   fill: #a6e3a1 !important;
   color: #a6e3a1 !important;
 }
 
-/* 4. Error / Abort nodes: Rejections, Violations */
-.mermaid .error rect,
-.mermaid .node.error rect,
-.mermaid .node.error polygon,
-.mermaid .node.error circle {
-  fill: #331c24 !important;
+.dark .mermaid .error rect,
+.dark .mermaid .node.error rect,
+.dark .mermaid .node.error polygon,
+.dark .mermaid .node.error circle {
+  fill: #341822 !important;
   stroke: #f38ba8 !important;
-  stroke-width: 2px !important;
 }
-.mermaid .error text,
-.mermaid .node.error text,
-.mermaid .node.error span {
+.dark .mermaid .error text,
+.dark .mermaid .node.error text,
+.dark .mermaid .node.error span {
   fill: #f38ba8 !important;
   color: #f38ba8 !important;
 }
 
-/* 5. Disk I/O nodes: 4KB File Blocks, Pager Reads/Writes, Append */
-.mermaid .disk rect,
-.mermaid .node.disk rect,
-.mermaid .node.disk polygon,
-.mermaid .node.disk path,
-.mermaid .diskIO rect,
-.mermaid .node.diskIO rect {
-  fill: #241e38 !important;
+.dark .mermaid .disk rect,
+.dark .mermaid .node.disk rect,
+.dark .mermaid .node.disk polygon,
+.dark .mermaid .node.disk path,
+.dark .mermaid .diskIO rect {
+  fill: #251e36 !important;
   stroke: #cba6f7 !important;
-  stroke-width: 2px !important;
 }
-.mermaid .disk text,
-.mermaid .node.disk text,
-.mermaid .node.disk span,
-.mermaid .diskIO text,
-.mermaid .node.diskIO text {
-  fill: #cdd6f4 !important;
-  color: #cdd6f4 !important;
+.dark .mermaid .disk text,
+.dark .mermaid .node.disk text,
+.dark .mermaid .node.disk span {
+  fill: #e2d6f8 !important;
+  color: #e2d6f8 !important;
 }
 
-/* 6. Shared State nodes: In-memory vector, Freelist, Buffer Pool */
-.mermaid .shared rect,
-.mermaid .node.shared rect,
-.mermaid .node.shared polygon,
-.mermaid .node.shared path,
-.mermaid .sharedState rect,
-.mermaid .node.sharedState rect {
-  fill: #162a35 !important;
-  stroke: #89dceb !important;
-  stroke-width: 2px !important;
+.dark .mermaid .shared rect,
+.dark .mermaid .node.shared rect,
+.dark .mermaid .node.shared polygon,
+.dark .mermaid .node.shared path,
+.dark .mermaid .sharedState rect {
+  fill: #162838 !important;
+  stroke: #00d2b4 !important;
 }
-.mermaid .shared text,
-.mermaid .node.shared text,
-.mermaid .node.shared span,
-.mermaid .sharedState text,
-.mermaid .node.sharedState text {
-  fill: #cdd6f4 !important;
-  color: #cdd6f4 !important;
+.dark .mermaid .shared text,
+.dark .mermaid .node.shared text,
+.dark .mermaid .node.shared span {
+  fill: #cdeaf2 !important;
+  color: #cdeaf2 !important;
 }
 
 /* Sequence Diagram Enhancements */
 .mermaid .actor {
   stroke-width: 2px !important;
-  rx: 6px;
-  ry: 6px;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
+  rx: 0;
+  ry: 0;
+  stroke: var(--q-accent-primary) !important;
+  fill: var(--q-bg-elevated) !important;
 }
 
 .mermaid .actor-line {
   stroke-dasharray: 4 4 !important;
   stroke-width: 1.5px !important;
+  stroke: var(--q-ink-muted) !important;
 }
 
 .mermaid .messageLine0,
 .mermaid .messageLine1 {
   stroke-width: 2px !important;
+  stroke: var(--q-accent-secondary) !important;
 }
 
 .mermaid .messageText {
   font-family: var(--vp-font-family-mono) !important;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-}
-
-.mermaid .sequenceNumber {
-  font-family: var(--vp-font-family-mono) !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
+  font-size: 12px !important;
+  fill: var(--q-ink) !important;
 }
 
 .mermaid .note {
   stroke-width: 1.5px !important;
-  rx: 6px;
-  ry: 6px;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+  rx: 0;
+  ry: 0;
+  fill: var(--q-bg-elevated) !important;
+  stroke: var(--q-accent-secondary) !important;
 }
 
 .mermaid .noteText {
   font-family: var(--vp-font-family-mono) !important;
-  font-size: 12px !important;
-  font-weight: 500 !important;
-}
-
-.dark .mermaid .actor {
-  stroke: #e05a47 !important;
-  fill: #1c1917 !important;
-}
-
-.dark .mermaid text.actor > tspan {
-  fill: #f7f3e9 !important;
-}
-
-.dark .mermaid .actor-line {
-  stroke: #52525b !important;
-}
-
-.dark .mermaid .messageLine0,
-.dark .mermaid .messageLine1 {
-  stroke: #e05a47 !important;
-}
-
-.dark .mermaid .messageText {
-  fill: #f7f3e9 !important;
-}
-
-.dark .mermaid .note {
-  fill: #272115 !important;
-  stroke: #f59e0b !important;
-}
-
-.dark .mermaid .noteText {
-  fill: #fef08a !important;
-}
-
-:root:not(.dark) .mermaid .actor {
-  stroke: #c2410c !important;
-  fill: #ffffff !important;
-}
-
-:root:not(.dark) .mermaid text.actor > tspan {
-  fill: #1c1917 !important;
-}
-
-:root:not(.dark) .mermaid .actor-line {
-  stroke: #94a3b8 !important;
-}
-
-:root:not(.dark) .mermaid .messageLine0,
-:root:not(.dark) .mermaid .messageLine1 {
-  stroke: #c2410c !important;
-}
-
-:root:not(.dark) .mermaid .messageText {
-  fill: #1c1917 !important;
-}
-
-:root:not(.dark) .mermaid .note {
-  fill: #fef3c7 !important;
-  stroke: #f59e0b !important;
-}
-
-:root:not(.dark) .mermaid .noteText {
-  fill: #78350f !important;
+  font-size: 11.5px !important;
+  fill: var(--q-ink) !important;
 }
 
 /* ==========================================================================
-   DIRECTION 1 — NEC PC-9801 Mainframe OS
-   Shell, code blocks, diagrams: navy bg + teal blueprint grid + amber accents
+   10. ASIDE OUTLINE & TOC
    ========================================================================== */
-
-/* D1 CSS Custom Properties */
-:root {
-  --d1-navy: #141824;
-  --d1-teal: #00D2B4;
-  --d1-amber: #FFB000;
-  --d1-panel: #1a1f2e;
-  --d1-panel-border: #00D2B4;
-  --d1-grid-color: rgba(0, 210, 180, 0.07);
+.VPDocAsideOutline {
+  background-color: var(--q-bg-panel) !important;
+  border: 1.5px solid var(--q-ink) !important;
+  border-radius: 0 !important;
+  padding: 14px !important;
+  box-shadow: var(--q-shadow);
 }
 
-/* D1 Code block panels — dark navy + teal double border + amber lang badge */
-.vp-doc div[class*='language-'] {
-  background: var(--d1-navy) !important;
-  border: 2px solid var(--d1-teal) !important;
-  border-radius: 6px !important;
-  box-shadow: 0 0 0 1px rgba(0, 210, 180, 0.15), 0 4px 24px rgba(0, 0, 0, 0.5) !important;
-  margin: 1.5rem 0 !important;
+.dark .VPDocAsideOutline {
+  border-color: var(--q-accent-primary) !important;
 }
 
-.vp-doc div[class*='language-'] span.lang {
-  background: var(--d1-amber) !important;
-  color: #141824 !important;
+.VPDocAsideOutline .outline-title {
   font-family: var(--vp-font-family-mono) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
-  padding: 2px 8px !important;
-  border-radius: 0 0 0 4px !important;
+  color: var(--q-accent-secondary) !important;
 }
 
-.vp-doc div[class*='language-'] code {
+.VPDocAsideOutline .outline-link {
   font-family: var(--vp-font-family-mono) !important;
-  color: #c8d3f5 !important;
+  font-size: 12px !important;
+  color: var(--q-ink-muted) !important;
 }
 
-/* D1 Mermaid / diagram containers */
-.vp-doc svg,
-.mermaid,
-.diagram-container {
-  background: var(--d1-panel) !important;
-  border: 2px double var(--d1-teal) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 0 0 1px rgba(0, 210, 180, 0.12), inset 0 0 40px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* ==========================================================================
-   DIRECTION 2 — 1995 MAGI Supercomputer Console
-   Navigation, sidebar, visualizers: obsidian + phosphor orange + tactical mint
-   Chamfered clip-path tabs on sidebar items
-   ========================================================================== */
-
-/* D2 CSS Custom Properties */
-:root {
-  --d2-obsidian: #161412;
-  --d2-orange: #FF9E00;
-  --d2-mint: #4ECCA3;
-  --d2-tab-clip: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
-}
-
-/* D2 Top Nav */
-.VPNavBar {
-  background: var(--d2-obsidian) !important;
-  border-bottom: 2px solid var(--d2-orange) !important;
-  backdrop-filter: none !important;
-}
-
-.VPNavBar .title {
-  color: var(--d2-orange) !important;
-  font-family: var(--vp-font-family-mono) !important;
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active {
+  color: var(--q-accent-primary) !important;
   font-weight: 700 !important;
-  letter-spacing: 0.05em !important;
-}
-
-.VPNavBarMenuLink,
-.VPNavBarMenuGroup .button {
-  color: rgba(255, 158, 0, 0.8) !important;
-  font-family: var(--vp-font-family-mono) !important;
-  font-size: 13px !important;
-  letter-spacing: 0.03em !important;
-}
-
-.VPNavBarMenuLink:hover,
-.VPNavBarMenuGroup .button:hover {
-  color: var(--d2-mint) !important;
-}
-
-/* D2 Sidebar */
-.VPSidebar {
-  background: var(--d2-obsidian) !important;
-  border-right: 2px solid var(--d2-orange) !important;
-}
-
-.VPSidebarItem.level-1 > .item {
-  clip-path: var(--d2-tab-clip) !important;
-  padding-left: 12px !important;
-  transition: background 0.15s ease, color 0.15s ease !important;
-}
-
-.VPSidebarItem.level-1 > .item:hover {
-  background: rgba(255, 158, 0, 0.08) !important;
-  color: var(--d2-orange) !important;
-}
-
-.VPSidebarItem.is-active > .item {
-  border-left: 3px solid var(--d2-mint) !important;
-  background: rgba(78, 204, 163, 0.08) !important;
-  color: var(--d2-mint) !important;
-  clip-path: var(--d2-tab-clip) !important;
-}
-
-/* D2 Table of Contents / Aside Outline */
-.VPDocAsideOutline {
-  background: var(--d2-obsidian) !important;
-  border: 1px solid var(--d2-orange) !important;
-  border-radius: 0 !important;
-  clip-path: var(--d2-tab-clip) !important;
-  padding: 12px !important;
-}
-
-/* D2 Visualizer containers (magi-visualizer class + generic visualizer wrapper) */
-.magi-visualizer,
-.vp-doc .visualizer-container,
-.vp-doc canvas,
-.vp-doc .btree-canvas,
-.vp-doc .hex-inspector {
-  background: var(--d2-obsidian) !important;
-  border: 2px solid var(--d2-orange) !important;
-  border-radius: 4px !important;
-  box-shadow: 0 0 24px rgba(255, 158, 0, 0.1) !important;
-}
-
-/* D2 Hazard stripe header for interactive visualizers */
-.vp-doc .visualizer-container::before {
-  content: '';
-  display: block;
-  height: 6px;
-  background: repeating-linear-gradient(
-    45deg,
-    var(--d2-orange) 0px,
-    var(--d2-orange) 8px,
-    #161412 8px,
-    #161412 16px
-  );
-  border-radius: 4px 4px 0 0;
-}
-
-/* ==========================================================================
-   DIRECTION 3 — 1989 Tokyo Hardware Reference Manual
-   Long-form prose articles: warm parchment + navy ink + vermilion headers
-   ========================================================================== */
-
-/* D3 CSS Custom Properties */
-:root {
-  --d3-parchment: #EFE8D8;
-  --d3-navy: #1D2939;
-  --d3-vermilion: #D1493E;
-  --d3-cyan: #3B8EA5;
-  --d3-shadow-offset: 4px;
-}
-
-/* D3 Article / Doc content area */
-.VPDoc .vp-doc {
-  background: var(--d3-parchment) !important;
-  border: 1px solid rgba(29, 41, 57, 0.15) !important;
-  border-radius: 2px !important;
-  box-shadow: var(--d3-shadow-offset) var(--d3-shadow-offset) 0 rgba(29, 41, 57, 0.12) !important;
-  padding: 2rem 2.5rem !important;
-  color: var(--d3-navy) !important;
-}
-
-/* D3 Headings — vermilion with navy underline */
-.vp-doc h1 {
-  color: var(--d3-vermilion) !important;
-  border-bottom: 3px solid var(--d3-navy) !important;
-  padding-bottom: 0.4em !important;
-  font-family: var(--vp-font-family-base) !important;
-}
-
-.vp-doc h2 {
-  color: var(--d3-vermilion) !important;
-  border-bottom: 1px solid rgba(29, 41, 57, 0.3) !important;
-  padding-bottom: 0.25em !important;
-}
-
-.vp-doc h3 {
-  color: var(--d3-navy) !important;
-}
-
-/* D3 Inline code — parchment-tinted panel (keep it warm, not dark) */
-.vp-doc :not(pre) > code {
-  background: rgba(29, 41, 57, 0.07) !important;
-  color: var(--d3-vermilion) !important;
-  border: 1px solid rgba(29, 41, 57, 0.15) !important;
-  border-radius: 3px !important;
-  padding: 1px 5px !important;
-}
-
-/* D3 Blockquote — blueprint cyan accent bar */
-.vp-doc blockquote {
-  border-left: 4px solid var(--d3-cyan) !important;
-  background: rgba(59, 142, 165, 0.06) !important;
-  color: var(--d3-navy) !important;
-  padding: 0.75rem 1.25rem !important;
-  border-radius: 0 4px 4px 0 !important;
-}
-
-/* D3 Table borders — navy grid */
-.vp-doc table th {
-  background: rgba(29, 41, 57, 0.08) !important;
-  color: var(--d3-navy) !important;
-  border-bottom: 2px solid var(--d3-navy) !important;
-}
-
-.vp-doc table td {
-  border-bottom: 1px solid rgba(29, 41, 57, 0.15) !important;
-  color: var(--d3-navy) !important;
-}
-
-/* D3 Strong / emphasis */
-.vp-doc strong {
-  color: var(--d3-vermilion) !important;
-}
-
-/* EXCEPTION: Keep code blocks dark (D1 surface) even inside D3 parchment article */
-.VPDoc .vp-doc div[class*='language-'] {
-  background: var(--d1-navy) !important;
-  border-color: var(--d1-teal) !important;
-  color: #c8d3f5 !important;
-}
-
-/* EXCEPTION: Keep mermaid diagrams dark inside D3 wrapper */
-.VPDoc .vp-doc .mermaid,
-.VPDoc .vp-doc svg.mermaid-svg {
-  background: var(--d1-panel) !important;
-  border-color: var(--d1-teal) !important;
-  color: inherit !important;
-}
-
-/* ==========================================================================
-   DARK MODE OVERRIDES
-   In dark mode: suppress D3 parchment, keep D1/D2 dominant
-   ========================================================================== */
-
-.dark .VPDoc .vp-doc {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: var(--vp-c-text-1) !important;
-}
-
-.dark .vp-doc h1,
-.dark .vp-doc h2,
-.dark .vp-doc h3 {
-  color: var(--vp-c-brand-1) !important;
-  border-color: var(--vp-c-border) !important;
-}
-
-.dark .vp-doc :not(pre) > code {
-  background: var(--vp-c-bg-soft) !important;
-  color: var(--vp-c-brand-1) !important;
-  border-color: var(--vp-c-border) !important;
-}
-
-.dark .vp-doc blockquote {
-  border-left-color: #3B8EA5 !important;
-  background: rgba(59, 142, 165, 0.08) !important;
-  color: var(--vp-c-text-2) !important;
-}
-
-.dark .vp-doc table th {
-  background: var(--vp-c-bg-soft) !important;
-  color: var(--vp-c-text-1) !important;
-  border-bottom-color: var(--vp-c-border) !important;
-}
-
-.dark .vp-doc table td {
-  border-bottom-color: var(--vp-c-divider) !important;
-  color: var(--vp-c-text-1) !important;
-}
-
-.dark .vp-doc strong {
-  color: var(--vp-c-brand-1) !important;
-}
-
-.dark .VPNavBar {
-  background: #0e0d0c !important;
-  border-bottom-color: var(--d2-orange) !important;
-}
-
-.dark .VPSidebar {
-  background: #0e0d0c !important;
 }

@@ -49,7 +49,7 @@ export default withMermaid(
     },
 
     themeConfig: {
-      siteTitle: 'QuartzDB',
+      siteTitle: 'QUARTZ DB // C++ STORAGE ENGINE',
       logo: '/q-logo.svg',
 
       // Target ≤ 5 top-level nav items (Docs, Reference, Benchmarks, v1.0)
