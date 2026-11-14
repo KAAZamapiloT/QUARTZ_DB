@@ -74,12 +74,7 @@
     </div>
 
     <!-- Pipeline Stages Sequence -->
-    <div 
-      class="stages-timeline" 
-      :class="{ 'select-scrollable': activeStmtId === 'select' }"
-      ref="timelineContainer"
-      @scroll="onTimelineScroll"
-    >
+    <div class="stages-timeline">
       <div 
         v-for="(stage, idx) in activeStages" 
         :key="stage.step"
@@ -141,12 +136,6 @@
       </div>
     </div>
 
-    <!-- SELECT Query Scroll Status Hint -->
-    <div v-if="activeStmtId === 'select'" class="select-scroll-status">
-      <span class="scroll-status-icon">↕</span>
-      <span>SELECT Query Pipeline ({{ activeStages.length }} Stages) &middot; Scroll inside timeline container or click Stage Jump pills above to inspect each phase</span>
-    </div>
-
     <!-- Pipeline Footer Summary -->
     <div class="pipeline-footer">
       <div class="footer-left">
@@ -166,36 +155,19 @@ import { ref, computed } from 'vue'
 const activeStmtId = ref('select')
 const executionMode = ref('fast')
 const activeScrollStage = ref('01')
-const timelineContainer = ref(null)
 
 function scrollToStage(step) {
   activeScrollStage.value = step
-  if (!timelineContainer.value) return
-  const el = timelineContainer.value.querySelector('#pipeline-stage-' + step)
+  if (typeof document === 'undefined') return
+  const el = document.getElementById('pipeline-stage-' + step)
   if (el) {
-    const containerTop = timelineContainer.value.offsetTop
-    const elTop = el.offsetTop
-    timelineContainer.value.scrollTo({
-      top: elTop - containerTop - 12,
+    const navOffset = 90
+    const elementPosition = el.getBoundingClientRect().top
+    const offsetPosition = elementPosition + window.pageYOffset - navOffset
+    window.scrollTo({
+      top: offsetPosition,
       behavior: 'smooth'
     })
-  }
-}
-
-function onTimelineScroll() {
-  if (!timelineContainer.value || activeStmtId.value !== 'select') return
-  const stages = activeStages.value
-  const scrollTop = timelineContainer.value.scrollTop
-  const containerTop = timelineContainer.value.offsetTop
-  for (let i = stages.length - 1; i >= 0; i--) {
-    const el = timelineContainer.value.querySelector('#pipeline-stage-' + stages[i].step)
-    if (el) {
-      const relTop = el.offsetTop - containerTop - 40
-      if (scrollTop >= relTop) {
-        activeScrollStage.value = stages[i].step
-        break
-      }
-    }
   }
 }
 
@@ -1118,58 +1090,6 @@ const activeStages = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-/* Scrollable Container ONLY for SELECT Query */
-.stages-timeline.select-scrollable {
-  max-height: 620px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-behavior: smooth;
-  padding-right: 1.25rem;
-  border-bottom: 1px dashed var(--vp-c-divider);
-}
-
-.stages-timeline.select-scrollable::-webkit-scrollbar {
-  width: 8px;
-}
-.stages-timeline.select-scrollable::-webkit-scrollbar-track {
-  background: var(--vp-c-bg-mute);
-  border-radius: 4px;
-}
-.stages-timeline.select-scrollable::-webkit-scrollbar-thumb {
-  background: var(--vp-c-divider);
-  border-radius: 4px;
-  border: 1px solid var(--vp-c-bg);
-}
-.stages-timeline.select-scrollable::-webkit-scrollbar-thumb:hover {
-  background: #3b8ea5;
-}
-
-.dark .stages-timeline.select-scrollable::-webkit-scrollbar-thumb:hover {
-  background: #00d2b4;
-}
-
-.select-scroll-status {
-  padding: 0.45rem 1.75rem;
-  background: var(--vp-c-bg-mute);
-  border-top: 1px solid var(--vp-c-divider);
-  font-family: var(--vp-font-family-mono);
-  font-size: 0.72rem;
-  color: var(--vp-c-text-2);
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  letter-spacing: 0.02em;
-}
-
-.scroll-status-icon {
-  color: #b83a24;
-  font-weight: 800;
-}
-
-.dark .scroll-status-icon {
-  color: #00d2b4;
 }
 
 .stage-card {
