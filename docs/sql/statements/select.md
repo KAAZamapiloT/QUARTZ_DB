@@ -133,6 +133,9 @@ For complete details, see [ORDER BY, LIMIT & OFFSET](/sql/order-by-limit).
 
 When the query planner evaluates `qdb::SelectStatement`, it inspects filter clauses to route primary-key point queries to the $O(\log N)$ B+ Tree fast-path or execute a linear slotted-page scan:
 
+> [!NOTE] Educational Visualizer — Not an Implemented SQL Command
+> The interactive plan tree below is a **conceptual educational tool** illustrating how QuartzDB internally routes queries. QuartzDB does **not** currently implement an `EXPLAIN` SQL command — the execution strategy is determined internally by the query planner and is not exposed as user-visible query plan output.
+
 <QueryPlanVisualizer />
 
 ---

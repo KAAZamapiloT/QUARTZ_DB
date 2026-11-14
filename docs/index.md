@@ -10,6 +10,10 @@ layout: page
     <p style="color: var(--vp-c-text-2); margin-bottom: 1.5rem;">
       Test queries live in your browser. QuartzDB's client-side simulator tests expressions, primary key uniqueness constraints, and tabular ASCII rendering.
     </p>
+    <div class="custom-block warning" style="margin-bottom: 1rem;">
+      <p class="custom-block-title">⚠️ SIMULATED ENVIRONMENT</p>
+      <p>Queries execute in a browser-side JavaScript simulator, <strong>not</strong> the actual C++ QuartzDB engine. Results match the engine's behavior for supported statements, but edge cases and error messages may differ from the compiled binary.</p>
+    </div>
     <SqlPlayground />
   </div>
 </div>

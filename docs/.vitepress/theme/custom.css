@@ -543,3 +543,302 @@ tr:nth-child(even) td {
 :root:not(.dark) .mermaid .noteText {
   fill: #78350f !important;
 }
+
+/* ==========================================================================
+   DIRECTION 1 — NEC PC-9801 Mainframe OS
+   Shell, code blocks, diagrams: navy bg + teal blueprint grid + amber accents
+   ========================================================================== */
+
+/* D1 CSS Custom Properties */
+:root {
+  --d1-navy: #141824;
+  --d1-teal: #00D2B4;
+  --d1-amber: #FFB000;
+  --d1-panel: #1a1f2e;
+  --d1-panel-border: #00D2B4;
+  --d1-grid-color: rgba(0, 210, 180, 0.07);
+}
+
+/* D1 Code block panels — dark navy + teal double border + amber lang badge */
+.vp-doc div[class*='language-'] {
+  background: var(--d1-navy) !important;
+  border: 2px solid var(--d1-teal) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 1px rgba(0, 210, 180, 0.15), 0 4px 24px rgba(0, 0, 0, 0.5) !important;
+  margin: 1.5rem 0 !important;
+}
+
+.vp-doc div[class*='language-'] span.lang {
+  background: var(--d1-amber) !important;
+  color: #141824 !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 2px 8px !important;
+  border-radius: 0 0 0 4px !important;
+}
+
+.vp-doc div[class*='language-'] code {
+  font-family: var(--vp-font-family-mono) !important;
+  color: #c8d3f5 !important;
+}
+
+/* D1 Mermaid / diagram containers */
+.vp-doc svg,
+.mermaid,
+.diagram-container {
+  background: var(--d1-panel) !important;
+  border: 2px double var(--d1-teal) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 0 1px rgba(0, 210, 180, 0.12), inset 0 0 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ==========================================================================
+   DIRECTION 2 — 1995 MAGI Supercomputer Console
+   Navigation, sidebar, visualizers: obsidian + phosphor orange + tactical mint
+   Chamfered clip-path tabs on sidebar items
+   ========================================================================== */
+
+/* D2 CSS Custom Properties */
+:root {
+  --d2-obsidian: #161412;
+  --d2-orange: #FF9E00;
+  --d2-mint: #4ECCA3;
+  --d2-tab-clip: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+}
+
+/* D2 Top Nav */
+.VPNavBar {
+  background: var(--d2-obsidian) !important;
+  border-bottom: 2px solid var(--d2-orange) !important;
+  backdrop-filter: none !important;
+}
+
+.VPNavBar .title {
+  color: var(--d2-orange) !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .button {
+  color: rgba(255, 158, 0, 0.8) !important;
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 13px !important;
+  letter-spacing: 0.03em !important;
+}
+
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuGroup .button:hover {
+  color: var(--d2-mint) !important;
+}
+
+/* D2 Sidebar */
+.VPSidebar {
+  background: var(--d2-obsidian) !important;
+  border-right: 2px solid var(--d2-orange) !important;
+}
+
+.VPSidebarItem.level-1 > .item {
+  clip-path: var(--d2-tab-clip) !important;
+  padding-left: 12px !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+.VPSidebarItem.level-1 > .item:hover {
+  background: rgba(255, 158, 0, 0.08) !important;
+  color: var(--d2-orange) !important;
+}
+
+.VPSidebarItem.is-active > .item {
+  border-left: 3px solid var(--d2-mint) !important;
+  background: rgba(78, 204, 163, 0.08) !important;
+  color: var(--d2-mint) !important;
+  clip-path: var(--d2-tab-clip) !important;
+}
+
+/* D2 Table of Contents / Aside Outline */
+.VPDocAsideOutline {
+  background: var(--d2-obsidian) !important;
+  border: 1px solid var(--d2-orange) !important;
+  border-radius: 0 !important;
+  clip-path: var(--d2-tab-clip) !important;
+  padding: 12px !important;
+}
+
+/* D2 Visualizer containers (magi-visualizer class + generic visualizer wrapper) */
+.magi-visualizer,
+.vp-doc .visualizer-container,
+.vp-doc canvas,
+.vp-doc .btree-canvas,
+.vp-doc .hex-inspector {
+  background: var(--d2-obsidian) !important;
+  border: 2px solid var(--d2-orange) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 24px rgba(255, 158, 0, 0.1) !important;
+}
+
+/* D2 Hazard stripe header for interactive visualizers */
+.vp-doc .visualizer-container::before {
+  content: '';
+  display: block;
+  height: 6px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--d2-orange) 0px,
+    var(--d2-orange) 8px,
+    #161412 8px,
+    #161412 16px
+  );
+  border-radius: 4px 4px 0 0;
+}
+
+/* ==========================================================================
+   DIRECTION 3 — 1989 Tokyo Hardware Reference Manual
+   Long-form prose articles: warm parchment + navy ink + vermilion headers
+   ========================================================================== */
+
+/* D3 CSS Custom Properties */
+:root {
+  --d3-parchment: #EFE8D8;
+  --d3-navy: #1D2939;
+  --d3-vermilion: #D1493E;
+  --d3-cyan: #3B8EA5;
+  --d3-shadow-offset: 4px;
+}
+
+/* D3 Article / Doc content area */
+.VPDoc .vp-doc {
+  background: var(--d3-parchment) !important;
+  border: 1px solid rgba(29, 41, 57, 0.15) !important;
+  border-radius: 2px !important;
+  box-shadow: var(--d3-shadow-offset) var(--d3-shadow-offset) 0 rgba(29, 41, 57, 0.12) !important;
+  padding: 2rem 2.5rem !important;
+  color: var(--d3-navy) !important;
+}
+
+/* D3 Headings — vermilion with navy underline */
+.vp-doc h1 {
+  color: var(--d3-vermilion) !important;
+  border-bottom: 3px solid var(--d3-navy) !important;
+  padding-bottom: 0.4em !important;
+  font-family: var(--vp-font-family-base) !important;
+}
+
+.vp-doc h2 {
+  color: var(--d3-vermilion) !important;
+  border-bottom: 1px solid rgba(29, 41, 57, 0.3) !important;
+  padding-bottom: 0.25em !important;
+}
+
+.vp-doc h3 {
+  color: var(--d3-navy) !important;
+}
+
+/* D3 Inline code — parchment-tinted panel (keep it warm, not dark) */
+.vp-doc :not(pre) > code {
+  background: rgba(29, 41, 57, 0.07) !important;
+  color: var(--d3-vermilion) !important;
+  border: 1px solid rgba(29, 41, 57, 0.15) !important;
+  border-radius: 3px !important;
+  padding: 1px 5px !important;
+}
+
+/* D3 Blockquote — blueprint cyan accent bar */
+.vp-doc blockquote {
+  border-left: 4px solid var(--d3-cyan) !important;
+  background: rgba(59, 142, 165, 0.06) !important;
+  color: var(--d3-navy) !important;
+  padding: 0.75rem 1.25rem !important;
+  border-radius: 0 4px 4px 0 !important;
+}
+
+/* D3 Table borders — navy grid */
+.vp-doc table th {
+  background: rgba(29, 41, 57, 0.08) !important;
+  color: var(--d3-navy) !important;
+  border-bottom: 2px solid var(--d3-navy) !important;
+}
+
+.vp-doc table td {
+  border-bottom: 1px solid rgba(29, 41, 57, 0.15) !important;
+  color: var(--d3-navy) !important;
+}
+
+/* D3 Strong / emphasis */
+.vp-doc strong {
+  color: var(--d3-vermilion) !important;
+}
+
+/* EXCEPTION: Keep code blocks dark (D1 surface) even inside D3 parchment article */
+.VPDoc .vp-doc div[class*='language-'] {
+  background: var(--d1-navy) !important;
+  border-color: var(--d1-teal) !important;
+  color: #c8d3f5 !important;
+}
+
+/* EXCEPTION: Keep mermaid diagrams dark inside D3 wrapper */
+.VPDoc .vp-doc .mermaid,
+.VPDoc .vp-doc svg.mermaid-svg {
+  background: var(--d1-panel) !important;
+  border-color: var(--d1-teal) !important;
+  color: inherit !important;
+}
+
+/* ==========================================================================
+   DARK MODE OVERRIDES
+   In dark mode: suppress D3 parchment, keep D1/D2 dominant
+   ========================================================================== */
+
+.dark .VPDoc .vp-doc {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--vp-c-text-1) !important;
+}
+
+.dark .vp-doc h1,
+.dark .vp-doc h2,
+.dark .vp-doc h3 {
+  color: var(--vp-c-brand-1) !important;
+  border-color: var(--vp-c-border) !important;
+}
+
+.dark .vp-doc :not(pre) > code {
+  background: var(--vp-c-bg-soft) !important;
+  color: var(--vp-c-brand-1) !important;
+  border-color: var(--vp-c-border) !important;
+}
+
+.dark .vp-doc blockquote {
+  border-left-color: #3B8EA5 !important;
+  background: rgba(59, 142, 165, 0.08) !important;
+  color: var(--vp-c-text-2) !important;
+}
+
+.dark .vp-doc table th {
+  background: var(--vp-c-bg-soft) !important;
+  color: var(--vp-c-text-1) !important;
+  border-bottom-color: var(--vp-c-border) !important;
+}
+
+.dark .vp-doc table td {
+  border-bottom-color: var(--vp-c-divider) !important;
+  color: var(--vp-c-text-1) !important;
+}
+
+.dark .vp-doc strong {
+  color: var(--vp-c-brand-1) !important;
+}
+
+.dark .VPNavBar {
+  background: #0e0d0c !important;
+  border-bottom-color: var(--d2-orange) !important;
+}
+
+.dark .VPSidebar {
+  background: #0e0d0c !important;
+}

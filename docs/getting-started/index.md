@@ -1,6 +1,14 @@
 # Getting Started with QuartzDB 🚀
 
-QuartzDB is a lightweight embedded relational database engine written in C++23. It requires zero external dependencies, running in-process with direct 4KB block disk I/O.
+QuartzDB is a lightweight embedded relational database engine written in C++23, running in-process with direct 4KB block disk I/O.
+
+**Runtime dependencies:** Zero. The engine and C API compile to a single self-contained binary or static library with no third-party runtime requirements.
+
+**Build dependencies:** A default CMake configuration (`-DQUARTZ_BUILD_TESTS=ON` is ON by default) automatically fetches **GoogleTest** via CMake `FetchContent`, which requires network access at configure time. To build the engine without test dependencies:
+```cmake
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DQUARTZ_BUILD_TESTS=OFF
+cmake --build build --config Release
+```
 
 ---
 

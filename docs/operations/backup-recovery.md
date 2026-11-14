@@ -4,6 +4,9 @@ Operational procedures for administering, backing up, compacting, and recovering
 
 ---
 
+> [!WARNING] No WAL or Atomic Crash Recovery
+> QuartzDB **does not currently implement Write-Ahead Logging (WAL) or atomic crash recovery**. The backup strategy is a file-level copy of the `.db` file during a quiescent (write-idle) state. If the engine crashes mid-write, the database file may be in an inconsistent state; always verify via the integrity checklist below after an unclean shutdown.
+
 ## 1. Single-File Storage Architecture
 
 QuartzDB consolidates all database state into a **single binary file** (e.g. `production.db`):

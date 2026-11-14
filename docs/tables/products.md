@@ -3,6 +3,9 @@
 *Represents warehouse product catalog inventory, pricing models, and SKU descriptions.*  
 **Last updated:** `2026-11-13` · **Owner:** `catalog-logistics`
 
+> [!NOTE] Example Schema — Not Engine-Specific
+> This page describes the **example sample schema** shipped with QuartzDB for demonstration purposes (`users`, `orders`, `products`). QuartzDB itself does not enforce any predefined business schema, roles, or PII policy. These tables exist solely to illustrate engine capabilities.
+
 ---
 
 <!-- Stat Card Wireframe Banner -->

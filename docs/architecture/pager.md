@@ -75,7 +75,10 @@ Page 0 is permanently reserved for the global database catalog. It tracks all re
 
 ## Page Allocation & Recycling Workflow
 
-The pager maintains an in-memory `free_pages` list (`std::vector<PageID>`) to recycle blocks deallocated by `DROP TABLE` or B+ tree underflow merges, eliminating disk fragmentation and avoiding unnecessary file size inflation:
+The pager maintains an in-memory `free_pages` list (`std::vector<PageID>`) to recycle blocks deallocated by `DROP TABLE` or B+ tree underflow merges within a session. **This freelist is not persisted to disk.** When a `.db` file is re-opened, the freelist begins empty; previously freed page slots are not automatically reclaimed until they are overwritten by subsequent allocations or the database is rebuilt via compaction:
+
+> [!WARNING] Session-Scoped Freelist
+> The `free_pages` recycling pool exists **only for the lifetime of the current pager instance**. When you close and re-open a `.db` file, the freelist is NOT restored from disk. This means: freed pages remain on disk but are inaccessible until a manual compaction pass or new pages overwrite the same slots. QuartzDB does not currently implement a persistent freelist or write-ahead log.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'edgeLabelBackground': '#1e1e2e', 'tertiaryTextColor': '#cdd6f4'}}}%%

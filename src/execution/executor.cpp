@@ -372,7 +372,7 @@ QueryResult SQLExecutor::execute(const sql::Statement& statement) {
 
 QueryResult SQLExecutor::execute_create_table(const sql::CreateTableStatement& stmt) {
     try {
-        db_.create_table(stmt.table_name, Schema{stmt.columns});
+        (void)db_.create_table(stmt.table_name, Schema{stmt.columns});
         return QueryResult{
             .success = true,
             .message = "Table '" + stmt.table_name + "' created successfully.",

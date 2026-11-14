@@ -60,7 +60,7 @@ int qdb_open(const char* filepath, qdb_database_t** out_db) {
         handle->executor = std::move(exec_obj);
         *out_db = handle;
         return QDB_OK;
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
         return QDB_ERROR;
     } catch (...) {
         return QDB_ERROR;

@@ -2,6 +2,9 @@
 
 The **Data Dictionary** provides a centralized, filterable index of all attributes, data types, constraints, and business descriptions across every registered table in QuartzDB.
 
+> [!NOTE] Example Schema — Not Engine-Specific
+> This page describes the **example sample schema** shipped with QuartzDB for demonstration purposes (`users`, `orders`, `products`). QuartzDB itself does not enforce any predefined business schema, roles, or PII policy. These tables exist solely to illustrate engine capabilities.
+
 ---
 
 ## Global Attribute Directory

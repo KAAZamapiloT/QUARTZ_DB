@@ -2,6 +2,9 @@
 
 QuartzDB provides role-based access patterns, data governance guidelines, and a comprehensive Personally Identifiable Information (PII) map.
 
+> [!NOTE] Example Schema — Not Engine-Specific
+> This page describes the **example sample schema** shipped with QuartzDB for demonstration purposes (`users`, `orders`, `products`). QuartzDB itself does not enforce any predefined business schema, roles, or PII policy. These tables exist solely to illustrate engine capabilities.
+
 ---
 
 ## 1. Role-Based Access Control (RBAC)

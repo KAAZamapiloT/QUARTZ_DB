@@ -67,6 +67,10 @@ add_executable(quartz
     src/cli/main.cpp
 )
 
+set_target_properties(quartz PROPERTIES
+    PDB_NAME "quartz_cli"
+)
+
 target_link_libraries(quartz
     PRIVATE quartz_core
 )

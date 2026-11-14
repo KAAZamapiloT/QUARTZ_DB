@@ -123,7 +123,7 @@
           <!-- Schedule Footer -->
           <div class="schedule-footer">
             <span class="footer-rss">📡 Subscribe via RSS</span>
-            <span class="footer-next">Next: Ch. 6 · Write-Ahead Logging (19 Nov)</span>
+            <span class="footer-next">Planned: Concurrency & Write-Ahead Logging</span>
           </div>
         </div>
       </div>
@@ -133,14 +133,14 @@
     <section class="series-library">
       <div class="section-heading">
         <h2>Curriculum & Modules</h2>
-        <p>Systematic coverage of QuartzDB's internal C++23 architectural subsystems.</p>
+        <p>Systematic coverage of QuartzDB's internal C++23 architectural subsystems. <em>(Percentages reflect documentation coverage of implemented engine features)</em></p>
       </div>
 
       <div class="series-grid">
         <div v-for="s in series" :key="s.title" class="series-card">
           <div class="series-header">
             <span class="series-vol">{{ s.tag }}</span>
-            <span class="series-pct">{{ s.progress }}% Complete</span>
+            <span class="series-pct">{{ s.progress }}% Doc Coverage</span>
           </div>
           <h3 class="series-card-title">{{ s.title }}</h3>
           <p class="series-card-desc">{{ s.description }}</p>

@@ -58,7 +58,7 @@ QuartzDB supports standard SQL aggregate functions for calculating statistical s
 | **`COUNT(*)`** | `*` | Any | Returns total matching rows ($N \ge 0$). Returns `0` if empty. |
 | **`COUNT(col)`** | Column | `INT`, `TEXT` | Counts rows where `col` is not `NULL`. |
 | **`SUM(col)`** | Column | `INT` only | Computes 64-bit integer sum. Returns `NULL` if 0 rows matched. |
-| **`AVG(col)`** | Column | `INT` only | Computes integer quotient `sum / count`. Returns `NULL` if 0 rows. |
+| **`AVG(col)`** | Column | `INT` only | Computes integer quotient `sum / count` using **integer division** — fractional results are truncated toward zero. `AVG({1,2})` → `1`, not `1.5`. Returns `NULL` if 0 rows. NULL values excluded from both sum and count. |
 | **`MIN(col)`** | Column | `INT`, `TEXT` | Minimum non-null value (numeric or lexicographic). |
 | **`MAX(col)`** | Column | `INT`, `TEXT` | Maximum non-null value (numeric or lexicographic). |
 
@@ -105,7 +105,11 @@ flowchart TD
 1. **Single-Pass In-Memory Reduction**: Once candidate tuples are filtered from the slotted pages or index scan, QuartzDB executes a single continuous pass through memory.
 2. **Strict Integer Typing for Arithmetic**: `SUM()` and `AVG()` reject `TEXT` columns at runtime with a descriptive message rather than silently converting or returning garbage values.
 3. **Null-Safe Accumulation**: `NULL` (`std::monostate`) values are excluded from `COUNT(col)`, `SUM`, `AVG`, `MIN`, and `MAX`. If all rows evaluate to `NULL`, `SUM`, `AVG`, `MIN`, and `MAX` yield `NULL`.
-4. **Multiple Aggregations in One Statement**: Any combination of aggregates can be requested simultaneously:
+4. **AVG() Uses Integer Arithmetic**: `AVG()` computes `sum / count` using **integer arithmetic**. Fractional results are silently truncated toward zero. For example:
+   - `AVG()` over values `{1, 2}` → `1` (not `1.5`)
+   - `AVG()` over values `{3, 4}` → `3` (not `3.5`)
+   QuartzDB does not currently support floating-point result types. Plan your schema accordingly if sub-integer precision is required (e.g., store values in cents rather than dollars).
+5. **Multiple Aggregations in One Statement**: Any combination of aggregates can be requested simultaneously:
    ```sql
    SELECT COUNT(*), SUM(total_cents), AVG(total_cents), MIN(total_cents), MAX(total_cents)
    FROM orders
